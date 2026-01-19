@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Volleyball Coach - Position Training</title>
+    <link rel="stylesheet" href="styles.css?v=2">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Volleyball Position Training</h1>
+        </header>
+        
+        <div class="main-content">
+            <!-- Lineup Section -->
+            <div class="lineup-section">
+                <h2>Lineup</h2>
+                <div class="add-player-form">
+                    <input type="number" id="jersey-number" placeholder="Jersey #" min="1" max="99">
+                    <input type="text" id="player-name" placeholder="Player Name">
+                    <button id="add-player-btn">Add Player</button>
+                </div>
+                <div class="lineup-list" id="lineup-list">
+                    <!-- Players will be added here -->
+                </div>
+                <div class="data-management">
+                    <h3>Data Management</h3>
+                    <div class="data-buttons">
+                        <button id="select-file-btn">Select data.xml File</button>
+                        <button id="export-json-btn">Export JSON</button>
+                        <button id="export-xml-btn">Export XML</button>
+                        <button id="import-btn">Import File</button>
+                        <input type="file" id="import-file" accept=".json,.xml" style="display: none;">
+                    </div>
+                    <p class="data-info" id="file-status">Click "Select data.xml File" to enable direct file saving. Data is saved to localStorage until file is selected.</p>
+                </div>
+            </div>
+
+            <!-- Court Section -->
+            <div class="court-section">
+                <div class="court-container">
+                    <div class="court" id="court">
+                        <!-- Net -->
+                        <div class="net"></div>
+                        <!-- 10ft line (attack line) -->
+                        <div class="attack-line"></div>
+                        <!-- Player positions will be added here -->
+                    </div>
+                </div>
+
+                <!-- Position Management -->
+                <div class="position-controls">
+                    <div class="position-save">
+                        <input type="text" id="position-name" placeholder="Position name (e.g., Base)">
+                        <button id="save-position-btn">Save Position</button>
+                    </div>
+                    <div class="position-select">
+                        <label>Start Position:</label>
+                        <select id="start-position">
+                            <option value="">Select...</option>
+                        </select>
+                        <label>End Position:</label>
+                        <select id="end-position">
+                            <option value="">Select...</option>
+                        </select>
+                        <button id="play-animation-btn">Play Animation</button>
+                        <button id="refresh-position-btn" style="display: none;">Reset to Start</button>
+                    </div>
+                    <div class="position-list">
+                        <h3>Saved Positions</h3>
+                        <div id="saved-positions-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
