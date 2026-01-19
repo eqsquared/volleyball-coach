@@ -105,7 +105,12 @@ function finishAnimation() {
         dom.refreshPositionBtn.style.display = 'inline-flex';
         // Re-initialize icons when button is shown
         if (window.lucide) {
-            lucide.createIcons();
+            lucide.createIcons({
+                attrs: {
+                    width: 16,
+                    height: 16
+                }
+            });
         }
     }
 }

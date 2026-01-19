@@ -7,7 +7,17 @@ export function initAccordions() {
         const header = accordion.querySelector('.accordion-header');
         if (header) {
             header.addEventListener('click', () => {
-                accordion.classList.toggle('active');
+                const isActive = accordion.classList.contains('active');
+                
+                // Close all accordions
+                accordions.forEach(acc => {
+                    acc.classList.remove('active');
+                });
+                
+                // If it wasn't active, open it
+                if (!isActive) {
+                    accordion.classList.add('active');
+                }
             });
         }
     });

@@ -76,7 +76,12 @@ export function updateSavedPositionsList() {
         
         // Initialize Lucide icons for these buttons
         if (window.lucide) {
-            lucide.createIcons();
+            lucide.createIcons({
+                attrs: {
+                    width: 14,
+                    height: 14
+                }
+            });
         }
         
         dom.savedPositionsList.appendChild(item);

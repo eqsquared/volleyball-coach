@@ -19,29 +19,6 @@
         <div class="main-content">
             <!-- Sidebar with Accordions -->
             <div class="sidebar">
-                <!-- State Indicator -->
-                <div class="state-indicator" id="state-indicator">
-                    <div class="current-item" id="current-item-display">
-                        <span class="label">Loaded:</span>
-                        <span class="value" id="current-item-value">None</span>
-                    </div>
-                    <div class="modified-indicator" id="modified-indicator" style="display: none;">
-                        <span class="badge">Modified</span>
-                        <div class="save-actions">
-                            <button id="save-btn" class="btn-save">Save</button>
-                            <button id="save-as-btn" class="btn-save-as">Save As</button>
-                            <button id="discard-btn" class="btn-discard">Discard</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Edit Mode Selector -->
-                <div class="edit-mode-selector">
-                    <button class="mode-btn" data-mode="none">Overview</button>
-                    <button class="mode-btn active" data-mode="position">Positions</button>
-                    <button class="mode-btn" data-mode="scenario">Scenarios</button>
-                    <button class="mode-btn" data-mode="sequence">Sequences</button>
-                </div>
 
                 <!-- Accordion: Players -->
                 <div class="accordion" data-accordion="players">
@@ -51,9 +28,9 @@
                     </div>
                     <div class="accordion-content">
                         <div class="add-player-form">
-                            <input type="number" id="jersey-number" placeholder="Jersey #" min="1" max="99">
-                            <input type="text" id="player-name" placeholder="Player Name">
-                            <button id="add-player-btn">Add Player</button>
+                            <input type="text" id="player-name" placeholder="Name">
+                            <input type="number" id="jersey-number" placeholder="#" min="1" max="99" class="jersey-input">
+                            <button id="add-player-btn">+ Add</button>
                         </div>
                         <div class="lineup-list" id="lineup-list">
                             <!-- Players will be added here -->
@@ -138,16 +115,21 @@
                     </div>
                 </div>
 
-                <!-- Data Management -->
-                <div class="data-management">
-                    <h3>Data Management</h3>
-                    <div class="data-buttons">
-                        <button id="export-json-btn">Export JSON</button>
-                        <button id="export-xml-btn">Export XML</button>
-                        <button id="import-btn">Import File</button>
-                        <input type="file" id="import-file" accept=".json,.xml" style="display: none;">
+                <!-- Accordion: Data Management -->
+                <div class="accordion" data-accordion="data-management">
+                    <div class="accordion-header">
+                        <h3><i data-lucide="database"></i> Data Management</h3>
+                        <i data-lucide="chevron-down" class="accordion-icon"></i>
                     </div>
-                    <p class="data-info" id="file-status">Data is automatically saved to data.json file.</p>
+                    <div class="accordion-content">
+                        <div class="data-buttons">
+                            <button id="export-json-btn">Export JSON</button>
+                            <button id="export-xml-btn">Export XML</button>
+                            <button id="import-btn">Import File</button>
+                            <input type="file" id="import-file" accept=".json,.xml" style="display: none;">
+                        </div>
+                        <p class="data-info" id="file-status">Data is automatically saved to data.json file.</p>
+                    </div>
                 </div>
             </div>
 
@@ -163,18 +145,37 @@
                     </div>
                 </div>
 
-                <!-- Animation Controls -->
-                <div class="animation-controls">
-                    <div class="animation-header">
-                        <h3>Animation</h3>
+                <!-- State Indicator and Animation Controls -->
+                <div class="court-controls">
+                    <!-- State Indicator -->
+                    <div class="state-indicator" id="state-indicator">
+                        <div class="current-item" id="current-item-display">
+                            <span class="label">Loaded:</span>
+                            <span class="value" id="current-item-value">None</span>
+                        </div>
+                        <div class="modified-indicator" id="modified-indicator" style="display: none;">
+                            <span class="badge">Modified</span>
+                            <div class="save-actions">
+                                <button id="save-btn" class="btn-save">Save</button>
+                                <button id="save-as-btn" class="btn-save-as">Save As</button>
+                                <button id="discard-btn" class="btn-discard">Discard</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="animation-buttons">
-                        <button id="play-animation-btn"><i data-lucide="play"></i> <span>Play</span></button>
-                        <button id="next-scenario-btn" style="display: none;"><i data-lucide="skip-forward"></i> <span>Next</span></button>
-                        <button id="refresh-position-btn" style="display: none;"><i data-lucide="refresh-cw"></i> <span>Reset</span></button>
-                    </div>
-                    <div class="sequence-progress" id="sequence-progress" style="display: none;">
-                        <span id="sequence-progress-text">Scenario 1 of 3</span>
+
+                    <!-- Animation Controls -->
+                    <div class="animation-controls">
+                        <div class="animation-header">
+                            <h3>Animation</h3>
+                        </div>
+                        <div class="animation-buttons">
+                            <button id="play-animation-btn"><i data-lucide="play"></i> <span>Play</span></button>
+                            <button id="next-scenario-btn" style="display: none;"><i data-lucide="skip-forward"></i> <span>Next</span></button>
+                            <button id="refresh-position-btn" style="display: none;"><i data-lucide="refresh-cw"></i> <span>Reset</span></button>
+                        </div>
+                        <div class="sequence-progress" id="sequence-progress" style="display: none;">
+                            <span id="sequence-progress-text">Scenario 1 of 3</span>
+                        </div>
                     </div>
                 </div>
             </div>

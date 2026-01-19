@@ -119,13 +119,8 @@ async function init() {
         // Initialize accordions
         initAccordions();
         
-        // Initialize sidebar mode and open default accordions
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) {
-            sidebar.setAttribute('data-mode', 'none');
-            // Open Players accordion by default
-            openAccordion('players');
-        }
+        // Open Players accordion by default
+        openAccordion('players');
         
         // Set up event listeners
         setupEventListeners();
@@ -146,9 +141,14 @@ async function init() {
         const { updatePositionRotationSelect } = await import('./js/rotations.js');
         updatePositionRotationSelect();
         
-        // Initialize Lucide icons
+        // Initialize Lucide icons with smaller default size
         if (window.lucide) {
-            lucide.createIcons();
+            lucide.createIcons({
+                attrs: {
+                    width: 16,
+                    height: 16
+                }
+            });
         }
         
         // Set up modification tracking
@@ -228,15 +228,7 @@ function setupEventListeners() {
         dom.discardBtn.addEventListener('click', handleDiscard);
     }
     
-    // Edit mode buttons
-    if (dom.modeButtons) {
-        dom.modeButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const mode = btn.dataset.mode;
-                switchEditMode(mode);
-            });
-        });
-    }
+    // Edit mode buttons removed - no longer needed
     
     // Import/Export
     if (dom.exportJsonBtn) {
@@ -276,41 +268,10 @@ function setupModificationTracking() {
     }
 }
 
-// Switch edit mode
+// Switch edit mode (kept for internal state management, but UI removed)
 function switchEditMode(mode) {
     setEditMode(mode);
-    
-    // Update button states
-    if (dom.modeButtons) {
-        dom.modeButtons.forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.mode === mode);
-        });
-    }
-    
-    // Set data attribute on sidebar for CSS to control visibility
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-        sidebar.setAttribute('data-mode', mode);
-    }
-    
-    // Open relevant accordions based on mode
-    if (mode === 'position') {
-        openAccordion('positions');
-        openAccordion('rotations');
-    } else if (mode === 'scenario') {
-        openAccordion('scenarios');
-        openAccordion('positions');
-    } else if (mode === 'sequence') {
-        openAccordion('sequences');
-        openAccordion('scenarios');
-    } else {
-        // Overview mode - open all
-        openAccordion('players');
-        openAccordion('rotations');
-        openAccordion('positions');
-        openAccordion('scenarios');
-        openAccordion('sequences');
-    }
+    // Mode switching UI removed - accordions are now always visible
 }
 
 // Handle save
