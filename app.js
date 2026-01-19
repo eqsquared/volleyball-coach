@@ -1,4 +1,4 @@
-// Import IndexedDB database module
+// Import API-based database module
 import * as db from './db.js';
 
 // State management
@@ -34,26 +34,26 @@ const fileStatus = document.getElementById('file-status');
 // Initialize
 async function init() {
     try {
-        // Initialize IndexedDB
+        // Initialize API connection
         await db.initDB();
         dbInitialized = true;
         
-        // Try to load from IndexedDB first
+        // Try to load from file-based storage
         const hasDBData = await db.hasData();
         
         if (hasDBData) {
-            // Load from IndexedDB
+            // Load from file-based storage
             players = await db.getAllPlayers();
             savedPositions = await db.getAllPositions();
-            console.log('Data loaded from IndexedDB');
+            console.log('Data loaded from file-based storage');
             
             if (fileStatus) {
-                fileStatus.textContent = '✓ Data loaded from IndexedDB database.';
+                fileStatus.textContent = '✓ Data loaded from data.json file.';
                 fileStatus.style.color = '#27ae60';
             }
         } else {
-            // No IndexedDB data, try to migrate from XML/localStorage
-            console.log('No IndexedDB data found, attempting migration...');
+            // No file data, try to migrate from XML
+            console.log('No file data found, attempting migration...');
             const migrated = await migrateFromLegacyStorage();
             
             if (!migrated) {
@@ -65,10 +65,10 @@ async function init() {
             }
         }
         
-        // Update file status for saving
-        const savedFileName = localStorage.getItem('dataFileName');
-        if (savedFileName && fileStatus && !fileStatus.textContent.includes('✓')) {
-            fileStatus.textContent += ` Click "Select data.xml File" to enable direct saving.`;
+        // Update file status
+        if (fileStatus && !fileStatus.textContent.includes('✓')) {
+            fileStatus.textContent = '✓ Data is automatically saved to data.json file.';
+            fileStatus.style.color = '#27ae60';
         }
         
         addPlayerBtn.addEventListener('click', addPlayer);
@@ -80,6 +80,19 @@ async function init() {
         exportXmlBtn.addEventListener('click', exportToXML);
         importBtn.addEventListener('click', () => importFileInput.click());
         importFileInput.addEventListener('change', handleFileImport);
+        
+        // Auto-load positions when selected
+        startPositionSelect.addEventListener('change', (e) => {
+            if (e.target.value) {
+                loadPosition(e.target.value);
+            }
+        });
+        
+        endPositionSelect.addEventListener('change', (e) => {
+            if (e.target.value) {
+                loadPosition(e.target.value);
+            }
+        });
         
         // Allow Enter key to add player
         jerseyInput.addEventListener('keypress', (e) => {
@@ -97,6 +110,11 @@ async function init() {
         renderLineup();
         updateSavedPositionsList();
         updatePositionSelects();
+        
+        // Initialize Lucide icons
+        if (window.lucide) {
+            lucide.createIcons();
+        }
     } catch (error) {
         console.error('Error initializing app:', error);
         alert('Error initializing database. Please refresh the page.');
@@ -127,12 +145,13 @@ async function addPlayer() {
     
     players.push(player);
     
-    // Save to IndexedDB
+    // Save to file-based storage
     if (dbInitialized) {
         try {
             await db.savePlayer(player);
         } catch (error) {
             console.error('Error saving player:', error);
+            alert('Error saving player: ' + error.message);
         }
     }
     
@@ -178,12 +197,13 @@ function renderLineup() {
 async function deletePlayer(playerId) {
     players = players.filter(p => p.id !== playerId);
     
-    // Remove from IndexedDB
+    // Remove from file-based storage
     if (dbInitialized) {
         try {
             await db.deletePlayer(playerId);
         } catch (error) {
             console.error('Error deleting player:', error);
+            alert('Error deleting player: ' + error.message);
         }
     }
     
@@ -199,7 +219,7 @@ async function deletePlayer(playerId) {
         savedPositions[posName] = savedPositions[posName].filter(p => p.playerId !== playerId);
     });
     
-    // Update positions in IndexedDB
+    // Update positions in file-based storage
     if (dbInitialized) {
         for (const [posName, positions] of Object.entries(savedPositions)) {
             try {
@@ -404,12 +424,13 @@ async function savePosition() {
     savedPositions[positionName] = positions;
     positionNameInput.value = '';
     
-    // Save to IndexedDB
+    // Save to file-based storage
     if (dbInitialized) {
         try {
             await db.savePosition(positionName, positions);
         } catch (error) {
             console.error('Error saving position:', error);
+            alert('Error saving position: ' + error.message);
         }
     }
     
@@ -429,9 +450,9 @@ function updateSavedPositionsList() {
         item.innerHTML = `
             <span>${posName} (${count} players)</span>
             <div class="saved-position-actions">
-                <button class="save-overwrite-btn" title="Save over this position">💾</button>
-                <button class="load-position-btn">Load</button>
-                <button class="delete-position-btn">Delete</button>
+                <button class="save-overwrite-btn" title="Save over this position"><i data-lucide="save"></i></button>
+                <button class="load-position-btn" title="Load position"><i data-lucide="folder-open"></i></button>
+                <button class="delete-position-btn" title="Delete position"><i data-lucide="trash-2"></i></button>
             </div>
         `;
         
@@ -443,6 +464,11 @@ function updateSavedPositionsList() {
         saveOverBtn.addEventListener('click', () => saveOverPosition(posName));
         loadBtn.addEventListener('click', () => loadPosition(posName));
         deleteBtn.addEventListener('click', () => deletePosition(posName));
+        
+        // Initialize Lucide icons for these buttons
+        if (window.lucide) {
+            lucide.createIcons();
+        }
         
         savedPositionsList.appendChild(item);
     });
@@ -512,12 +538,13 @@ async function saveOverPosition(positionName) {
     
     savedPositions[positionName] = positions;
     
-    // Save to IndexedDB
+    // Save to file-based storage
     if (dbInitialized) {
         try {
             await db.savePosition(positionName, positions);
         } catch (error) {
             console.error('Error saving position:', error);
+            alert('Error saving position: ' + error.message);
         }
     }
     
@@ -530,12 +557,13 @@ async function deletePosition(positionName) {
     if (confirm(`Delete position "${positionName}"?`)) {
         delete savedPositions[positionName];
         
-        // Delete from IndexedDB
+        // Delete from file-based storage
         if (dbInitialized) {
             try {
                 await db.deletePosition(positionName);
             } catch (error) {
                 console.error('Error deleting position:', error);
+                alert('Error deleting position: ' + error.message);
             }
         }
         
@@ -636,20 +664,134 @@ function playAnimation() {
 function finishAnimation() {
     isAnimating = false;
     playAnimationBtn.disabled = false;
+    if (refreshPositionBtn) {
+        refreshPositionBtn.disabled = false;
+    }
     // Show refresh button after animation completes
     if (lastStartPosition) {
-        refreshPositionBtn.style.display = 'inline-block';
+        refreshPositionBtn.style.display = 'inline-flex';
+        // Re-initialize icons when button is shown
+        if (window.lucide) {
+            lucide.createIcons();
+        }
     }
 }
 
 function resetToStartPosition() {
-    if (lastStartPosition) {
-        loadPosition(lastStartPosition);
-        refreshPositionBtn.style.display = 'none';
+    if (!lastStartPosition) return;
+    
+    if (isAnimating) {
+        alert('Animation already in progress');
+        return;
     }
+    
+    const startPositions = savedPositions[lastStartPosition];
+    if (!startPositions) return;
+    
+    // Get current positions of players on court
+    const currentPositions = [];
+    playerElements.forEach((element, playerId) => {
+        const player = players.find(p => p.id === playerId);
+        if (player) {
+            currentPositions.push({
+                playerId: playerId,
+                x: parseInt(element.style.left) || 0,
+                y: parseInt(element.style.top) || 0
+            });
+        }
+    });
+    
+    // Create a map of playerId to start position
+    const startPosMap = new Map();
+    startPositions.forEach(pos => {
+        startPosMap.set(pos.playerId, { x: pos.x, y: pos.y });
+    });
+    
+    isAnimating = true;
+    playAnimationBtn.disabled = true;
+    refreshPositionBtn.disabled = true;
+    
+    // Animate each player back to start position
+    let animationsComplete = 0;
+    const totalAnimations = currentPositions.length;
+    
+    if (totalAnimations === 0) {
+        // No players on court, just load the position
+        loadPosition(lastStartPosition);
+        finishAnimation();
+        refreshPositionBtn.style.display = 'none';
+        return;
+    }
+    
+    currentPositions.forEach(currentPos => {
+        const startPos = startPosMap.get(currentPos.playerId);
+        if (!startPos) {
+            // Player not in start position, remove them
+            const playerElement = playerElements.get(currentPos.playerId);
+            if (playerElement) {
+                playerElement.remove();
+                playerElements.delete(currentPos.playerId);
+            }
+            animationsComplete++;
+            if (animationsComplete === totalAnimations) {
+                finishAnimation();
+                refreshPositionBtn.style.display = 'none';
+            }
+            return;
+        }
+        
+        const playerElement = playerElements.get(currentPos.playerId);
+        if (!playerElement) {
+            animationsComplete++;
+            if (animationsComplete === totalAnimations) {
+                finishAnimation();
+                refreshPositionBtn.style.display = 'none';
+            }
+            return;
+        }
+        
+        // Check if position actually changed
+        if (currentPos.x === startPos.x && currentPos.y === startPos.y) {
+            animationsComplete++;
+            if (animationsComplete === totalAnimations) {
+                finishAnimation();
+                refreshPositionBtn.style.display = 'none';
+            }
+            return;
+        }
+        
+        playerElement.classList.add('animating');
+        
+        // Set start position
+        setTimeout(() => {
+            playerElement.style.left = startPos.x + 'px';
+            playerElement.style.top = startPos.y + 'px';
+        }, 10);
+        
+        // Remove animating class after animation completes
+        setTimeout(() => {
+            playerElement.classList.remove('animating');
+            animationsComplete++;
+            
+            if (animationsComplete === totalAnimations) {
+                finishAnimation();
+                refreshPositionBtn.style.display = 'none';
+            }
+        }, 1010); // 1s animation + 10ms buffer
+    });
+    
+    // Also add any players that are in start position but not on court
+    startPositions.forEach(startPos => {
+        if (!playerElements.has(startPos.playerId)) {
+            const player = players.find(p => p.id === startPos.playerId);
+            if (player) {
+                placePlayerOnCourt(player, startPos.x, startPos.y);
+            }
+        }
+    });
 }
 
-// Migration function - converts XML/localStorage data to IndexedDB
+// Migration function - converts XML data to file-based storage
 async function migrateFromLegacyStorage() {
     let legacyData = null;
     
@@ -659,27 +801,14 @@ async function migrateFromLegacyStorage() {
         if (response.ok) {
             const xmlText = await response.text();
             legacyData = parseXML(xmlText);
-            console.log('Found data.xml, migrating to IndexedDB...');
+            console.log('Found data.xml, migrating to file-based storage...');
         }
     } catch (error) {
-        console.log('data.xml not accessible, trying localStorage...');
-    }
-    
-    // Fallback to localStorage
-    if (!legacyData) {
-        const saved = localStorage.getItem('volleyballCoachData');
-        if (saved) {
-            try {
-                legacyData = JSON.parse(saved);
-                console.log('Found localStorage data, migrating to IndexedDB...');
-            } catch (e) {
-                console.error('Error parsing localStorage data:', e);
-            }
-        }
+        console.log('data.xml not accessible, skipping migration...');
     }
     
     if (legacyData && (legacyData.players?.length > 0 || Object.keys(legacyData.savedPositions || {}).length > 0)) {
-        // Import legacy data into IndexedDB
+        // Import legacy data into file-based storage
         try {
             await db.importData(legacyData);
             
@@ -692,7 +821,7 @@ async function migrateFromLegacyStorage() {
             updatePositionSelects();
             
             if (fileStatus) {
-                fileStatus.textContent = '✓ Legacy data migrated to IndexedDB database.';
+                fileStatus.textContent = '✓ Legacy data migrated to file-based storage.';
                 fileStatus.style.color = '#27ae60';
             }
             
@@ -728,34 +857,27 @@ async function selectDataFile() {
             suggestedName: 'data.xml'
         });
         
-        // Load the file after selecting
+            // Load the file after selecting
         const file = await dataFileHandle.getFile();
         const text = await file.text();
         const data = parseXML(text);
         
-        // Import into IndexedDB
+        // Import into file-based storage
         if (dbInitialized) {
             await db.importData(data);
         }
         
-        // Update app state
-        if (data.players) {
-            players = data.players;
-            renderLineup();
-        }
+        // Reload data from server
+        players = await db.getAllPlayers();
+        savedPositions = await db.getAllPositions();
         
-        if (data.savedPositions) {
-            savedPositions = data.savedPositions;
-            updateSavedPositionsList();
-            updatePositionSelects();
-        }
-        
-        // Save file name to localStorage for reference
-        const fileName = file.name;
-        localStorage.setItem('dataFileName', fileName);
+        renderLineup();
+        updateSavedPositionsList();
+        updatePositionSelects();
         
         // Update status
-        fileStatus.textContent = `✓ File selected: ${fileName}. Data imported to IndexedDB.`;
+        const fileName = file.name;
+        fileStatus.textContent = `✓ File imported: ${fileName}. Data saved to data.json.`;
         fileStatus.style.color = '#27ae60';
     } catch (error) {
         if (error.name !== 'AbortError') {
@@ -769,8 +891,8 @@ function generateXML() {
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<volleyballCoachData>\n';
     xml += `  <exportDate>${new Date().toISOString()}</exportDate>\n`;
-    xml += `  <version>2.0</version>\n`;
-    xml += `  <database>IndexedDB</database>\n`;
+    xml += `  <version>3.0</version>\n`;
+    xml += `  <database>file-based</database>\n`;
     
     xml += '  <players>\n';
     players.forEach(player => {
@@ -803,7 +925,7 @@ function generateXML() {
 }
 
 async function exportToJSON() {
-    // Get latest data from IndexedDB
+    // Get latest data from file-based storage
     if (dbInitialized) {
         try {
             const data = await db.exportAllData();
@@ -819,7 +941,8 @@ async function exportToJSON() {
             URL.revokeObjectURL(url);
             return;
         } catch (error) {
-            console.error('Error exporting from IndexedDB:', error);
+            console.error('Error exporting from file storage:', error);
+            alert('Error exporting data: ' + error.message);
         }
     }
     
@@ -828,8 +951,8 @@ async function exportToJSON() {
         players: players,
         savedPositions: savedPositions,
         exportDate: new Date().toISOString(),
-        version: '2.0',
-        database: 'IndexedDB'
+        version: '3.0',
+        database: 'file-based'
     };
     
     const json = JSON.stringify(data, null, 2);
@@ -884,24 +1007,20 @@ async function handleFileImport(event) {
                 data = JSON.parse(content);
             }
             
-            // Import into IndexedDB
+            // Import into file-based storage
             if (dbInitialized) {
                 await db.importData(data);
             }
             
-            // Update app state
-            if (data.players) {
-                players = data.players;
-                renderLineup();
-            }
+            // Reload data from server
+            players = await db.getAllPlayers();
+            savedPositions = await db.getAllPositions();
             
-            if (data.savedPositions) {
-                savedPositions = data.savedPositions;
-                updateSavedPositionsList();
-                updatePositionSelects();
-            }
+            renderLineup();
+            updateSavedPositionsList();
+            updatePositionSelects();
             
-            alert('Data imported successfully to IndexedDB!');
+            alert('Data imported successfully! Saved to data.json file.');
         } catch (error) {
             alert('Error importing file: ' + error.message);
             console.error('Import error:', error);

@@ -30,18 +30,19 @@ A web-based volleyball coaching tool designed to help new players visualize cour
 - **Reset to start**: Refresh button to return to the start position after animation
 
 ### 💾 Data Persistence
-- **IndexedDB database**: Robust local database storage with better performance and capacity
-- **Automatic migration**: Seamlessly migrates from legacy XML/localStorage on first load
-- **File System Access API**: Optional direct file saving for backup (Chrome/Edge)
-- **Import/Export**: Import and export data in JSON or XML format
-- **Auto-save**: Automatic saving to IndexedDB on all data changes
-- **No server required**: Fully client-side, works offline
+- **File-based storage**: All data is automatically saved to `data.json` file in the project directory
+- **Automatic saving**: Every change (add player, save position, etc.) is immediately saved to the file
+- **No data loss**: Data persists even if browser is closed or cleared
+- **Automatic migration**: Seamlessly migrates from legacy XML files on first load
+- **Import/Export**: Import and export data in JSON or XML format for backup
+- **Server-based**: Requires Node.js server to run (included in npm start)
 
 ## Getting Started
 
 ### Prerequisites
+- Node.js (v14 or higher)
+- npm (comes with Node.js)
 - A modern web browser (Chrome, Edge, Firefox, or Safari)
-- For direct file saving: Chrome or Edge (File System Access API support)
 
 ### Installation & Running
 
@@ -52,39 +53,25 @@ A web-based volleyball coaching tool designed to help new players visualize cour
    cd volleyball-coach
    ```
 
-2. **Start a local web server** using one of these methods:
-
-   **Option 1: Python 3** (recommended)
+2. **Install dependencies and start the server**:
    ```bash
-   python3 -m http.server 8000
+   npm install
+   npm start
    ```
-   Then open: http://localhost:8000
+   This will:
+   - Start the Express server on http://localhost:8000
+   - Create `data.json` file automatically if it doesn't exist
+   - Serve the application and handle all data persistence
+   - All changes are automatically saved to `data.json`
 
-   **Option 2: Python 2**
-   ```bash
-   python -m http.server 8000
-   ```
-   Then open: http://localhost:8000
-
-   **Option 3: Node.js** (if you have http-server installed)
-   ```bash
-   npx http-server
-   ```
-   Or install globally: `npm install -g http-server` then run `http-server`
-
-   **Option 4: PHP** (if installed)
-   ```bash
-   php -S localhost:8000
-   ```
-
-3. **Open in your browser**: Navigate to `http://localhost:8000` (or the port your server uses)
-
-4. **For best experience**: Use Chrome or Edge for full File System Access API support
+3. **Open your browser**:
+   - Navigate to http://localhost:8000
+   - The app will load and automatically save all changes to `data.json`
 
 ### First Time Setup
 
 1. **Automatic data migration** (if upgrading):
-   - If you have existing `data.xml` or localStorage data, it will automatically migrate to IndexedDB on first load
+   - If you have existing `data.xml` file, it will automatically migrate to `data.json` on first load
    - No action required - your data is preserved!
 
 2. **Add players**:
@@ -115,12 +102,14 @@ volleyball-coach/
 ├── index.html          # Main HTML structure
 ├── styles.css          # All styling and layout
 ├── app.js              # Application logic and functionality
-├── db.js               # IndexedDB database module
+├── db.js               # API-based database module
+├── server.js           # Express server for file-based storage
+├── data.json           # Data storage file (auto-created)
 ├── data.xml            # Legacy XML file (optional, for import/export)
 └── README.md           # This file
 ```
 
-**Note**: Data is now stored in IndexedDB (browser database), not in `data.xml`. The XML file is only used for import/export functionality.
+**Note**: Data is automatically saved to `data.json` file in the project directory. All changes are persisted immediately - no need to export!
 
 ## Usage Guide
 
@@ -165,36 +154,36 @@ volleyball-coach/
 - Select a JSON or XML file
 - Data will be loaded and merged with existing data
 
-#### Direct File Saving (Optional)
-- Click "Select data.xml File" to choose a file for backup
-- Data is primarily stored in IndexedDB, but you can export/import XML files
-- Works best in Chrome or Edge browsers
+#### Data Storage
+- All data is automatically saved to `data.json` in the project directory
+- No manual saving required - every change is persisted immediately
+- You can still export/import JSON or XML files for backup purposes
 
 ## Technical Details
 
 ### Technologies
 - **HTML5**: Structure and semantic markup
 - **CSS3**: Styling, layout, and animations
-- **Vanilla JavaScript (ES6 Modules)**: No frameworks or dependencies
-- **IndexedDB**: Robust local database storage (replaces XML/localStorage)
-- **File System Access API**: Optional direct file system access (Chrome/Edge)
+- **Vanilla JavaScript (ES6 Modules)**: Frontend application logic
+- **Node.js/Express**: Backend server for file-based storage
+- **JSON file storage**: All data persisted to `data.json` file
 
 ### Browser Compatibility
-- **Chrome/Edge**: Full support including File System Access API
-- **Firefox/Safari**: Full functionality, but file saving downloads files instead of direct save
+- **All modern browsers**: Chrome, Edge, Firefox, Safari all fully supported
 - **Mobile browsers**: Functional but optimized for desktop use
 
 ### Data Storage Architecture
 
-**Primary Storage: IndexedDB**
-- All data is stored in the browser's IndexedDB database
-- Provides better performance, larger capacity, and more robust storage
-- Data persists across browser sessions
-- No file system access required
+**Primary Storage: File-based (data.json)**
+- All data is automatically saved to `data.json` file in the project directory
+- Every change (add player, save position, delete, etc.) is immediately persisted
+- Data persists even if browser is closed, cleared, or computer is restarted
+- No risk of data loss - everything is saved automatically
+- The file is human-readable JSON format for easy backup/editing
 
-**Export/Import Formats:**
+**Data Structure:**
 
-The exported JSON/XML structure:
+The `data.json` file structure:
 ```json
 {
   "players": [
@@ -215,14 +204,13 @@ The exported JSON/XML structure:
       }
     ]
   },
-  "exportDate": "...",
-  "version": "2.0",
-  "database": "IndexedDB"
+  "version": "3.0",
+  "database": "file-based"
 }
 ```
 
 **Migration:**
-- On first load, the app automatically migrates data from `data.xml` or localStorage to IndexedDB
+- On first load, the app automatically migrates data from `data.xml` to `data.json`
 - Your existing data is preserved and upgraded seamlessly
 
 ## Features in Detail
@@ -250,8 +238,8 @@ The exported JSON/XML structure:
 1. **Create base formations first**: Save your standard starting positions
 2. **Name positions descriptively**: Use clear names like "Base", "Serve Receive", "Rotation 1"
 3. **Use animation to show transitions**: Help players understand where they should move
-4. **Save frequently**: Positions auto-save, but use descriptive names
-5. **Export backups**: Regularly export your data as JSON/XML for backup
+4. **Data is auto-saved**: All changes are automatically saved to `data.json` - no need to export!
+5. **Backup regularly**: While data is auto-saved, you can still export JSON/XML files for additional backup
 
 ## Future Enhancements
 
