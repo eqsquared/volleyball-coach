@@ -8,12 +8,13 @@ const cors = require('cors');
 
 const app = express();
 const PORT = 8000;
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DATA_FILE = path.join(__dirname, 'data', 'data.json');
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname)); // Serve static files
+app.use(express.static(PUBLIC_DIR)); // Serve static files from public directory
 
 // Initialize data.json if it doesn't exist
 async function ensureDataFile() {

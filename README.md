@@ -30,7 +30,7 @@ A web-based volleyball coaching tool designed to help new players visualize cour
 - **Reset to start**: Refresh button to return to the start position after animation
 
 ### 💾 Data Persistence
-- **File-based storage**: All data is automatically saved to `data.json` file in the project directory
+- **File-based storage**: All data is automatically saved to `data/data.json` file
 - **Automatic saving**: Every change (add player, save position, etc.) is immediately saved to the file
 - **No data loss**: Data persists even if browser is closed or cleared
 - **Automatic migration**: Seamlessly migrates from legacy XML files on first load
@@ -60,9 +60,9 @@ A web-based volleyball coaching tool designed to help new players visualize cour
    ```
    This will:
    - Start the Express server on http://localhost:8000
-   - Create `data.json` file automatically if it doesn't exist
+   - Create `data/data.json` file automatically if it doesn't exist
    - Serve the application and handle all data persistence
-   - All changes are automatically saved to `data.json`
+   - All changes are automatically saved to `data/data.json`
 
 3. **Open your browser**:
    - Navigate to http://localhost:8000
@@ -71,7 +71,7 @@ A web-based volleyball coaching tool designed to help new players visualize cour
 ### First Time Setup
 
 1. **Automatic data migration** (if upgrading):
-   - If you have existing `data.xml` file, it will automatically migrate to `data.json` on first load
+   - If you have existing `data.xml` file in the `public/` directory, it will automatically migrate to `data/data.json` on first load
    - No action required - your data is preserved!
 
 2. **Add players**:
@@ -99,17 +99,21 @@ A web-based volleyball coaching tool designed to help new players visualize cour
 
 ```
 volleyball-coach/
-├── index.html          # Main HTML structure
-├── styles.css          # All styling and layout
-├── app.js              # Application logic and functionality
-├── db.js               # API-based database module
+├── public/             # Frontend files (served as static files)
+│   ├── index.html      # Main HTML structure
+│   ├── styles.css      # All styling and layout
+│   ├── app.js          # Application logic and functionality
+│   ├── db.js           # API-based database module
+│   └── data.xml        # Legacy XML file (optional, for migration)
+├── data/               # Data storage directory
+│   └── data.json       # Data storage file (auto-created)
 ├── server.js           # Express server for file-based storage
-├── data.json           # Data storage file (auto-created)
-├── data.xml            # Legacy XML file (optional, for import/export)
+├── package.json        # Node.js dependencies and scripts
+├── .gitignore         # Git ignore rules
 └── README.md           # This file
 ```
 
-**Note**: Data is automatically saved to `data.json` file in the project directory. All changes are persisted immediately - no need to export!
+**Note**: Data is automatically saved to `data/data.json` file. All changes are persisted immediately - no need to export!
 
 ## Usage Guide
 
@@ -155,7 +159,7 @@ volleyball-coach/
 - Data will be loaded and merged with existing data
 
 #### Data Storage
-- All data is automatically saved to `data.json` in the project directory
+- All data is automatically saved to `data/data.json` in the project directory
 - No manual saving required - every change is persisted immediately
 - You can still export/import JSON or XML files for backup purposes
 
@@ -166,7 +170,7 @@ volleyball-coach/
 - **CSS3**: Styling, layout, and animations
 - **Vanilla JavaScript (ES6 Modules)**: Frontend application logic
 - **Node.js/Express**: Backend server for file-based storage
-- **JSON file storage**: All data persisted to `data.json` file
+- **JSON file storage**: All data persisted to `data/data.json` file
 
 ### Browser Compatibility
 - **All modern browsers**: Chrome, Edge, Firefox, Safari all fully supported
@@ -174,8 +178,8 @@ volleyball-coach/
 
 ### Data Storage Architecture
 
-**Primary Storage: File-based (data.json)**
-- All data is automatically saved to `data.json` file in the project directory
+**Primary Storage: File-based (data/data.json)**
+- All data is automatically saved to `data/data.json` file
 - Every change (add player, save position, delete, etc.) is immediately persisted
 - Data persists even if browser is closed, cleared, or computer is restarted
 - No risk of data loss - everything is saved automatically
@@ -183,7 +187,7 @@ volleyball-coach/
 
 **Data Structure:**
 
-The `data.json` file structure:
+The `data/data.json` file structure:
 ```json
 {
   "players": [
@@ -210,7 +214,7 @@ The `data.json` file structure:
 ```
 
 **Migration:**
-- On first load, the app automatically migrates data from `data.xml` to `data.json`
+- On first load, the app automatically migrates data from `public/data.xml` to `data/data.json`
 - Your existing data is preserved and upgraded seamlessly
 
 ## Features in Detail
@@ -238,7 +242,7 @@ The `data.json` file structure:
 1. **Create base formations first**: Save your standard starting positions
 2. **Name positions descriptively**: Use clear names like "Base", "Serve Receive", "Rotation 1"
 3. **Use animation to show transitions**: Help players understand where they should move
-4. **Data is auto-saved**: All changes are automatically saved to `data.json` - no need to export!
+4. **Data is auto-saved**: All changes are automatically saved to `data/data.json` - no need to export!
 5. **Backup regularly**: While data is auto-saved, you can still export JSON/XML files for additional backup
 
 ## Future Enhancements
