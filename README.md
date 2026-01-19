@@ -30,11 +30,12 @@ A web-based volleyball coaching tool designed to help new players visualize cour
 - **Reset to start**: Refresh button to return to the start position after animation
 
 ### 💾 Data Persistence
-- **XML database**: All data saved to `data.xml` file in the project directory
-- **File System Access API**: Direct file saving (Chrome/Edge)
-- **LocalStorage backup**: Automatic backup to browser storage
+- **IndexedDB database**: Robust local database storage with better performance and capacity
+- **Automatic migration**: Seamlessly migrates from legacy XML/localStorage on first load
+- **File System Access API**: Optional direct file saving for backup (Chrome/Edge)
 - **Import/Export**: Import and export data in JSON or XML format
-- **Auto-save**: Automatic saving on all data changes
+- **Auto-save**: Automatic saving to IndexedDB on all data changes
+- **No server required**: Fully client-side, works offline
 
 ## Getting Started
 
@@ -42,18 +43,49 @@ A web-based volleyball coaching tool designed to help new players visualize cour
 - A modern web browser (Chrome, Edge, Firefox, or Safari)
 - For direct file saving: Chrome or Edge (File System Access API support)
 
-### Installation
+### Installation & Running
 
-1. Clone or download this repository
-2. Open `index.html` in your web browser
-3. For best experience with file saving, use Chrome or Edge
+**Important**: This app uses ES6 modules and must be served over HTTP (not opened as a file).
+
+1. **Navigate to the project directory** in your terminal:
+   ```bash
+   cd volleyball-coach
+   ```
+
+2. **Start a local web server** using one of these methods:
+
+   **Option 1: Python 3** (recommended)
+   ```bash
+   python3 -m http.server 8000
+   ```
+   Then open: http://localhost:8000
+
+   **Option 2: Python 2**
+   ```bash
+   python -m http.server 8000
+   ```
+   Then open: http://localhost:8000
+
+   **Option 3: Node.js** (if you have http-server installed)
+   ```bash
+   npx http-server
+   ```
+   Or install globally: `npm install -g http-server` then run `http-server`
+
+   **Option 4: PHP** (if installed)
+   ```bash
+   php -S localhost:8000
+   ```
+
+3. **Open in your browser**: Navigate to `http://localhost:8000` (or the port your server uses)
+
+4. **For best experience**: Use Chrome or Edge for full File System Access API support
 
 ### First Time Setup
 
-1. **Select data.xml file** (optional but recommended):
-   - Click "Select data.xml File" button in the lineup panel
-   - Choose the `data.xml` file in your project directory
-   - This enables direct file saving (no downloads)
+1. **Automatic data migration** (if upgrading):
+   - If you have existing `data.xml` or localStorage data, it will automatically migrate to IndexedDB on first load
+   - No action required - your data is preserved!
 
 2. **Add players**:
    - Enter jersey number and player name
@@ -83,9 +115,12 @@ volleyball-coach/
 ├── index.html          # Main HTML structure
 ├── styles.css          # All styling and layout
 ├── app.js              # Application logic and functionality
-├── data.xml            # XML database (auto-generated/updated)
+├── db.js               # IndexedDB database module
+├── data.xml            # Legacy XML file (optional, for import/export)
 └── README.md           # This file
 ```
+
+**Note**: Data is now stored in IndexedDB (browser database), not in `data.xml`. The XML file is only used for import/export functionality.
 
 ## Usage Guide
 
@@ -130,9 +165,9 @@ volleyball-coach/
 - Select a JSON or XML file
 - Data will be loaded and merged with existing data
 
-#### Direct File Saving
-- Click "Select data.xml File" to choose your project's `data.xml`
-- All saves will go directly to that file (no downloads)
+#### Direct File Saving (Optional)
+- Click "Select data.xml File" to choose a file for backup
+- Data is primarily stored in IndexedDB, but you can export/import XML files
 - Works best in Chrome or Edge browsers
 
 ## Technical Details
@@ -140,40 +175,55 @@ volleyball-coach/
 ### Technologies
 - **HTML5**: Structure and semantic markup
 - **CSS3**: Styling, layout, and animations
-- **Vanilla JavaScript**: No frameworks or dependencies
-- **File System Access API**: Direct file system access (Chrome/Edge)
-- **LocalStorage API**: Browser-based data persistence
+- **Vanilla JavaScript (ES6 Modules)**: No frameworks or dependencies
+- **IndexedDB**: Robust local database storage (replaces XML/localStorage)
+- **File System Access API**: Optional direct file system access (Chrome/Edge)
 
 ### Browser Compatibility
 - **Chrome/Edge**: Full support including File System Access API
 - **Firefox/Safari**: Full functionality, but file saving downloads files instead of direct save
 - **Mobile browsers**: Functional but optimized for desktop use
 
-### Data Format
+### Data Storage Architecture
 
-The `data.xml` file structure:
-```xml
-<volleyballCoachData>
-  <players>
-    <player>
-      <id>...</id>
-      <jersey>...</jersey>
-      <name>...</name>
-    </player>
-  </players>
-  <savedPositions>
-    <position name="...">
-      <playerPosition>
-        <playerId>...</playerId>
-        <jersey>...</jersey>
-        <name>...</name>
-        <x>...</x>
-        <y>...</y>
-      </playerPosition>
-    </position>
-  </savedPositions>
-</volleyballCoachData>
+**Primary Storage: IndexedDB**
+- All data is stored in the browser's IndexedDB database
+- Provides better performance, larger capacity, and more robust storage
+- Data persists across browser sessions
+- No file system access required
+
+**Export/Import Formats:**
+
+The exported JSON/XML structure:
+```json
+{
+  "players": [
+    {
+      "id": "...",
+      "jersey": "...",
+      "name": "..."
+    }
+  ],
+  "savedPositions": {
+    "positionName": [
+      {
+        "playerId": "...",
+        "jersey": "...",
+        "name": "...",
+        "x": 0,
+        "y": 0
+      }
+    ]
+  },
+  "exportDate": "...",
+  "version": "2.0",
+  "database": "IndexedDB"
+}
 ```
+
+**Migration:**
+- On first load, the app automatically migrates data from `data.xml` or localStorage to IndexedDB
+- Your existing data is preserved and upgraded seamlessly
 
 ## Features in Detail
 

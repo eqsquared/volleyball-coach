@@ -307,6 +307,17 @@ header h1 {
     z-index: 100;
 }
 
+.player-container.removing {
+    opacity: 0.4;
+    filter: grayscale(100%);
+}
+
+.player-container.removing .player-on-court {
+    background: #e74c3c;
+    border-color: #c0392b;
+    cursor: not-allowed;
+}
+
 /* Player on court */
 .player-on-court {
     position: relative;

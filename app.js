@@ -1,3 +1,6 @@
+// Import IndexedDB database module
+import * as db from './db.js';
+
 // State management
 let players = [];
 let savedPositions = {};
@@ -6,6 +9,7 @@ let draggedPlayer = null;
 let draggedElement = null;
 let isAnimating = false;
 let lastStartPosition = null;
+let dbInitialized = false;
 
 // DOM elements
 const lineupList = document.getElementById('lineup-list');
@@ -29,46 +33,78 @@ const fileStatus = document.getElementById('file-status');
 
 // Initialize
 async function init() {
-    // Load saved data (always try data.xml first, then localStorage)
-    await loadFromXML();
-    
-    // Update file status for saving (separate from loading)
-    const savedFileName = localStorage.getItem('dataFileName');
-    if (savedFileName && fileStatus && !fileStatus.textContent.includes('✓')) {
-        fileStatus.textContent += ` Click "Select data.xml File" to enable direct saving.`;
+    try {
+        // Initialize IndexedDB
+        await db.initDB();
+        dbInitialized = true;
+        
+        // Try to load from IndexedDB first
+        const hasDBData = await db.hasData();
+        
+        if (hasDBData) {
+            // Load from IndexedDB
+            players = await db.getAllPlayers();
+            savedPositions = await db.getAllPositions();
+            console.log('Data loaded from IndexedDB');
+            
+            if (fileStatus) {
+                fileStatus.textContent = '✓ Data loaded from IndexedDB database.';
+                fileStatus.style.color = '#27ae60';
+            }
+        } else {
+            // No IndexedDB data, try to migrate from XML/localStorage
+            console.log('No IndexedDB data found, attempting migration...');
+            const migrated = await migrateFromLegacyStorage();
+            
+            if (!migrated) {
+                // No legacy data either, start fresh
+                if (fileStatus) {
+                    fileStatus.textContent = 'Starting with empty database. Add players to begin.';
+                    fileStatus.style.color = '#3498db';
+                }
+            }
+        }
+        
+        // Update file status for saving
+        const savedFileName = localStorage.getItem('dataFileName');
+        if (savedFileName && fileStatus && !fileStatus.textContent.includes('✓')) {
+            fileStatus.textContent += ` Click "Select data.xml File" to enable direct saving.`;
+        }
+        
+        addPlayerBtn.addEventListener('click', addPlayer);
+        savePositionBtn.addEventListener('click', savePosition);
+        playAnimationBtn.addEventListener('click', playAnimation);
+        refreshPositionBtn.addEventListener('click', resetToStartPosition);
+        selectFileBtn.addEventListener('click', selectDataFile);
+        exportJsonBtn.addEventListener('click', exportToJSON);
+        exportXmlBtn.addEventListener('click', exportToXML);
+        importBtn.addEventListener('click', () => importFileInput.click());
+        importFileInput.addEventListener('change', handleFileImport);
+        
+        // Allow Enter key to add player
+        jerseyInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addPlayer();
+        });
+        nameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addPlayer();
+        });
+        
+        // Allow Enter key to save position
+        positionNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') savePosition();
+        });
+        
+        renderLineup();
+        updateSavedPositionsList();
+        updatePositionSelects();
+    } catch (error) {
+        console.error('Error initializing app:', error);
+        alert('Error initializing database. Please refresh the page.');
     }
-    
-    addPlayerBtn.addEventListener('click', addPlayer);
-    savePositionBtn.addEventListener('click', savePosition);
-    playAnimationBtn.addEventListener('click', playAnimation);
-    refreshPositionBtn.addEventListener('click', resetToStartPosition);
-    selectFileBtn.addEventListener('click', selectDataFile);
-    exportJsonBtn.addEventListener('click', exportToJSON);
-    exportXmlBtn.addEventListener('click', exportToXML);
-    importBtn.addEventListener('click', () => importFileInput.click());
-    importFileInput.addEventListener('change', handleFileImport);
-    
-    // Allow Enter key to add player
-    jerseyInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addPlayer();
-    });
-    nameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addPlayer();
-    });
-    
-    // Allow Enter key to save position
-    positionNameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') savePosition();
-    });
-    
-    renderLineup();
-    updateSavedPositionsList();
-    updatePositionSelects();
-    saveToXML();
 }
 
 // Add player to lineup
-function addPlayer() {
+async function addPlayer() {
     const jersey = jerseyInput.value.trim();
     const name = nameInput.value.trim();
     
@@ -90,8 +126,17 @@ function addPlayer() {
     };
     
     players.push(player);
+    
+    // Save to IndexedDB
+    if (dbInitialized) {
+        try {
+            await db.savePlayer(player);
+        } catch (error) {
+            console.error('Error saving player:', error);
+        }
+    }
+    
     renderLineup();
-    saveToXML();
     
     // Clear inputs
     jerseyInput.value = '';
@@ -112,8 +157,12 @@ function renderLineup() {
         item.innerHTML = `
             <div class="player-jersey">${player.jersey}</div>
             <div class="player-name">${player.name}</div>
-            <button class="delete-player-btn" onclick="deletePlayer('${player.id}')">×</button>
+            <button class="delete-player-btn">×</button>
         `;
+        
+        // Add delete button event listener
+        const deleteBtn = item.querySelector('.delete-player-btn');
+        deleteBtn.addEventListener('click', () => deletePlayer(player.id));
         
         // Drag start
         item.addEventListener('dragstart', (e) => {
@@ -126,8 +175,17 @@ function renderLineup() {
 }
 
 // Delete player
-function deletePlayer(playerId) {
+async function deletePlayer(playerId) {
     players = players.filter(p => p.id !== playerId);
+    
+    // Remove from IndexedDB
+    if (dbInitialized) {
+        try {
+            await db.deletePlayer(playerId);
+        } catch (error) {
+            console.error('Error deleting player:', error);
+        }
+    }
     
     // Remove player from court if present
     const playerElement = playerElements.get(playerId);
@@ -140,6 +198,17 @@ function deletePlayer(playerId) {
     Object.keys(savedPositions).forEach(posName => {
         savedPositions[posName] = savedPositions[posName].filter(p => p.playerId !== playerId);
     });
+    
+    // Update positions in IndexedDB
+    if (dbInitialized) {
+        for (const [posName, positions] of Object.entries(savedPositions)) {
+            try {
+                await db.savePosition(posName, positions);
+            } catch (error) {
+                console.error('Error updating position:', error);
+            }
+        }
+    }
     
     renderLineup();
     updateSavedPositionsList();
@@ -227,7 +296,22 @@ function placePlayerOnCourt(player, x, y) {
 function handleCourtDragOver(e) {
     if (draggedElement) {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
+        
+        const rect = court.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Check if within court bounds
+        const isWithinBounds = x >= 0 && x <= 600 && y >= 4 && y <= 600;
+        
+        if (isWithinBounds) {
+            e.dataTransfer.dropEffect = 'move';
+            draggedElement.classList.remove('removing');
+        } else {
+            // Outside court - show remove indicator
+            e.dataTransfer.dropEffect = 'none';
+            draggedElement.classList.add('removing');
+        }
     }
 }
 
@@ -240,19 +324,61 @@ function handleCourtDrop(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Constrain to court bounds
-    // Net is at top (y=0), bottom is out of bounds (y=600)
-    const constrainedY = Math.max(4, Math.min(y - 25, 550)); // Below net (4px) to above bottom (550px)
-    const constrainedX = Math.max(0, Math.min(x - 25, 550));
+    // Check if drop is outside court bounds
+    const isOutsideBounds = x < 0 || x > 600 || y < 4 || y > 600;
     
-    draggedElement.style.left = constrainedX + 'px';
-    draggedElement.style.top = constrainedY + 'px';
+    if (isOutsideBounds) {
+        // Remove player from court
+        const playerId = draggedElement.dataset.playerId;
+        removePlayerFromCourt(playerId);
+    } else {
+        // Move within court bounds
+        const constrainedY = Math.max(4, Math.min(y - 25, 550)); // Below net (4px) to above bottom (550px)
+        const constrainedX = Math.max(0, Math.min(x - 25, 550));
+        
+        draggedElement.style.left = constrainedX + 'px';
+        draggedElement.style.top = constrainedY + 'px';
+    }
     
+    draggedElement.classList.remove('removing');
     draggedElement = null;
 }
 
+// Remove player from court (but keep in lineup)
+function removePlayerFromCourt(playerId) {
+    const playerElement = playerElements.get(playerId);
+    if (playerElement) {
+        playerElement.remove();
+        playerElements.delete(playerId);
+    }
+}
+
+// Handle drops outside the court (on document)
+document.addEventListener('dragover', (e) => {
+    if (draggedElement && !court.contains(e.target)) {
+        e.preventDefault();
+        // Show remove indicator when dragging outside court area
+        if (!draggedElement.classList.contains('removing')) {
+            draggedElement.classList.add('removing');
+        }
+    }
+});
+
+document.addEventListener('drop', (e) => {
+    if (draggedElement && !court.contains(e.target)) {
+        e.preventDefault();
+        
+        // Remove player from court if dropped outside
+        const playerId = draggedElement.dataset.playerId;
+        removePlayerFromCourt(playerId);
+        
+        draggedElement.classList.remove('removing');
+        draggedElement = null;
+    }
+});
+
 // Save current position
-function savePosition() {
+async function savePosition() {
     const positionName = positionNameInput.value.trim();
     
     if (!positionName) {
@@ -278,9 +404,17 @@ function savePosition() {
     savedPositions[positionName] = positions;
     positionNameInput.value = '';
     
+    // Save to IndexedDB
+    if (dbInitialized) {
+        try {
+            await db.savePosition(positionName, positions);
+        } catch (error) {
+            console.error('Error saving position:', error);
+        }
+    }
+    
     updateSavedPositionsList();
     updatePositionSelects();
-    saveToXML();
 }
 
 // Update saved positions list
@@ -295,11 +429,20 @@ function updateSavedPositionsList() {
         item.innerHTML = `
             <span>${posName} (${count} players)</span>
             <div class="saved-position-actions">
-                <button class="save-overwrite-btn" onclick="saveOverPosition('${posName}')" title="Save over this position">💾</button>
-                <button class="load-position-btn" onclick="loadPosition('${posName}')">Load</button>
-                <button class="delete-position-btn" onclick="deletePosition('${posName}')">Delete</button>
+                <button class="save-overwrite-btn" title="Save over this position">💾</button>
+                <button class="load-position-btn">Load</button>
+                <button class="delete-position-btn">Delete</button>
             </div>
         `;
+        
+        // Add event listeners for buttons
+        const saveOverBtn = item.querySelector('.save-overwrite-btn');
+        const loadBtn = item.querySelector('.load-position-btn');
+        const deleteBtn = item.querySelector('.delete-position-btn');
+        
+        saveOverBtn.addEventListener('click', () => saveOverPosition(posName));
+        loadBtn.addEventListener('click', () => loadPosition(posName));
+        deleteBtn.addEventListener('click', () => deletePosition(posName));
         
         savedPositionsList.appendChild(item);
     });
@@ -347,7 +490,7 @@ function loadPosition(positionName) {
 }
 
 // Save over existing position
-function saveOverPosition(positionName) {
+async function saveOverPosition(positionName) {
     if (!confirm(`Overwrite position "${positionName}" with current court positions?`)) {
         return;
     }
@@ -368,18 +511,36 @@ function saveOverPosition(positionName) {
     });
     
     savedPositions[positionName] = positions;
+    
+    // Save to IndexedDB
+    if (dbInitialized) {
+        try {
+            await db.savePosition(positionName, positions);
+        } catch (error) {
+            console.error('Error saving position:', error);
+        }
+    }
+    
     updateSavedPositionsList();
     updatePositionSelects();
-    saveToXML();
 }
 
 // Delete position
-function deletePosition(positionName) {
+async function deletePosition(positionName) {
     if (confirm(`Delete position "${positionName}"?`)) {
         delete savedPositions[positionName];
+        
+        // Delete from IndexedDB
+        if (dbInitialized) {
+            try {
+                await db.deletePosition(positionName);
+            } catch (error) {
+                console.error('Error deleting position:', error);
+            }
+        }
+        
         updateSavedPositionsList();
         updatePositionSelects();
-        saveToXML();
     }
 }
 
@@ -488,7 +649,68 @@ function resetToStartPosition() {
     }
 }
 
-// Persistence functions
+// Migration function - converts XML/localStorage data to IndexedDB
+async function migrateFromLegacyStorage() {
+    let legacyData = null;
+    
+    // Try to load from data.xml first
+    try {
+        const response = await fetch('data.xml');
+        if (response.ok) {
+            const xmlText = await response.text();
+            legacyData = parseXML(xmlText);
+            console.log('Found data.xml, migrating to IndexedDB...');
+        }
+    } catch (error) {
+        console.log('data.xml not accessible, trying localStorage...');
+    }
+    
+    // Fallback to localStorage
+    if (!legacyData) {
+        const saved = localStorage.getItem('volleyballCoachData');
+        if (saved) {
+            try {
+                legacyData = JSON.parse(saved);
+                console.log('Found localStorage data, migrating to IndexedDB...');
+            } catch (e) {
+                console.error('Error parsing localStorage data:', e);
+            }
+        }
+    }
+    
+    if (legacyData && (legacyData.players?.length > 0 || Object.keys(legacyData.savedPositions || {}).length > 0)) {
+        // Import legacy data into IndexedDB
+        try {
+            await db.importData(legacyData);
+            
+            // Load into app state
+            players = legacyData.players || [];
+            savedPositions = legacyData.savedPositions || {};
+            
+            renderLineup();
+            updateSavedPositionsList();
+            updatePositionSelects();
+            
+            if (fileStatus) {
+                fileStatus.textContent = '✓ Legacy data migrated to IndexedDB database.';
+                fileStatus.style.color = '#27ae60';
+            }
+            
+            console.log('Migration successful!');
+            return true;
+        } catch (error) {
+            console.error('Error during migration:', error);
+            if (fileStatus) {
+                fileStatus.textContent = 'Error migrating data. Starting fresh.';
+                fileStatus.style.color = '#e74c3c';
+            }
+        }
+    }
+    
+    return false;
+}
+
+// Persistence functions (for export/import)
 let dataFileHandle = null;
 
 async function selectDataFile() {
@@ -511,6 +733,12 @@ async function selectDataFile() {
         const text = await file.text();
         const data = parseXML(text);
         
+        // Import into IndexedDB
+        if (dbInitialized) {
+            await db.importData(data);
+        }
+        
+        // Update app state
         if (data.players) {
             players = data.players;
             renderLineup();
@@ -527,11 +755,8 @@ async function selectDataFile() {
         localStorage.setItem('dataFileName', fileName);
         
         // Update status
-        fileStatus.textContent = `✓ File selected: ${fileName}. All saves go directly to this file.`;
+        fileStatus.textContent = `✓ File selected: ${fileName}. Data imported to IndexedDB.`;
         fileStatus.style.color = '#27ae60';
-        
-        // Save current data to the file
-        saveToXML();
     } catch (error) {
         if (error.name !== 'AbortError') {
             alert('Error selecting file: ' + error.message);
@@ -540,122 +765,12 @@ async function selectDataFile() {
     }
 }
 
-async function saveToXML() {
-    const xml = generateXML();
-    
-    // Always save to localStorage as backup
-    saveToLocalStorage();
-    
-    // Only save to file if file handle is set
-    if (dataFileHandle) {
-        try {
-            const writable = await dataFileHandle.createWritable();
-            await writable.write(xml);
-            await writable.close();
-            console.log('Data saved to data.xml');
-            return;
-        } catch (error) {
-            console.error('Error saving to file:', error);
-            // File handle might be invalid, clear it
-            dataFileHandle = null;
-            if (fileStatus) {
-                fileStatus.textContent = 'File handle lost. Please select data.xml file again.';
-                fileStatus.style.color = '#e74c3c';
-            }
-        }
-    }
-    
-    // If no file handle, just save to localStorage
-    // User needs to select the file first
-    console.log('No file selected. Data saved to localStorage. Click "Select data.xml File" to enable file saving.');
-}
-
-function saveToLocalStorage() {
-    const data = {
-        players: players,
-        savedPositions: savedPositions,
-        version: '1.0'
-    };
-    localStorage.setItem('volleyballCoachData', JSON.stringify(data));
-}
-
-async function loadFromXML() {
-    // Always try to load from data.xml file first
-    try {
-        const response = await fetch('data.xml');
-        if (response.ok) {
-            const xmlText = await response.text();
-            const data = parseXML(xmlText);
-            
-            // Always use data from XML if it exists, even if empty
-            if (data.players) {
-                players = data.players;
-            }
-            if (data.savedPositions) {
-                savedPositions = data.savedPositions;
-            }
-            
-            // Render the loaded data
-            renderLineup();
-            updateSavedPositionsList();
-            updatePositionSelects();
-            
-            console.log('Data loaded from data.xml');
-            
-            // Update status
-            if (fileStatus) {
-                fileStatus.textContent = '✓ Data loaded from data.xml. Click "Select data.xml File" to enable direct file saving.';
-                fileStatus.style.color = '#27ae60';
-            }
-            
-            return true;
-        } else {
-            console.log('data.xml not found or not accessible, trying localStorage');
-        }
-    } catch (error) {
-        console.log('Could not load from data.xml (may need local server), trying localStorage:', error);
-    }
-    
-    // Fallback to localStorage only if data.xml is not available
-    const loaded = loadFromLocalStorage();
-    if (loaded && fileStatus) {
-        fileStatus.textContent = 'Data loaded from localStorage. data.xml not accessible (may need local server).';
-        fileStatus.style.color = '#f39c12';
-    }
-    return loaded;
-}
-
-function loadFromLocalStorage() {
-    const saved = localStorage.getItem('volleyballCoachData');
-    if (saved) {
-        try {
-            const data = JSON.parse(saved);
-            if (data.players) {
-                players = data.players;
-            }
-            if (data.savedPositions) {
-                savedPositions = data.savedPositions;
-            }
-            
-            // Render the loaded data
-            renderLineup();
-            updateSavedPositionsList();
-            updatePositionSelects();
-            
-            console.log('Data loaded from localStorage');
-            return true;
-        } catch (e) {
-            console.error('Error loading saved data:', e);
-        }
-    }
-    return false;
-}
-
 function generateXML() {
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<volleyballCoachData>\n';
     xml += `  <exportDate>${new Date().toISOString()}</exportDate>\n`;
-    xml += `  <version>1.0</version>\n`;
+    xml += `  <version>2.0</version>\n`;
+    xml += `  <database>IndexedDB</database>\n`;
     
     xml += '  <players>\n';
     players.forEach(player => {
@@ -687,12 +802,34 @@ function generateXML() {
     return xml;
 }
 
-function exportToJSON() {
+async function exportToJSON() {
+    // Get latest data from IndexedDB
+    if (dbInitialized) {
+        try {
+            const data = await db.exportAllData();
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `volleyball-coach-data-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            return;
+        } catch (error) {
+            console.error('Error exporting from IndexedDB:', error);
+        }
+    }
+    
+    // Fallback to current state
     const data = {
         players: players,
         savedPositions: savedPositions,
         exportDate: new Date().toISOString(),
-        version: '1.0'
+        version: '2.0',
+        database: 'IndexedDB'
     };
     
     const json = JSON.stringify(data, null, 2);
@@ -731,12 +868,12 @@ function escapeXml(text) {
         .replace(/'/g, '&apos;');
 }
 
-function handleFileImport(event) {
+async function handleFileImport(event) {
     const file = event.target.files[0];
     if (!file) return;
     
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
             const content = e.target.result;
             let data;
@@ -747,6 +884,12 @@ function handleFileImport(event) {
                 data = JSON.parse(content);
             }
             
+            // Import into IndexedDB
+            if (dbInitialized) {
+                await db.importData(data);
+            }
+            
+            // Update app state
             if (data.players) {
                 players = data.players;
                 renderLineup();
@@ -758,8 +901,7 @@ function handleFileImport(event) {
                 updatePositionSelects();
             }
             
-            saveToXML();
-            alert('Data imported successfully!');
+            alert('Data imported successfully to IndexedDB!');
         } catch (error) {
             alert('Error importing file: ' + error.message);
             console.error('Import error:', error);
