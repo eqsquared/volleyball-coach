@@ -17,21 +17,131 @@
         </header>
         
         <div class="main-content">
-            <!-- Lineup Section -->
-            <div class="lineup-section">
-                <h2>Lineup</h2>
-                <div class="add-player-form">
-                    <input type="number" id="jersey-number" placeholder="Jersey #" min="1" max="99">
-                    <input type="text" id="player-name" placeholder="Player Name">
-                    <button id="add-player-btn">Add Player</button>
+            <!-- Sidebar with Accordions -->
+            <div class="sidebar">
+                <!-- State Indicator -->
+                <div class="state-indicator" id="state-indicator">
+                    <div class="current-item" id="current-item-display">
+                        <span class="label">Loaded:</span>
+                        <span class="value" id="current-item-value">None</span>
+                    </div>
+                    <div class="modified-indicator" id="modified-indicator" style="display: none;">
+                        <span class="badge">Modified</span>
+                        <div class="save-actions">
+                            <button id="save-btn" class="btn-save">Save</button>
+                            <button id="save-as-btn" class="btn-save-as">Save As</button>
+                            <button id="discard-btn" class="btn-discard">Discard</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="lineup-list" id="lineup-list">
-                    <!-- Players will be added here -->
+
+                <!-- Edit Mode Selector -->
+                <div class="edit-mode-selector">
+                    <button class="mode-btn" data-mode="none">Overview</button>
+                    <button class="mode-btn active" data-mode="position">Positions</button>
+                    <button class="mode-btn" data-mode="scenario">Scenarios</button>
+                    <button class="mode-btn" data-mode="sequence">Sequences</button>
                 </div>
+
+                <!-- Accordion: Players -->
+                <div class="accordion" data-accordion="players">
+                    <div class="accordion-header">
+                        <h3><i data-lucide="users"></i> Players</h3>
+                        <i data-lucide="chevron-down" class="accordion-icon"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="add-player-form">
+                            <input type="number" id="jersey-number" placeholder="Jersey #" min="1" max="99">
+                            <input type="text" id="player-name" placeholder="Player Name">
+                            <button id="add-player-btn">Add Player</button>
+                        </div>
+                        <div class="lineup-list" id="lineup-list">
+                            <!-- Players will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accordion: Rotations -->
+                <div class="accordion" data-accordion="rotations">
+                    <div class="accordion-header">
+                        <h3><i data-lucide="rotate-cw"></i> Rotations</h3>
+                        <i data-lucide="chevron-down" class="accordion-icon"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="create-form">
+                            <input type="text" id="rotation-name-input" placeholder="Rotation name">
+                            <button id="create-rotation-btn">Create Rotation</button>
+                        </div>
+                        <div class="items-list" id="rotations-list">
+                            <!-- Rotations will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accordion: Positions -->
+                <div class="accordion" data-accordion="positions">
+                    <div class="accordion-header">
+                        <h3><i data-lucide="map-pin"></i> Positions</h3>
+                        <i data-lucide="chevron-down" class="accordion-icon"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="create-form">
+                            <input type="text" id="position-name" placeholder="Position name">
+                            <select id="position-rotation-select" multiple>
+                                <option value="">Select rotations...</option>
+                            </select>
+                            <button id="save-position-btn">Save Position</button>
+                        </div>
+                        <div class="items-list" id="positions-list">
+                            <!-- Positions will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accordion: Scenarios -->
+                <div class="accordion" data-accordion="scenarios">
+                    <div class="accordion-header">
+                        <h3><i data-lucide="film"></i> Scenarios</h3>
+                        <i data-lucide="chevron-down" class="accordion-icon"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="create-form">
+                            <input type="text" id="scenario-name-input" placeholder="Scenario name">
+                            <select id="scenario-start-select">
+                                <option value="">Start Position...</option>
+                            </select>
+                            <select id="scenario-end-select">
+                                <option value="">End Position...</option>
+                            </select>
+                            <button id="create-scenario-btn">Create Scenario</button>
+                        </div>
+                        <div class="items-list" id="scenarios-list">
+                            <!-- Scenarios will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accordion: Sequences -->
+                <div class="accordion" data-accordion="sequences">
+                    <div class="accordion-header">
+                        <h3><i data-lucide="list-ordered"></i> Sequences</h3>
+                        <i data-lucide="chevron-down" class="accordion-icon"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="create-form">
+                            <input type="text" id="sequence-name-input" placeholder="Sequence name">
+                            <button id="create-sequence-btn">Create Sequence</button>
+                        </div>
+                        <div class="items-list" id="sequences-list">
+                            <!-- Sequences will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Management -->
                 <div class="data-management">
                     <h3>Data Management</h3>
                     <div class="data-buttons">
-                        <button id="select-file-btn">Select data.xml File</button>
                         <button id="export-json-btn">Export JSON</button>
                         <button id="export-xml-btn">Export XML</button>
                         <button id="import-btn">Import File</button>
@@ -53,27 +163,18 @@
                     </div>
                 </div>
 
-                <!-- Position Management -->
-                <div class="position-controls">
-                    <div class="position-save">
-                        <input type="text" id="position-name" placeholder="Position name (e.g., Base)">
-                        <button id="save-position-btn">Save Position</button>
+                <!-- Animation Controls -->
+                <div class="animation-controls">
+                    <div class="animation-header">
+                        <h3>Animation</h3>
                     </div>
-                    <div class="position-select">
-                        <label>Start Position:</label>
-                        <select id="start-position">
-                            <option value="">Select...</option>
-                        </select>
-                        <label>End Position:</label>
-                        <select id="end-position">
-                            <option value="">Select...</option>
-                        </select>
-                        <button id="play-animation-btn"><i data-lucide="play"></i> <span>Play Animation</span></button>
-                        <button id="refresh-position-btn" style="display: none;"><i data-lucide="refresh-cw"></i> <span>Reset to Start</span></button>
+                    <div class="animation-buttons">
+                        <button id="play-animation-btn"><i data-lucide="play"></i> <span>Play</span></button>
+                        <button id="next-scenario-btn" style="display: none;"><i data-lucide="skip-forward"></i> <span>Next</span></button>
+                        <button id="refresh-position-btn" style="display: none;"><i data-lucide="refresh-cw"></i> <span>Reset</span></button>
                     </div>
-                    <div class="position-list">
-                        <h3>Saved Positions</h3>
-                        <div id="saved-positions-list"></div>
+                    <div class="sequence-progress" id="sequence-progress" style="display: none;">
+                        <span id="sequence-progress-text">Scenario 1 of 3</span>
                     </div>
                 </div>
             </div>

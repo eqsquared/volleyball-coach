@@ -2,13 +2,22 @@
 
 export const state = {
     players: [],
-    savedPositions: {},
+    positions: [], // Array of position objects { id, name, rotationIds[], playerPositions[] }
+    rotations: [], // Array of rotation objects { id, name, positionIds[] }
+    scenarios: [], // Array of scenario objects { id, name, startPositionId, endPositionId }
+    sequences: [], // Array of sequence objects { id, name, scenarioIds[] }
+    savedPositions: {}, // Legacy format for backward compatibility
     playerElements: new Map(), // Map player ID to DOM element
     draggedPlayer: null,
     draggedElement: null,
     isAnimating: false,
     lastStartPosition: null,
-    dbInitialized: false
+    dbInitialized: false,
+    // New state tracking
+    currentLoadedItem: null, // { type: 'position'|'scenario'|'sequence', id: string, name: string }
+    isModified: false, // Tracks if current item has been edited
+    editMode: 'none', // 'none'|'position'|'scenario'|'sequence'
+    currentSequence: null, // { sequenceId: string, currentScenarioIndex: number }
 };
 
 // State getters
@@ -20,8 +29,40 @@ export function getSavedPositions() {
     return state.savedPositions;
 }
 
+export function getPositions() {
+    return state.positions;
+}
+
+export function getRotations() {
+    return state.rotations;
+}
+
+export function getScenarios() {
+    return state.scenarios;
+}
+
+export function getSequences() {
+    return state.sequences;
+}
+
 export function getPlayerElements() {
     return state.playerElements;
+}
+
+export function getCurrentLoadedItem() {
+    return state.currentLoadedItem;
+}
+
+export function getIsModified() {
+    return state.isModified;
+}
+
+export function getEditMode() {
+    return state.editMode;
+}
+
+export function getCurrentSequence() {
+    return state.currentSequence;
 }
 
 // State setters
@@ -33,8 +74,40 @@ export function setSavedPositions(positions) {
     state.savedPositions = positions;
 }
 
+export function setPositions(positions) {
+    state.positions = positions;
+}
+
+export function setRotations(rotations) {
+    state.rotations = rotations;
+}
+
+export function setScenarios(scenarios) {
+    state.scenarios = scenarios;
+}
+
+export function setSequences(sequences) {
+    state.sequences = sequences;
+}
+
 export function setDbInitialized(value) {
     state.dbInitialized = value;
+}
+
+export function setCurrentLoadedItem(item) {
+    state.currentLoadedItem = item;
+}
+
+export function setIsModified(value) {
+    state.isModified = value;
+}
+
+export function setEditMode(mode) {
+    state.editMode = mode;
+}
+
+export function setCurrentSequence(sequence) {
+    state.currentSequence = sequence;
 }
 
 export function setDraggedPlayer(player) {
@@ -51,4 +124,54 @@ export function setIsAnimating(value) {
 
 export function setLastStartPosition(position) {
     state.lastStartPosition = position;
+}
+
+// Helper to detect if court positions have changed
+export function checkForModifications() {
+    if (!state.currentLoadedItem || state.currentLoadedItem.type !== 'position') {
+        return;
+    }
+    
+    const currentPosition = state.positions.find(p => p.id === state.currentLoadedItem.id);
+    if (!currentPosition) return;
+    
+    // Get current player positions on court
+    const currentCourtPositions = [];
+    state.playerElements.forEach((element, playerId) => {
+        const player = state.players.find(p => p.id === playerId);
+        if (player) {
+            currentCourtPositions.push({
+                playerId: playerId,
+                jersey: player.jersey,
+                name: player.name,
+                x: parseInt(element.style.left) || 0,
+                y: parseInt(element.style.top) || 0
+            });
+        }
+    });
+    
+    // Compare with saved position
+    const savedPositions = currentPosition.playerPositions || [];
+    
+    // Check if counts match
+    if (currentCourtPositions.length !== savedPositions.length) {
+        state.isModified = true;
+        return;
+    }
+    
+    // Check if positions match
+    const savedPosMap = new Map();
+    savedPositions.forEach(pos => {
+        savedPosMap.set(pos.playerId, { x: pos.x, y: pos.y });
+    });
+    
+    for (const currentPos of currentCourtPositions) {
+        const savedPos = savedPosMap.get(currentPos.playerId);
+        if (!savedPos || savedPos.x !== currentPos.x || savedPos.y !== currentPos.y) {
+            state.isModified = true;
+            return;
+        }
+    }
+    
+    state.isModified = false;
 }

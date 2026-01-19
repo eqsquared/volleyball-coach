@@ -178,9 +178,219 @@ export async function importData(data) {
 export async function hasData() {
     try {
         const data = await exportAllData();
-        return (data.players?.length > 0 || Object.keys(data.savedPositions || {}).length > 0);
+        return (data.players?.length > 0 || 
+                (data.positions && data.positions.length > 0) ||
+                Object.keys(data.savedPositions || {}).length > 0);
     } catch (error) {
         console.error('Error checking data:', error);
         return false;
+    }
+}
+
+// Rotations API
+export async function getAllRotations() {
+    try {
+        const response = await fetch(`${API_BASE}/rotations`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch rotations');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching rotations:', error);
+        throw error;
+    }
+}
+
+export async function saveRotation(rotation) {
+    try {
+        const response = await fetch(`${API_BASE}/rotations`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(rotation)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save rotation');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error saving rotation:', error);
+        throw error;
+    }
+}
+
+export async function deleteRotation(rotationId) {
+    try {
+        const response = await fetch(`${API_BASE}/rotations/${rotationId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete rotation');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error deleting rotation:', error);
+        throw error;
+    }
+}
+
+// Positions API (new structure)
+export async function getAllPositionsNew() {
+    try {
+        const response = await fetch(`${API_BASE}/positions`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch positions');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching positions:', error);
+        throw error;
+    }
+}
+
+export async function savePositionNew(position) {
+    try {
+        const response = await fetch(`${API_BASE}/positions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(position)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save position');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error saving position:', error);
+        throw error;
+    }
+}
+
+export async function deletePositionNew(positionId) {
+    try {
+        const response = await fetch(`${API_BASE}/positions/${positionId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete position');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error deleting position:', error);
+        throw error;
+    }
+}
+
+// Scenarios API
+export async function getAllScenarios() {
+    try {
+        const response = await fetch(`${API_BASE}/scenarios`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch scenarios');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching scenarios:', error);
+        throw error;
+    }
+}
+
+export async function saveScenario(scenario) {
+    try {
+        const response = await fetch(`${API_BASE}/scenarios`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(scenario)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save scenario');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error saving scenario:', error);
+        throw error;
+    }
+}
+
+export async function deleteScenario(scenarioId) {
+    try {
+        const response = await fetch(`${API_BASE}/scenarios/${scenarioId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete scenario');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error deleting scenario:', error);
+        throw error;
+    }
+}
+
+// Sequences API
+export async function getAllSequences() {
+    try {
+        const response = await fetch(`${API_BASE}/sequences`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch sequences');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching sequences:', error);
+        throw error;
+    }
+}
+
+export async function saveSequence(sequence) {
+    try {
+        const response = await fetch(`${API_BASE}/sequences`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(sequence)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save sequence');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error saving sequence:', error);
+        throw error;
+    }
+}
+
+export async function deleteSequence(sequenceId) {
+    try {
+        const response = await fetch(`${API_BASE}/sequences/${sequenceId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete sequence');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error deleting sequence:', error);
+        throw error;
     }
 }

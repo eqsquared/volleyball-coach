@@ -32,45 +32,381 @@ header h1 {
     align-items: flex-start;
 }
 
-/* Lineup Section */
-.lineup-section {
-    flex: 0 0 180px;
+/* Sidebar */
+.sidebar {
+    flex: 0 0 350px;
     background: white;
-    padding: 12px;
+    padding: 15px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
-.lineup-section h2 {
-    margin-bottom: 10px;
+.sidebar > * {
+    flex-shrink: 0;
+}
+
+/* State Indicator */
+.state-indicator {
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 2px solid #e9ecef;
+    flex-shrink: 0;
+}
+
+.current-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.current-item .label {
+    font-weight: 600;
+    color: #6c757d;
+    font-size: 12px;
+}
+
+.current-item .value {
+    font-weight: 600;
     color: #2c3e50;
-    font-size: 1.3em;
+    font-size: 13px;
 }
 
+.modified-indicator {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #dee2e6;
+}
+
+.modified-indicator .badge {
+    background: #ffc107;
+    color: #856404;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+    width: fit-content;
+}
+
+.save-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.save-actions button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-save {
+    background: #27ae60;
+    color: white;
+}
+
+.btn-save:hover {
+    background: #229954;
+}
+
+.btn-save-as {
+    background: #3498db;
+    color: white;
+}
+
+.btn-save-as:hover {
+    background: #2980b9;
+}
+
+.btn-discard {
+    background: #95a5a6;
+    color: white;
+}
+
+.btn-discard:hover {
+    background: #7f8c8d;
+}
+
+/* Edit Mode Selector */
+.edit-mode-selector {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.mode-btn:hover {
+    background: #e9ecef;
+    color: #2c3e50;
+}
+
+.mode-btn.active {
+    background: #3498db;
+    color: white;
+}
+
+/* Hide accordions based on mode */
+.sidebar[data-mode="position"] .accordion[data-accordion="scenarios"],
+.sidebar[data-mode="position"] .accordion[data-accordion="sequences"] {
+    display: none;
+}
+
+.sidebar[data-mode="scenario"] .accordion[data-accordion="rotations"],
+.sidebar[data-mode="scenario"] .accordion[data-accordion="sequences"] {
+    display: none;
+}
+
+.sidebar[data-mode="sequence"] .accordion[data-accordion="rotations"] {
+    display: none;
+}
+
+.sidebar[data-mode="none"] .accordion {
+    display: block;
+}
+
+/* Accordion */
+.accordion {
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.accordion-header:hover {
+    background: #e9ecef;
+}
+
+.accordion-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.accordion-header h3 i {
+    width: 16px;
+    height: 16px;
+}
+
+.accordion-icon {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.3s;
+    color: #6c757d;
+}
+
+.accordion.active .accordion-icon {
+    transform: rotate(180deg);
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    background: white;
+}
+
+.accordion.active .accordion-content {
+    max-height: 400px;
+    transition: max-height 0.3s ease-in;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+/* Accordion Content Styles */
+.create-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e9ecef;
+    flex-shrink: 0;
+}
+
+.create-form input,
+.create-form select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.create-form select[multiple] {
+    min-height: 80px;
+}
+
+.create-form button {
+    padding: 8px;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.create-form button:hover {
+    background: #229954;
+}
+
+.items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    min-height: 100px;
+    max-height: 250px;
+    flex-shrink: 0;
+}
+
+.item-card {
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.item-card:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.item-card.active {
+    background: #d4edda;
+    border-color: #27ae60;
+}
+
+.item-card-name {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 13px;
+    flex: 1;
+}
+
+.item-card-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.item-card-actions button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.item-card-actions button i {
+    width: 14px;
+    height: 14px;
+}
+
+.btn-load {
+    background: #3498db;
+    color: white;
+}
+
+.btn-load:hover {
+    background: #2980b9;
+}
+
+.btn-edit {
+    background: #f39c12;
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #d68910;
+}
+
+.btn-delete {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c0392b;
+}
+
+/* Add Player Form (now in accordion) */
 .add-player-form {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid #eee;
 }
 
 .add-player-form input {
-    padding: 6px;
+    padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .add-player-form button {
-    padding: 7px;
+    padding: 8px;
     background: #3498db;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     transition: background 0.2s;
 }
@@ -83,6 +419,10 @@ header h1 {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    overflow-y: auto;
+    min-height: 100px;
+    max-height: 250px;
+    flex-shrink: 0;
 }
 
 .player-lineup-item {
@@ -143,9 +483,10 @@ header h1 {
 }
 
 .data-management {
-    margin-top: 20px;
+    margin-top: auto;
     padding-top: 20px;
     border-top: 2px solid #eee;
+    flex-shrink: 0;
 }
 
 .data-management h3 {
@@ -354,182 +695,77 @@ header h1 {
     text-overflow: ellipsis;
 }
 
-/* Position Controls */
-.position-controls {
+/* Animation Controls */
+.animation-controls {
     background: white;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-.position-save {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #eee;
-}
-
-.position-save input {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.position-save button {
-    padding: 10px 20px;
-    background: #27ae60;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    transition: background 0.2s;
-}
-
-.position-save button:hover {
-    background: #229954;
-}
-
-.position-select {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #eee;
-    flex-wrap: wrap;
-}
-
-.position-select label {
-    font-weight: 600;
+.animation-header h3 {
+    margin-bottom: 15px;
     color: #2c3e50;
 }
 
-.position-select select {
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-    min-width: 150px;
+.animation-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
 }
 
-.position-select button {
+.animation-buttons button {
     padding: 10px 20px;
-    background: #9b59b6;
-    color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
     transition: background 0.2s;
-}
-
-.position-select button {
     display: inline-flex;
     align-items: center;
     gap: 6px;
 }
 
-.position-select button i {
+.animation-buttons button i {
     width: 18px;
     height: 18px;
 }
 
-.position-select button:hover {
+#play-animation-btn {
+    background: #9b59b6;
+    color: white;
+}
+
+#play-animation-btn:hover {
     background: #8e44ad;
 }
 
-#refresh-position-btn {
+#next-scenario-btn {
     background: #16a085;
+    color: white;
 }
 
-#refresh-position-btn:hover {
+#next-scenario-btn:hover {
     background: #138d75;
 }
 
-.position-list h3 {
-    margin-bottom: 15px;
-    color: #2c3e50;
+#refresh-position-btn {
+    background: #f39c12;
+    color: white;
 }
 
-.saved-position-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+#refresh-position-btn:hover {
+    background: #d68910;
+}
+
+.sequence-progress {
     padding: 10px;
-    background: #f8f9fa;
+    background: #e8f5e9;
     border-radius: 4px;
-    margin-bottom: 8px;
-}
-
-.saved-position-item span {
+    text-align: center;
     font-weight: 600;
-    color: #2c3e50;
-}
-
-.saved-position-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.saved-position-actions button {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.save-overwrite-btn,
-.load-position-btn,
-.delete-position-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 10px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background 0.2s;
-}
-
-.save-overwrite-btn {
-    background: #27ae60;
-    color: white;
-}
-
-.save-overwrite-btn:hover {
-    background: #229954;
-}
-
-.load-position-btn {
-    background: #3498db;
-    color: white;
-}
-
-.load-position-btn:hover {
-    background: #2980b9;
-}
-
-.delete-position-btn {
-    background: #e74c3c;
-    color: white;
-}
-
-.delete-position-btn:hover {
-    background: #c0392b;
-}
-
-.save-overwrite-btn i,
-.load-position-btn i,
-.delete-position-btn i {
-    width: 16px;
-    height: 16px;
+    color: #2e7d32;
+    font-size: 13px;
 }

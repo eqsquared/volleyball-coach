@@ -3,15 +3,39 @@
 
 import * as db from './db.js';
 import { initDOM, dom } from './js/dom.js';
-import { state, setPlayers, setSavedPositions, setDbInitialized } from './js/state.js';
+import { 
+    state, 
+    setPlayers, 
+    setSavedPositions, 
+    setPositions, 
+    setRotations, 
+    setScenarios, 
+    setSequences, 
+    setDbInitialized,
+    setEditMode, 
+    setIsModified, 
+    setCurrentLoadedItem, 
+    checkForModifications 
+} from './js/state.js';
 import { addPlayer } from './js/players.js';
-import { savePosition, loadPosition } from './js/positions.js';
+import { savePosition, savePositionAs } from './js/positions.js';
 import { playAnimation, resetToStartPosition } from './js/animation.js';
 import { initCourtListeners } from './js/court.js';
-import { renderLineup, updateSavedPositionsList, updatePositionSelects } from './js/ui.js';
+import { 
+    renderLineup, 
+    renderRotationsList, 
+    renderPositionsList, 
+    renderScenariosList, 
+    renderSequencesList,
+    updateCurrentItemDisplay,
+    updateModifiedIndicator
+} from './js/ui.js';
+import { initAccordions, openAccordion } from './js/accordion.js';
+import { createRotation } from './js/rotations.js';
+import { createScenario, updateScenarioSelects } from './js/scenarios.js';
+import { createSequence, playNextScenario } from './js/sequences.js';
 import { 
     migrateFromLegacyStorage, 
-    selectDataFile, 
     exportToJSON, 
     exportToXML, 
     handleFileImport 
@@ -33,8 +57,40 @@ async function init() {
         if (hasDBData) {
             // Load from file-based storage
             setPlayers(await db.getAllPlayers());
-            setSavedPositions(await db.getAllPositions());
-            console.log('Data loaded from file-based storage');
+            
+            // Try to load new format first, fall back to old format
+            try {
+                const positions = await db.getAllPositionsNew();
+                const rotations = await db.getAllRotations();
+                const scenarios = await db.getAllScenarios();
+                const sequences = await db.getAllSequences();
+                
+                // Also load old format for backward compatibility
+                const savedPositions = await db.getAllPositions();
+                setSavedPositions(savedPositions);
+                
+                // If new format is empty but old format has data, trigger migration
+                if (positions.length === 0 && savedPositions && Object.keys(savedPositions).length > 0) {
+                    console.log('New format empty but legacy data exists. Migration may be needed. Triggering migration...');
+                    // The migration should have run on server start, but let's check
+                    // For now, we'll show legacy positions in the UI
+                    console.log('Showing legacy positions until migration completes');
+                }
+                
+                setPositions(positions);
+                setRotations(rotations);
+                setScenarios(scenarios);
+                setSequences(sequences);
+                
+                console.log(`Data loaded: ${positions.length} positions, ${rotations.length} rotations, ${scenarios.length} scenarios, ${sequences.length} sequences`);
+                console.log(`Legacy positions: ${Object.keys(savedPositions || {}).length}`);
+            } catch (error) {
+                // Fall back to old format
+                console.error('Error loading new format:', error);
+                const savedPositions = await db.getAllPositions();
+                setSavedPositions(savedPositions);
+                console.log('Data loaded from file-based storage (v3.0, will migrate on next server restart)');
+            }
             
             if (dom.fileStatus) {
                 dom.fileStatus.textContent = '✓ Data loaded from data.json file.';
@@ -60,6 +116,17 @@ async function init() {
             dom.fileStatus.style.color = '#27ae60';
         }
         
+        // Initialize accordions
+        initAccordions();
+        
+        // Initialize sidebar mode and open default accordions
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.setAttribute('data-mode', 'none');
+            // Open Players accordion by default
+            openAccordion('players');
+        }
+        
         // Set up event listeners
         setupEventListeners();
         
@@ -68,13 +135,24 @@ async function init() {
         
         // Initial render
         renderLineup();
-        updateSavedPositionsList();
-        updatePositionSelects();
+        renderRotationsList();
+        renderPositionsList();
+        renderScenariosList();
+        renderSequencesList();
+        updateScenarioSelects();
+        updateCurrentItemDisplay();
+        
+        // Update rotation select
+        const { updatePositionRotationSelect } = await import('./js/rotations.js');
+        updatePositionRotationSelect();
         
         // Initialize Lucide icons
         if (window.lucide) {
             lucide.createIcons();
         }
+        
+        // Set up modification tracking
+        setupModificationTracking();
     } catch (error) {
         console.error('Error initializing app:', error);
         alert('Error initializing database. Please refresh the page.');
@@ -84,47 +162,192 @@ async function init() {
 // Set up all event listeners
 function setupEventListeners() {
     // Player management
-    dom.addPlayerBtn.addEventListener('click', addPlayer);
+    if (dom.addPlayerBtn) {
+        dom.addPlayerBtn.addEventListener('click', addPlayer);
+    }
+    if (dom.jerseyInput) {
+        dom.jerseyInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addPlayer();
+        });
+    }
+    if (dom.nameInput) {
+        dom.nameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addPlayer();
+        });
+    }
     
-    // Position management
-    dom.savePositionBtn.addEventListener('click', savePosition);
+    // Rotations
+    if (dom.createRotationBtn) {
+        dom.createRotationBtn.addEventListener('click', createRotation);
+    }
+    if (dom.rotationNameInput) {
+        dom.rotationNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') createRotation();
+        });
+    }
+    
+    // Positions
+    if (dom.savePositionBtn) {
+        dom.savePositionBtn.addEventListener('click', savePosition);
+    }
+    if (dom.positionNameInput) {
+        dom.positionNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') savePosition();
+        });
+    }
+    
+    // Scenarios
+    if (dom.createScenarioBtn) {
+        dom.createScenarioBtn.addEventListener('click', createScenario);
+    }
+    
+    // Sequences
+    if (dom.createSequenceBtn) {
+        dom.createSequenceBtn.addEventListener('click', createSequence);
+    }
     
     // Animation
-    dom.playAnimationBtn.addEventListener('click', playAnimation);
-    dom.refreshPositionBtn.addEventListener('click', resetToStartPosition);
+    if (dom.playAnimationBtn) {
+        dom.playAnimationBtn.addEventListener('click', playAnimation);
+    }
+    if (dom.nextScenarioBtn) {
+        dom.nextScenarioBtn.addEventListener('click', playNextScenario);
+    }
+    if (dom.refreshPositionBtn) {
+        dom.refreshPositionBtn.addEventListener('click', resetToStartPosition);
+    }
+    
+    // State management buttons
+    if (dom.saveBtn) {
+        dom.saveBtn.addEventListener('click', handleSave);
+    }
+    if (dom.saveAsBtn) {
+        dom.saveAsBtn.addEventListener('click', handleSaveAs);
+    }
+    if (dom.discardBtn) {
+        dom.discardBtn.addEventListener('click', handleDiscard);
+    }
+    
+    // Edit mode buttons
+    if (dom.modeButtons) {
+        dom.modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                switchEditMode(mode);
+            });
+        });
+    }
     
     // Import/Export
-    dom.selectFileBtn.addEventListener('click', selectDataFile);
-    dom.exportJsonBtn.addEventListener('click', exportToJSON);
-    dom.exportXmlBtn.addEventListener('click', exportToXML);
-    dom.importBtn.addEventListener('click', () => dom.importFileInput.click());
-    dom.importFileInput.addEventListener('change', handleFileImport);
+    if (dom.exportJsonBtn) {
+        dom.exportJsonBtn.addEventListener('click', exportToJSON);
+    }
+    if (dom.exportXmlBtn) {
+        dom.exportXmlBtn.addEventListener('click', exportToXML);
+    }
+    if (dom.importBtn) {
+        dom.importBtn.addEventListener('click', () => dom.importFileInput.click());
+    }
+    if (dom.importFileInput) {
+        dom.importFileInput.addEventListener('change', handleFileImport);
+    }
+}
+
+// Set up modification tracking
+function setupModificationTracking() {
+    // Track player movements on court
+    if (dom.court) {
+        dom.court.addEventListener('mousemove', () => {
+            if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
+                checkForModifications();
+                updateModifiedIndicator(state.isModified);
+            }
+        });
+        
+        // Also check on mouseup (after drag)
+        dom.court.addEventListener('mouseup', () => {
+            if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
+                setTimeout(() => {
+                    checkForModifications();
+                    updateModifiedIndicator(state.isModified);
+                }, 100);
+            }
+        });
+    }
+}
+
+// Switch edit mode
+function switchEditMode(mode) {
+    setEditMode(mode);
     
-    // Auto-load positions when selected
-    dom.startPositionSelect.addEventListener('change', (e) => {
-        if (e.target.value) {
-            loadPosition(e.target.value);
-        }
-    });
+    // Update button states
+    if (dom.modeButtons) {
+        dom.modeButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === mode);
+        });
+    }
     
-    dom.endPositionSelect.addEventListener('change', (e) => {
-        if (e.target.value) {
-            loadPosition(e.target.value);
-        }
-    });
+    // Set data attribute on sidebar for CSS to control visibility
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.setAttribute('data-mode', mode);
+    }
     
-    // Allow Enter key to add player
-    dom.jerseyInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addPlayer();
-    });
-    dom.nameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addPlayer();
-    });
+    // Open relevant accordions based on mode
+    if (mode === 'position') {
+        openAccordion('positions');
+        openAccordion('rotations');
+    } else if (mode === 'scenario') {
+        openAccordion('scenarios');
+        openAccordion('positions');
+    } else if (mode === 'sequence') {
+        openAccordion('sequences');
+        openAccordion('scenarios');
+    } else {
+        // Overview mode - open all
+        openAccordion('players');
+        openAccordion('rotations');
+        openAccordion('positions');
+        openAccordion('scenarios');
+        openAccordion('sequences');
+    }
+}
+
+// Handle save
+async function handleSave() {
+    if (!state.currentLoadedItem) return;
     
-    // Allow Enter key to save position
-    dom.positionNameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') savePosition();
-    });
+    if (state.currentLoadedItem.type === 'position') {
+        await savePosition();
+        setIsModified(false);
+        updateModifiedIndicator(false);
+        updateCurrentItemDisplay();
+    }
+}
+
+// Handle save as
+async function handleSaveAs() {
+    if (!state.currentLoadedItem) return;
+    
+    if (state.currentLoadedItem.type === 'position') {
+        await savePositionAs();
+        setIsModified(false);
+        updateModifiedIndicator(false);
+        updateCurrentItemDisplay();
+    }
+}
+
+// Handle discard
+async function handleDiscard() {
+    if (!state.currentLoadedItem) return;
+    
+    if (state.currentLoadedItem.type === 'position') {
+        // Reload the position
+        const { loadPosition } = await import('./js/positions.js');
+        loadPosition(state.currentLoadedItem.id);
+        setIsModified(false);
+        updateModifiedIndicator(false);
+    }
 }
 
 // Initialize app when DOM is ready

@@ -1,9 +1,18 @@
 // Import/Export module
 
 import * as db from '../db.js';
-import { state, setPlayers, setSavedPositions, setDbInitialized } from './state.js';
+import { state, setPlayers, setSavedPositions, setPositions, setRotations, setScenarios, setSequences, setDbInitialized } from './state.js';
 import { dom } from './dom.js';
-import { renderLineup, updateSavedPositionsList, updatePositionSelects } from './ui.js';
+import { 
+    renderLineup, 
+    renderRotationsList, 
+    renderPositionsList, 
+    renderScenariosList, 
+    renderSequencesList,
+    updateSavedPositionsList 
+} from './ui.js';
+import { updateScenarioSelects } from './scenarios.js';
+import { updatePositionRotationSelect } from './rotations.js';
 
 // Migration function - converts XML data to file-based storage
 export async function migrateFromLegacyStorage() {
@@ -30,9 +39,29 @@ export async function migrateFromLegacyStorage() {
             setPlayers(legacyData.players || []);
             setSavedPositions(legacyData.savedPositions || {});
             
+            // Try to load new format if available
+            try {
+                const positions = await db.getAllPositionsNew();
+                const rotations = await db.getAllRotations();
+                const scenarios = await db.getAllScenarios();
+                const sequences = await db.getAllSequences();
+                
+                setPositions(positions);
+                setRotations(rotations);
+                setScenarios(scenarios);
+                setSequences(sequences);
+            } catch (error) {
+                console.log('New format data not available during migration');
+            }
+            
             renderLineup();
+            renderRotationsList();
+            renderPositionsList();
+            renderScenariosList();
+            renderSequencesList();
             updateSavedPositionsList();
-            updatePositionSelects();
+            updateScenarioSelects();
+            updatePositionRotationSelect();
             
             if (dom.fileStatus) {
                 dom.fileStatus.textContent = '✓ Legacy data migrated to file-based storage.';
@@ -85,9 +114,24 @@ export async function selectDataFile() {
         setPlayers(await db.getAllPlayers());
         setSavedPositions(await db.getAllPositions());
         
+        // Load new format
+        try {
+            setPositions(await db.getAllPositionsNew());
+            setRotations(await db.getAllRotations());
+            setScenarios(await db.getAllScenarios());
+            setSequences(await db.getAllSequences());
+        } catch (error) {
+            console.log('New format data not available');
+        }
+        
         renderLineup();
+        renderRotationsList();
+        renderPositionsList();
+        renderScenariosList();
+        renderSequencesList();
         updateSavedPositionsList();
-        updatePositionSelects();
+        updateScenarioSelects();
+        updatePositionRotationSelect();
         
         // Update status
         const fileName = file.name;
@@ -230,9 +274,24 @@ export async function handleFileImport(event) {
             setPlayers(await db.getAllPlayers());
             setSavedPositions(await db.getAllPositions());
             
+            // Load new format
+            try {
+                setPositions(await db.getAllPositionsNew());
+                setRotations(await db.getAllRotations());
+                setScenarios(await db.getAllScenarios());
+                setSequences(await db.getAllSequences());
+            } catch (error) {
+                console.log('New format data not available');
+            }
+            
             renderLineup();
+            renderRotationsList();
+            renderPositionsList();
+            renderScenariosList();
+            renderSequencesList();
             updateSavedPositionsList();
-            updatePositionSelects();
+            updateScenarioSelects();
+            updatePositionRotationSelect();
             
             alert('Data imported successfully! Saved to data.json file.');
         } catch (error) {
