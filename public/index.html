@@ -38,23 +38,6 @@
                     </div>
                 </div>
 
-                <!-- Accordion: Rotations -->
-                <div class="accordion" data-accordion="rotations">
-                    <div class="accordion-header">
-                        <h3><i data-lucide="rotate-cw"></i> Rotations</h3>
-                        <i data-lucide="chevron-down" class="accordion-icon"></i>
-                    </div>
-                    <div class="accordion-content">
-                        <div class="create-form">
-                            <input type="text" id="rotation-name-input" placeholder="Rotation name">
-                            <button id="create-rotation-btn">Create Rotation</button>
-                        </div>
-                        <div class="items-list" id="rotations-list">
-                            <!-- Rotations will be added here -->
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Accordion: Positions -->
                 <div class="accordion" data-accordion="positions">
                     <div class="accordion-header">
@@ -62,13 +45,10 @@
                         <i data-lucide="chevron-down" class="accordion-icon"></i>
                     </div>
                     <div class="accordion-content">
-                        <div class="create-form">
-                            <input type="text" id="position-name" placeholder="Position name">
-                            <select id="position-rotation-select" multiple>
-                                <option value="">Select rotations...</option>
-                            </select>
-                            <button id="save-position-btn">Save Position</button>
+                        <div class="search-filter-bar">
+                            <input type="text" id="position-search-input" placeholder="Search positions or tags...">
                         </div>
+                        <button id="new-position-btn" class="new-position-btn">+ New Position</button>
                         <div class="items-list" id="positions-list">
                             <!-- Positions will be added here -->
                         </div>
@@ -179,6 +159,18 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title"></h3>
+                <button class="modal-close" id="modal-close">×</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+            <div class="modal-footer" id="modal-footer"></div>
         </div>
     </div>
 

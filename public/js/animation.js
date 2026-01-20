@@ -4,19 +4,20 @@ import { state, setIsAnimating, setLastStartPosition, getPlayerElements, getSave
 import { dom } from './dom.js';
 import { loadPosition } from './positions.js';
 import { placePlayerOnCourt } from './court.js';
+import { alert } from './modal.js';
 
 // Play animation
-export function playAnimation() {
-    const startPos = dom.startPositionSelect.value;
-    const endPos = dom.endPositionSelect.value;
+export async function playAnimation() {
+    const startPos = dom.startPositionSelect?.value;
+    const endPos = dom.endPositionSelect?.value;
     
     if (!startPos || !endPos) {
-        alert('Please select both start and end positions');
+        await alert('Please select both start and end positions');
         return;
     }
     
     if (state.isAnimating) {
-        alert('Animation already in progress');
+        await alert('Animation already in progress');
         return;
     }
     
@@ -24,7 +25,7 @@ export function playAnimation() {
     const endPositions = getSavedPositions()[endPos];
     
     if (!startPositions || !endPositions) {
-        alert('Invalid positions');
+        await alert('Invalid positions');
         return;
     }
     
@@ -115,11 +116,11 @@ function finishAnimation() {
     }
 }
 
-export function resetToStartPosition() {
+export async function resetToStartPosition() {
     if (!state.lastStartPosition) return;
     
     if (state.isAnimating) {
-        alert('Animation already in progress');
+        await alert('Animation already in progress');
         return;
     }
     

@@ -6,6 +6,7 @@ import { dom } from './dom.js';
 import { renderScenariosList } from './ui.js';
 import { loadPosition } from './positions.js';
 import { playAnimation } from './animation.js';
+import { alert, confirm } from './modal.js';
 
 // Generate unique ID
 function generateId() {
@@ -19,24 +20,24 @@ export async function createScenario() {
     const endPositionId = dom.scenarioEndSelect.value;
     
     if (!name) {
-        alert('Please enter a scenario name');
+        await alert('Please enter a scenario name');
         return;
     }
     
     if (!startPositionId || !endPositionId) {
-        alert('Please select both start and end positions');
+        await alert('Please select both start and end positions');
         return;
     }
     
     if (startPositionId === endPositionId) {
-        alert('Start and end positions must be different');
+        await alert('Start and end positions must be different');
         return;
     }
     
     // Check for duplicate name
     const existing = getScenarios().find(s => s.name === name);
     if (existing) {
-        alert('A scenario with this name already exists');
+        await alert('A scenario with this name already exists');
         return;
     }
     
@@ -60,7 +61,7 @@ export async function createScenario() {
         updateScenarioSelects();
     } catch (error) {
         console.error('Error creating scenario:', error);
-        alert('Error creating scenario: ' + error.message);
+        await alert('Error creating scenario: ' + error.message);
     }
 }
 
@@ -87,7 +88,7 @@ export async function updateScenario(scenarioId, name, startPositionId, endPosit
         }
     } catch (error) {
         console.error('Error updating scenario:', error);
-        alert('Error updating scenario: ' + error.message);
+        await alert('Error updating scenario: ' + error.message);
     }
 }
 
@@ -96,7 +97,8 @@ export async function deleteScenario(scenarioId) {
     const scenario = getScenarios().find(s => s.id === scenarioId);
     if (!scenario) return;
     
-    if (!confirm(`Delete scenario "${scenario.name}"?`)) {
+    const confirmed = await confirm(`Delete scenario "${scenario.name}"?`);
+    if (!confirmed) {
         return;
     }
     
@@ -113,7 +115,7 @@ export async function deleteScenario(scenarioId) {
         renderScenariosList();
     } catch (error) {
         console.error('Error deleting scenario:', error);
-        alert('Error deleting scenario: ' + error.message);
+        await alert('Error deleting scenario: ' + error.message);
     }
 }
 
@@ -132,7 +134,7 @@ export function loadScenario(scenarioId) {
 }
 
 // Play scenario (animates from start to end)
-export function playScenario(scenarioId) {
+export async function playScenario(scenarioId) {
     const scenario = getScenarios().find(s => s.id === scenarioId);
     if (!scenario) return;
     
@@ -145,7 +147,7 @@ export function playScenario(scenarioId) {
     const endPos = getPositions().find(p => p.id === scenario.endPositionId);
     
     if (!startPos || !endPos) {
-        alert('Position not found');
+        await alert('Position not found');
         return;
     }
     

@@ -2,8 +2,8 @@
 
 export const state = {
     players: [],
-    positions: [], // Array of position objects { id, name, rotationIds[], playerPositions[] }
-    rotations: [], // Array of rotation objects { id, name, positionIds[] }
+    positions: [], // Array of position objects { id, name, tags[], playerPositions[] }
+    rotations: [], // Deprecated - kept for backward compatibility only
     scenarios: [], // Array of scenario objects { id, name, startPositionId, endPositionId }
     sequences: [], // Array of sequence objects { id, name, scenarioIds[] }
     savedPositions: {}, // Legacy format for backward compatibility

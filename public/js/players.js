@@ -4,6 +4,7 @@ import * as db from '../db.js';
 import { state, setPlayers, getPlayers, getPlayerElements, setDbInitialized } from './state.js';
 import { dom } from './dom.js';
 import { renderLineup, updateSavedPositionsList } from './ui.js';
+import { alert } from './modal.js';
 
 // Add player to lineup
 export async function addPlayer() {
@@ -11,13 +12,13 @@ export async function addPlayer() {
     const name = dom.nameInput.value.trim();
     
     if (!jersey || !name) {
-        alert('Please enter both jersey number and name');
+        await alert('Please enter both jersey number and name');
         return;
     }
     
     // Check for duplicate jersey numbers
     if (getPlayers().some(p => p.jersey === jersey)) {
-        alert('A player with this jersey number already exists');
+        await alert('A player with this jersey number already exists');
         return;
     }
     
@@ -35,7 +36,7 @@ export async function addPlayer() {
             await db.savePlayer(player);
         } catch (error) {
             console.error('Error saving player:', error);
-            alert('Error saving player: ' + error.message);
+            await alert('Error saving player: ' + error.message);
         }
     }
     
@@ -57,7 +58,7 @@ export async function deletePlayer(playerId) {
             await db.deletePlayer(playerId);
         } catch (error) {
             console.error('Error deleting player:', error);
-            alert('Error deleting player: ' + error.message);
+            await alert('Error deleting player: ' + error.message);
         }
     }
     

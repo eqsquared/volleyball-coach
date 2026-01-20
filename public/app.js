@@ -3,12 +3,12 @@
 
 import * as db from './db.js';
 import { initDOM, dom } from './js/dom.js';
+import { alert } from './js/modal.js';
 import { 
     state, 
     setPlayers, 
     setSavedPositions, 
     setPositions, 
-    setRotations, 
     setScenarios, 
     setSequences, 
     setDbInitialized,
@@ -18,12 +18,11 @@ import {
     checkForModifications 
 } from './js/state.js';
 import { addPlayer } from './js/players.js';
-import { savePosition, savePositionAs } from './js/positions.js';
+import { savePosition, savePositionAs, createNewPosition } from './js/positions.js';
 import { playAnimation, resetToStartPosition } from './js/animation.js';
 import { initCourtListeners } from './js/court.js';
 import { 
     renderLineup, 
-    renderRotationsList, 
     renderPositionsList, 
     renderScenariosList, 
     renderSequencesList,
@@ -31,7 +30,6 @@ import {
     updateModifiedIndicator
 } from './js/ui.js';
 import { initAccordions, openAccordion } from './js/accordion.js';
-import { createRotation } from './js/rotations.js';
 import { createScenario, updateScenarioSelects } from './js/scenarios.js';
 import { createSequence, playNextScenario } from './js/sequences.js';
 import { 
@@ -61,7 +59,6 @@ async function init() {
             // Try to load new format first, fall back to old format
             try {
                 const positions = await db.getAllPositionsNew();
-                const rotations = await db.getAllRotations();
                 const scenarios = await db.getAllScenarios();
                 const sequences = await db.getAllSequences();
                 
@@ -78,11 +75,10 @@ async function init() {
                 }
                 
                 setPositions(positions);
-                setRotations(rotations);
                 setScenarios(scenarios);
                 setSequences(sequences);
                 
-                console.log(`Data loaded: ${positions.length} positions, ${rotations.length} rotations, ${scenarios.length} scenarios, ${sequences.length} sequences`);
+                console.log(`Data loaded: ${positions.length} positions, ${scenarios.length} scenarios, ${sequences.length} sequences`);
                 console.log(`Legacy positions: ${Object.keys(savedPositions || {}).length}`);
             } catch (error) {
                 // Fall back to old format
@@ -130,16 +126,11 @@ async function init() {
         
         // Initial render
         renderLineup();
-        renderRotationsList();
         renderPositionsList();
         renderScenariosList();
         renderSequencesList();
         updateScenarioSelects();
         updateCurrentItemDisplay();
-        
-        // Update rotation select
-        const { updatePositionRotationSelect } = await import('./js/rotations.js');
-        updatePositionRotationSelect();
         
         // Initialize Lucide icons with smaller default size
         if (window.lucide) {
@@ -155,7 +146,7 @@ async function init() {
         setupModificationTracking();
     } catch (error) {
         console.error('Error initializing app:', error);
-        alert('Error initializing database. Please refresh the page.');
+        await alert('Error initializing database. Please refresh the page.');
     }
 }
 
@@ -176,23 +167,15 @@ function setupEventListeners() {
         });
     }
     
-    // Rotations
-    if (dom.createRotationBtn) {
-        dom.createRotationBtn.addEventListener('click', createRotation);
-    }
-    if (dom.rotationNameInput) {
-        dom.rotationNameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') createRotation();
-        });
+    // Positions
+    if (dom.newPositionBtn) {
+        dom.newPositionBtn.addEventListener('click', createNewPosition);
     }
     
-    // Positions
-    if (dom.savePositionBtn) {
-        dom.savePositionBtn.addEventListener('click', savePosition);
-    }
-    if (dom.positionNameInput) {
-        dom.positionNameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') savePosition();
+    // Position search
+    if (dom.positionSearchInput) {
+        dom.positionSearchInput.addEventListener('input', () => {
+            renderPositionsList();
         });
     }
     
@@ -208,13 +191,13 @@ function setupEventListeners() {
     
     // Animation
     if (dom.playAnimationBtn) {
-        dom.playAnimationBtn.addEventListener('click', playAnimation);
+        dom.playAnimationBtn.addEventListener('click', () => playAnimation());
     }
     if (dom.nextScenarioBtn) {
         dom.nextScenarioBtn.addEventListener('click', playNextScenario);
     }
     if (dom.refreshPositionBtn) {
-        dom.refreshPositionBtn.addEventListener('click', resetToStartPosition);
+        dom.refreshPositionBtn.addEventListener('click', () => resetToStartPosition());
     }
     
     // State management buttons

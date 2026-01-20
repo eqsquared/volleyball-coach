@@ -11,15 +11,9 @@ export const dom = {
     addPlayerBtn: null,
     
     // Positions
-    positionNameInput: null,
-    positionRotationSelect: null,
-    savePositionBtn: null,
+    positionSearchInput: null,
+    newPositionBtn: null,
     positionsList: null,
-    
-    // Rotations
-    rotationNameInput: null,
-    createRotationBtn: null,
-    rotationsList: null,
     
     // Scenarios
     scenarioNameInput: null,
@@ -74,15 +68,9 @@ export function initDOM() {
     dom.addPlayerBtn = document.getElementById('add-player-btn');
     
     // Positions
-    dom.positionNameInput = document.getElementById('position-name');
-    dom.positionRotationSelect = document.getElementById('position-rotation-select');
-    dom.savePositionBtn = document.getElementById('save-position-btn');
+    dom.positionSearchInput = document.getElementById('position-search-input');
+    dom.newPositionBtn = document.getElementById('new-position-btn');
     dom.positionsList = document.getElementById('positions-list');
-    
-    // Rotations
-    dom.rotationNameInput = document.getElementById('rotation-name-input');
-    dom.createRotationBtn = document.getElementById('create-rotation-btn');
-    dom.rotationsList = document.getElementById('rotations-list');
     
     // Scenarios
     dom.scenarioNameInput = document.getElementById('scenario-name-input');

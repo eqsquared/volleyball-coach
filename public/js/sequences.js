@@ -5,6 +5,7 @@ import { state, getSequences, setSequences, getScenarios, setCurrentSequence } f
 import { dom } from './dom.js';
 import { renderSequencesList } from './ui.js';
 import { playScenario } from './scenarios.js';
+import { alert, confirm } from './modal.js';
 
 // Generate unique ID
 function generateId() {
@@ -16,14 +17,14 @@ export async function createSequence() {
     const name = dom.sequenceNameInput.value.trim();
     
     if (!name) {
-        alert('Please enter a sequence name');
+        await alert('Please enter a sequence name');
         return;
     }
     
     // Check for duplicate name
     const existing = getSequences().find(s => s.name === name);
     if (existing) {
-        alert('A sequence with this name already exists');
+        await alert('A sequence with this name already exists');
         return;
     }
     
@@ -42,7 +43,7 @@ export async function createSequence() {
         renderSequencesList();
     } catch (error) {
         console.error('Error creating sequence:', error);
-        alert('Error creating sequence: ' + error.message);
+        await alert('Error creating sequence: ' + error.message);
     }
 }
 
@@ -67,7 +68,7 @@ export async function updateSequence(sequenceId, name, scenarioIds) {
         }
     } catch (error) {
         console.error('Error updating sequence:', error);
-        alert('Error updating sequence: ' + error.message);
+        await alert('Error updating sequence: ' + error.message);
     }
 }
 
@@ -76,7 +77,8 @@ export async function deleteSequence(sequenceId) {
     const sequence = getSequences().find(s => s.id === sequenceId);
     if (!sequence) return;
     
-    if (!confirm(`Delete sequence "${sequence.name}"?`)) {
+    const confirmed = await confirm(`Delete sequence "${sequence.name}"?`);
+    if (!confirmed) {
         return;
     }
     
@@ -93,15 +95,15 @@ export async function deleteSequence(sequenceId) {
         }
     } catch (error) {
         console.error('Error deleting sequence:', error);
-        alert('Error deleting sequence: ' + error.message);
+        await alert('Error deleting sequence: ' + error.message);
     }
 }
 
 // Load sequence (loads first scenario's start position)
-export function loadSequence(sequenceId) {
+export async function loadSequence(sequenceId) {
     const sequence = getSequences().find(s => s.id === sequenceId);
     if (!sequence || sequence.scenarioIds.length === 0) {
-        alert('This sequence has no scenarios');
+        await alert('This sequence has no scenarios');
         return;
     }
     
@@ -125,7 +127,7 @@ export function loadSequence(sequenceId) {
 }
 
 // Play next scenario in sequence
-export function playNextScenario() {
+export async function playNextScenario() {
     if (!state.currentSequence) return;
     
     const sequence = getSequences().find(s => s.id === state.currentSequence.sequenceId);
@@ -135,7 +137,7 @@ export function playNextScenario() {
     
     if (nextIndex >= sequence.scenarioIds.length) {
         // Sequence complete
-        alert('Sequence complete!');
+        await alert('Sequence complete!');
         setCurrentSequence(null);
         dom.nextScenarioBtn.style.display = 'none';
         dom.sequenceProgress.style.display = 'none';
@@ -181,12 +183,12 @@ export function updateSequenceProgress() {
 }
 
 // Add scenario to sequence
-export function addScenarioToSequence(sequenceId, scenarioId) {
+export async function addScenarioToSequence(sequenceId, scenarioId) {
     const sequence = getSequences().find(s => s.id === sequenceId);
     if (!sequence) return;
     
     if (sequence.scenarioIds.includes(scenarioId)) {
-        alert('Scenario already in sequence');
+        await alert('Scenario already in sequence');
         return;
     }
     

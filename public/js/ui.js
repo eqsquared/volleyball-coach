@@ -1,10 +1,9 @@
 // UI rendering and updates
 
-import { state, getPlayers, getSavedPositions, getPlayerElements, getPositions, getRotations, getScenarios, getSequences, getCurrentLoadedItem, setDraggedPlayer } from './state.js';
+import { state, getPlayers, getSavedPositions, getPlayerElements, getPositions, getScenarios, getSequences, getCurrentLoadedItem, setDraggedPlayer } from './state.js';
 import { dom } from './dom.js';
 import { deletePlayer } from './players.js';
-import { loadPosition, deletePosition as deletePositionNew } from './positions.js';
-import { loadRotation, deleteRotation } from './rotations.js';
+import { loadPosition, deletePosition as deletePositionNew, editPosition } from './positions.js';
 import { loadScenario, playScenario, deleteScenario } from './scenarios.js';
 import { loadSequence, playNextScenario, deleteSequence } from './sequences.js';
 
@@ -88,39 +87,26 @@ export function updateSavedPositionsList() {
     });
 }
 
-// Render rotations list
-export function renderRotationsList() {
-    if (!dom.rotationsList) return;
+// Filter positions based on search (name and tags)
+function filterPositions(positions) {
+    if (!dom.positionSearchInput) {
+        return positions;
+    }
     
-    dom.rotationsList.innerHTML = '';
+    const searchTerm = (dom.positionSearchInput.value || '').toLowerCase();
     
-    getRotations().forEach(rotation => {
-        const item = document.createElement('div');
-        item.className = 'item-card';
-        if (getCurrentLoadedItem()?.type === 'rotation' && getCurrentLoadedItem()?.id === rotation.id) {
-            item.classList.add('active');
-        }
+    if (!searchTerm) {
+        return positions;
+    }
+    
+    return positions.filter(position => {
+        // Search in name
+        const nameMatch = position.name.toLowerCase().includes(searchTerm);
         
-        const positionCount = rotation.positionIds?.length || 0;
-        item.innerHTML = `
-            <span class="item-card-name">${rotation.name} (${positionCount} positions)</span>
-            <div class="item-card-actions">
-                <button class="btn-load" title="Load rotation"><i data-lucide="folder-open"></i></button>
-                <button class="btn-delete" title="Delete rotation"><i data-lucide="trash-2"></i></button>
-            </div>
-        `;
+        // Search in tags
+        const tagMatch = (position.tags || []).some(tag => tag.toLowerCase().includes(searchTerm));
         
-        const loadBtn = item.querySelector('.btn-load');
-        const deleteBtn = item.querySelector('.btn-delete');
-        
-        loadBtn.addEventListener('click', () => loadRotation(rotation.id));
-        deleteBtn.addEventListener('click', () => deleteRotation(rotation.id));
-        
-        if (window.lucide) {
-            lucide.createIcons();
-        }
-        
-        dom.rotationsList.appendChild(item);
+        return nameMatch || tagMatch;
     });
 }
 
@@ -130,11 +116,11 @@ export function renderPositionsList() {
     
     dom.positionsList.innerHTML = '';
     
-    const positions = getPositions();
+    const allPositions = getPositions();
     const savedPositions = getSavedPositions();
     
     // If no new format positions but legacy positions exist, show legacy positions
-    if (positions.length === 0 && savedPositions && Object.keys(savedPositions).length > 0) {
+    if (allPositions.length === 0 && savedPositions && Object.keys(savedPositions).length > 0) {
         // Render legacy positions
         Object.keys(savedPositions).forEach(positionName => {
             const item = document.createElement('div');
@@ -168,8 +154,11 @@ export function renderPositionsList() {
         return;
     }
     
+    // Filter positions
+    const filteredPositions = filterPositions(allPositions);
+    
     // Render new format positions
-    positions.forEach(position => {
+    filteredPositions.forEach(position => {
         const item = document.createElement('div');
         item.className = 'item-card';
         if (getCurrentLoadedItem()?.type === 'position' && getCurrentLoadedItem()?.id === position.id) {
@@ -177,28 +166,37 @@ export function renderPositionsList() {
         }
         
         const playerCount = position.playerPositions?.length || 0;
-        const rotationNames = position.rotationIds?.map(rotId => {
-            const rot = getRotations().find(r => r.id === rotId);
-            return rot ? rot.name : '';
-        }).filter(Boolean).join(', ') || 'None';
+        const tags = position.tags || [];
+        const tagsDisplay = tags.length > 0 
+            ? tags.map(tag => `<span class="tag-badge">${tag}</span>`).join('')
+            : '<span style="font-size: 10px; color: #999;">No tags</span>';
         
         item.innerHTML = `
             <div style="flex: 1;">
                 <div class="item-card-name">${position.name}</div>
                 <div style="font-size: 11px; color: #6c757d; margin-top: 2px;">
-                    ${playerCount} players • ${rotationNames}
+                    ${playerCount} players
+                </div>
+                <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
+                    ${tagsDisplay}
                 </div>
             </div>
             <div class="item-card-actions">
                 <button class="btn-load" title="Load position"><i data-lucide="folder-open"></i></button>
+                <button class="btn-edit" title="Edit position"><i data-lucide="edit"></i></button>
                 <button class="btn-delete" title="Delete position"><i data-lucide="trash-2"></i></button>
             </div>
         `;
         
         const loadBtn = item.querySelector('.btn-load');
+        const editBtn = item.querySelector('.btn-edit');
         const deleteBtn = item.querySelector('.btn-delete');
         
         loadBtn.addEventListener('click', () => loadPosition(position.id));
+        editBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await editPosition(position.id);
+        });
         deleteBtn.addEventListener('click', () => deletePositionNew(position.id));
         
         if (window.lucide) {

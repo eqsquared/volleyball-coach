@@ -13,26 +13,193 @@ import {
 } from './state.js';
 import { dom } from './dom.js';
 import { placePlayerOnCourt } from './court.js';
-import { renderPositionsList } from './ui.js';
+import { renderPositionsList, updateCurrentItemDisplay } from './ui.js';
+import { alert, confirm, prompt } from './modal.js';
 
 // Generate unique ID
 function generateId() {
     return `pos_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Save current position
-export async function savePosition() {
-    const positionName = dom.positionNameInput.value.trim();
+// Create new position (opens modal)
+export async function createNewPosition() {
+    // Collect current player positions
+    const playerPositions = [];
+    getPlayerElements().forEach((element, playerId) => {
+        const player = getPlayers().find(p => p.id === playerId);
+        if (player) {
+            playerPositions.push({
+                playerId: playerId,
+                jersey: player.jersey,
+                name: player.name,
+                x: parseInt(element.style.left) || 0,
+                y: parseInt(element.style.top) || 0
+            });
+        }
+    });
     
-    if (!positionName) {
-        alert('Please enter a position name');
+    const nameInputId = 'new-position-name-' + Date.now();
+    const tagsInputId = 'new-position-tags-' + Date.now();
+    
+    const bodyHtml = `
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div>
+                <label for="${nameInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Position Name</label>
+                <input type="text" id="${nameInputId}" class="modal-input" placeholder="Enter position name" style="width: 100%;">
+            </div>
+            <div>
+                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags (comma-separated)</label>
+                <input type="text" id="${tagsInputId}" class="modal-input" placeholder="e.g., rotation-1, serve-receive" style="width: 100%;">
+            </div>
+        </div>
+    `;
+    
+    const footerHtml = `
+        <button class="modal-btn modal-btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="modal-confirm">Create</button>
+    `;
+    
+    return new Promise(async (resolve) => {
+        const overlay = document.getElementById('modal-overlay');
+        const titleEl = document.getElementById('modal-title');
+        const bodyEl = document.getElementById('modal-body');
+        const footerEl = document.getElementById('modal-footer');
+        
+        if (!overlay || !titleEl || !bodyEl || !footerEl) {
+            resolve(false);
+            return;
+        }
+        
+        titleEl.textContent = 'New Position';
+        bodyEl.innerHTML = bodyHtml;
+        footerEl.innerHTML = footerHtml;
+        
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        const nameInput = document.getElementById(nameInputId);
+        const tagsInput = document.getElementById(tagsInputId);
+        const cancelBtn = document.getElementById('modal-cancel');
+        const confirmBtn = document.getElementById('modal-confirm');
+        
+        // Focus name input
+        setTimeout(() => {
+            if (nameInput) {
+                nameInput.focus();
+            }
+        }, 100);
+        
+        // Handle Enter key in inputs
+        [nameInput, tagsInput].forEach(input => {
+            if (input) {
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (confirmBtn) confirmBtn.click();
+                    }
+                });
+            }
+        });
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+            });
+        }
+        
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async () => {
+                const newName = nameInput ? nameInput.value.trim() : '';
+                const newTagsStr = tagsInput ? tagsInput.value.trim() : '';
+                
+                if (!newName) {
+                    await alert('Position name cannot be empty');
+                    return;
+                }
+                
+                // Check for duplicate name
+                const existing = getPositions().find(p => p.name === newName);
+                if (existing) {
+                    const overwrite = await confirm(`Position "${newName}" already exists. Overwrite?`);
+                    if (!overwrite) {
+                        return;
+                    }
+                }
+                
+                // Parse tags
+                const newTags = newTagsStr
+                    .split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag.length > 0);
+                
+                // Create or update position
+                const position = existing ? {
+                    ...existing,
+                    tags: newTags,
+                    playerPositions: playerPositions
+                } : {
+                    id: generateId(),
+                    name: newName,
+                    tags: newTags,
+                    playerPositions: playerPositions
+                };
+                
+                try {
+                    await db.savePositionNew(position);
+                    
+                    const index = state.positions.findIndex(p => p.id === position.id);
+                    if (index >= 0) {
+                        state.positions[index] = position;
+                    } else {
+                        state.positions.push(position);
+                    }
+                    setPositions([...state.positions]);
+                    
+                    // Update state
+                    setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
+                    setIsModified(false);
+                    
+                    renderPositionsList();
+                    
+                    overlay.style.display = 'none';
+                    document.body.style.overflow = '';
+                    resolve(true);
+                } catch (error) {
+                    console.error('Error saving position:', error);
+                    await alert('Error saving position: ' + error.message);
+                }
+            });
+        }
+        
+        // Close on Escape or overlay click
+        const closeHandler = (e) => {
+            if (e.key === 'Escape' || (e.target === overlay && e.type === 'click')) {
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+                document.removeEventListener('keydown', closeHandler);
+                overlay.removeEventListener('click', closeHandler);
+            }
+        };
+        
+        document.addEventListener('keydown', closeHandler);
+        overlay.addEventListener('click', closeHandler);
+    });
+}
+
+// Save current position (updates existing position without modal)
+export async function savePosition() {
+    if (!state.currentLoadedItem || state.currentLoadedItem.type !== 'position') {
         return;
     }
     
-    // Get selected rotation IDs
-    const selectedRotations = Array.from(dom.positionRotationSelect.selectedOptions)
-        .map(opt => opt.value)
-        .filter(id => id);
+    const position = getPositions().find(p => p.id === state.currentLoadedItem.id);
+    if (!position) {
+        await alert('Position not found');
+        return;
+    }
     
     // Collect current player positions
     const playerPositions = [];
@@ -49,63 +216,26 @@ export async function savePosition() {
         }
     });
     
-    // Check if position with this name already exists
-    const existing = getPositions().find(p => p.name === positionName);
-    
-    let position;
-    if (existing && state.currentLoadedItem && state.currentLoadedItem.id === existing.id) {
-        // Update existing position
-        position = {
-            ...existing,
-            playerPositions: playerPositions,
-            rotationIds: selectedRotations
-        };
-    } else if (existing) {
-        // Name conflict
-        if (!confirm(`Position "${positionName}" already exists. Overwrite?`)) {
-            return;
-        }
-        position = {
-            ...existing,
-            playerPositions: playerPositions,
-            rotationIds: selectedRotations
-        };
-    } else {
-        // Create new position
-        position = {
-            id: generateId(),
-            name: positionName,
-            rotationIds: selectedRotations,
-            playerPositions: playerPositions
-        };
-    }
+    // Update position with current player positions
+    const updated = {
+        ...position,
+        playerPositions: playerPositions
+    };
     
     try {
-        await db.savePositionNew(position);
+        await db.savePositionNew(updated);
         
         const index = state.positions.findIndex(p => p.id === position.id);
         if (index >= 0) {
-            state.positions[index] = position;
-        } else {
-            state.positions.push(position);
+            state.positions[index] = updated;
+            setPositions([...state.positions]);
         }
-        setPositions([...state.positions]);
         
-        // Update state
-        setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
         setIsModified(false);
-        
-        dom.positionNameInput.value = '';
-        dom.positionRotationSelect.selectedIndex = 0;
-        
         renderPositionsList();
-        // Update rotation select if available
-        import('./rotations.js').then(module => {
-            module.updatePositionRotationSelect();
-        });
     } catch (error) {
         console.error('Error saving position:', error);
-        alert('Error saving position: ' + error.message);
+        await alert('Error saving position: ' + error.message);
     }
 }
 
@@ -140,6 +270,12 @@ export function loadPosition(positionId) {
     setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
     setIsModified(false);
     
+    // Re-render positions list to update active state
+    renderPositionsList();
+    
+    // Update current item display
+    updateCurrentItemDisplay();
+    
     // Check for modifications when players move
     setTimeout(() => {
         checkForModifications();
@@ -167,16 +303,19 @@ function loadLegacyPosition(positionName, positions) {
 }
 
 // Update position
-export async function updatePosition(positionId, name, rotationIds, playerPositions) {
+export async function updatePosition(positionId, updates) {
     const position = getPositions().find(p => p.id === positionId);
     if (!position) return;
     
     const updated = {
         ...position,
-        name: name || position.name,
-        rotationIds: rotationIds !== undefined ? rotationIds : position.rotationIds,
-        playerPositions: playerPositions !== undefined ? playerPositions : position.playerPositions
+        ...updates
     };
+    
+    // Ensure tags array exists
+    if (!updated.tags) {
+        updated.tags = [];
+    }
     
     try {
         await db.savePositionNew(updated);
@@ -185,17 +324,147 @@ export async function updatePosition(positionId, name, rotationIds, playerPositi
             state.positions[index] = updated;
             setPositions([...state.positions]);
             renderPositionsList();
-            // Update rotation select if available
-            if (typeof updatePositionRotationSelect === 'function') {
-                import('./rotations.js').then(module => {
-                    module.updatePositionRotationSelect();
-                });
-            }
         }
     } catch (error) {
         console.error('Error updating position:', error);
-        alert('Error updating position: ' + error.message);
+        await alert('Error updating position: ' + error.message);
     }
+}
+
+// Edit position (name and tags)
+export async function editPosition(positionId) {
+    const position = getPositions().find(p => p.id === positionId);
+    if (!position) return;
+    
+    const nameInputId = 'edit-position-name-' + Date.now();
+    const tagsInputId = 'edit-position-tags-' + Date.now();
+    const currentTags = (position.tags || []).join(', ');
+    
+    const bodyHtml = `
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div>
+                <label for="${nameInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Position Name</label>
+                <input type="text" id="${nameInputId}" class="modal-input" value="${escapeHtml(position.name)}" style="width: 100%;">
+            </div>
+            <div>
+                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags (comma-separated)</label>
+                <input type="text" id="${tagsInputId}" class="modal-input" value="${escapeHtml(currentTags)}" placeholder="e.g., rotation-1, serve-receive" style="width: 100%;">
+            </div>
+        </div>
+    `;
+    
+    const footerHtml = `
+        <button class="modal-btn modal-btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="modal-confirm">Save</button>
+    `;
+    
+    return new Promise(async (resolve) => {
+        const overlay = document.getElementById('modal-overlay');
+        const titleEl = document.getElementById('modal-title');
+        const bodyEl = document.getElementById('modal-body');
+        const footerEl = document.getElementById('modal-footer');
+        
+        if (!overlay || !titleEl || !bodyEl || !footerEl) {
+            resolve(false);
+            return;
+        }
+        
+        titleEl.textContent = 'Edit Position';
+        bodyEl.innerHTML = bodyHtml;
+        footerEl.innerHTML = footerHtml;
+        
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        const nameInput = document.getElementById(nameInputId);
+        const tagsInput = document.getElementById(tagsInputId);
+        const cancelBtn = document.getElementById('modal-cancel');
+        const confirmBtn = document.getElementById('modal-confirm');
+        
+        // Focus name input
+        setTimeout(() => {
+            if (nameInput) {
+                nameInput.focus();
+                nameInput.select();
+            }
+        }, 100);
+        
+        // Handle Enter key in inputs
+        [nameInput, tagsInput].forEach(input => {
+            if (input) {
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (confirmBtn) confirmBtn.click();
+                    }
+                });
+            }
+        });
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+            });
+        }
+        
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async () => {
+                const newName = nameInput ? nameInput.value.trim() : '';
+                const newTagsStr = tagsInput ? tagsInput.value.trim() : '';
+                
+                if (!newName) {
+                    await alert('Position name cannot be empty');
+                    return;
+                }
+                
+                // Check for duplicate name
+                const existing = getPositions().find(p => p.name === newName && p.id !== positionId);
+                if (existing) {
+                    await alert('A position with this name already exists');
+                    return;
+                }
+                
+                // Parse tags
+                const newTags = newTagsStr
+                    .split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag.length > 0);
+                
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                
+                await updatePosition(positionId, { 
+                    name: newName,
+                    tags: newTags
+                });
+                
+                resolve(true);
+            });
+        }
+        
+        // Close on Escape or overlay click
+        const closeHandler = (e) => {
+            if (e.key === 'Escape' || (e.target === overlay && e.type === 'click')) {
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+                document.removeEventListener('keydown', closeHandler);
+                overlay.removeEventListener('click', closeHandler);
+            }
+        };
+        
+        document.addEventListener('keydown', closeHandler);
+        overlay.addEventListener('click', closeHandler);
+    });
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Delete position
@@ -203,7 +472,8 @@ export async function deletePosition(positionId) {
     const position = getPositions().find(p => p.id === positionId);
     if (!position) return;
     
-    if (!confirm(`Delete position "${position.name}"?`)) {
+    const confirmed = await confirm(`Delete position "${position.name}"?`);
+    if (!confirmed) {
         return;
     }
     
@@ -213,10 +483,6 @@ export async function deletePosition(positionId) {
         setPositions([...state.positions]);
         
         renderPositionsList();
-        // Update rotation select if available
-        import('./rotations.js').then(module => {
-            module.updatePositionRotationSelect();
-        });
         
         // Clear loaded item if it was this position
         if (state.currentLoadedItem && state.currentLoadedItem.id === positionId) {
@@ -225,15 +491,180 @@ export async function deletePosition(positionId) {
         }
     } catch (error) {
         console.error('Error deleting position:', error);
-        alert('Error deleting position: ' + error.message);
+        await alert('Error deleting position: ' + error.message);
     }
 }
 
 // Save current position as new (used by save-as functionality)
 export async function savePositionAs() {
-    const currentName = dom.positionNameInput.value.trim() || 
-                       (state.currentLoadedItem ? state.currentLoadedItem.name + ' (Copy)' : 'New Position');
+    // Collect current player positions
+    const playerPositions = [];
+    getPlayerElements().forEach((element, playerId) => {
+        const player = getPlayers().find(p => p.id === playerId);
+        if (player) {
+            playerPositions.push({
+                playerId: playerId,
+                jersey: player.jersey,
+                name: player.name,
+                x: parseInt(element.style.left) || 0,
+                y: parseInt(element.style.top) || 0
+            });
+        }
+    });
     
-    dom.positionNameInput.value = currentName;
-    await savePosition();
+    const currentPosition = state.currentLoadedItem ? 
+        getPositions().find(p => p.id === state.currentLoadedItem.id) : null;
+    const currentName = currentPosition ? currentPosition.name + ' (Copy)' : 'New Position';
+    const currentTags = currentPosition ? (currentPosition.tags || []).join(', ') : '';
+    
+    const nameInputId = 'save-as-position-name-' + Date.now();
+    const tagsInputId = 'save-as-position-tags-' + Date.now();
+    
+    const bodyHtml = `
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div>
+                <label for="${nameInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Position Name</label>
+                <input type="text" id="${nameInputId}" class="modal-input" value="${escapeHtml(currentName)}" style="width: 100%;">
+            </div>
+            <div>
+                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags (comma-separated)</label>
+                <input type="text" id="${tagsInputId}" class="modal-input" value="${escapeHtml(currentTags)}" placeholder="e.g., rotation-1, serve-receive" style="width: 100%;">
+            </div>
+        </div>
+    `;
+    
+    const footerHtml = `
+        <button class="modal-btn modal-btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="modal-confirm">Save As</button>
+    `;
+    
+    return new Promise(async (resolve) => {
+        const overlay = document.getElementById('modal-overlay');
+        const titleEl = document.getElementById('modal-title');
+        const bodyEl = document.getElementById('modal-body');
+        const footerEl = document.getElementById('modal-footer');
+        
+        if (!overlay || !titleEl || !bodyEl || !footerEl) {
+            resolve(false);
+            return;
+        }
+        
+        titleEl.textContent = 'Save Position As';
+        bodyEl.innerHTML = bodyHtml;
+        footerEl.innerHTML = footerHtml;
+        
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        const nameInput = document.getElementById(nameInputId);
+        const tagsInput = document.getElementById(tagsInputId);
+        const cancelBtn = document.getElementById('modal-cancel');
+        const confirmBtn = document.getElementById('modal-confirm');
+        
+        // Focus name input and select all
+        setTimeout(() => {
+            if (nameInput) {
+                nameInput.focus();
+                nameInput.select();
+            }
+        }, 100);
+        
+        // Handle Enter key in inputs
+        [nameInput, tagsInput].forEach(input => {
+            if (input) {
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (confirmBtn) confirmBtn.click();
+                    }
+                });
+            }
+        });
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+            });
+        }
+        
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async () => {
+                const newName = nameInput ? nameInput.value.trim() : '';
+                const newTagsStr = tagsInput ? tagsInput.value.trim() : '';
+                
+                if (!newName) {
+                    await alert('Position name cannot be empty');
+                    return;
+                }
+                
+                // Check for duplicate name
+                const existing = getPositions().find(p => p.name === newName);
+                if (existing) {
+                    const overwrite = await confirm(`Position "${newName}" already exists. Overwrite?`);
+                    if (!overwrite) {
+                        return;
+                    }
+                }
+                
+                // Parse tags
+                const newTags = newTagsStr
+                    .split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag.length > 0);
+                
+                // Create or update position
+                const position = existing ? {
+                    ...existing,
+                    tags: newTags,
+                    playerPositions: playerPositions
+                } : {
+                    id: generateId(),
+                    name: newName,
+                    tags: newTags,
+                    playerPositions: playerPositions
+                };
+                
+                try {
+                    await db.savePositionNew(position);
+                    
+                    const index = state.positions.findIndex(p => p.id === position.id);
+                    if (index >= 0) {
+                        state.positions[index] = position;
+                    } else {
+                        state.positions.push(position);
+                    }
+                    setPositions([...state.positions]);
+                    
+                    // Update state
+                    setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
+                    setIsModified(false);
+                    
+                    renderPositionsList();
+                    
+                    overlay.style.display = 'none';
+                    document.body.style.overflow = '';
+                    resolve(true);
+                } catch (error) {
+                    console.error('Error saving position:', error);
+                    await alert('Error saving position: ' + error.message);
+                }
+            });
+        }
+        
+        // Close on Escape or overlay click
+        const closeHandler = (e) => {
+            if (e.key === 'Escape' || (e.target === overlay && e.type === 'click')) {
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+                document.removeEventListener('keydown', closeHandler);
+                overlay.removeEventListener('click', closeHandler);
+            }
+        };
+        
+        document.addEventListener('keydown', closeHandler);
+        overlay.addEventListener('click', closeHandler);
+    });
 }

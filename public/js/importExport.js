@@ -1,18 +1,17 @@
 // Import/Export module
 
 import * as db from '../db.js';
-import { state, setPlayers, setSavedPositions, setPositions, setRotations, setScenarios, setSequences, setDbInitialized } from './state.js';
+import { state, setPlayers, setSavedPositions, setPositions, setScenarios, setSequences, setDbInitialized } from './state.js';
 import { dom } from './dom.js';
+import { alert } from './modal.js';
 import { 
     renderLineup, 
-    renderRotationsList, 
     renderPositionsList, 
     renderScenariosList, 
     renderSequencesList,
     updateSavedPositionsList 
 } from './ui.js';
 import { updateScenarioSelects } from './scenarios.js';
-import { updatePositionRotationSelect } from './rotations.js';
 
 // Migration function - converts XML data to file-based storage
 export async function migrateFromLegacyStorage() {
@@ -42,12 +41,10 @@ export async function migrateFromLegacyStorage() {
             // Try to load new format if available
             try {
                 const positions = await db.getAllPositionsNew();
-                const rotations = await db.getAllRotations();
                 const scenarios = await db.getAllScenarios();
                 const sequences = await db.getAllSequences();
                 
                 setPositions(positions);
-                setRotations(rotations);
                 setScenarios(scenarios);
                 setSequences(sequences);
             } catch (error) {
@@ -55,13 +52,11 @@ export async function migrateFromLegacyStorage() {
             }
             
             renderLineup();
-            renderRotationsList();
             renderPositionsList();
             renderScenariosList();
             renderSequencesList();
             updateSavedPositionsList();
             updateScenarioSelects();
-            updatePositionRotationSelect();
             
             if (dom.fileStatus) {
                 dom.fileStatus.textContent = '✓ Legacy data migrated to file-based storage.';
@@ -87,7 +82,7 @@ let dataFileHandle = null;
 
 export async function selectDataFile() {
     if (!window.showOpenFilePicker) {
-        alert('File System Access API is not supported in this browser. Please use Chrome or Edge.');
+        await alert('File System Access API is not supported in this browser. Please use Chrome or Edge.');
         return;
     }
     
@@ -117,7 +112,6 @@ export async function selectDataFile() {
         // Load new format
         try {
             setPositions(await db.getAllPositionsNew());
-            setRotations(await db.getAllRotations());
             setScenarios(await db.getAllScenarios());
             setSequences(await db.getAllSequences());
         } catch (error) {
@@ -125,13 +119,11 @@ export async function selectDataFile() {
         }
         
         renderLineup();
-        renderRotationsList();
         renderPositionsList();
         renderScenariosList();
         renderSequencesList();
         updateSavedPositionsList();
         updateScenarioSelects();
-        updatePositionRotationSelect();
         
         // Update status
         const fileName = file.name;
@@ -139,7 +131,7 @@ export async function selectDataFile() {
         dom.fileStatus.style.color = '#27ae60';
     } catch (error) {
         if (error.name !== 'AbortError') {
-            alert('Error selecting file: ' + error.message);
+            await alert('Error selecting file: ' + error.message);
             console.error('Error:', error);
         }
     }
@@ -200,7 +192,7 @@ export async function exportToJSON() {
             return;
         } catch (error) {
             console.error('Error exporting from file storage:', error);
-            alert('Error exporting data: ' + error.message);
+            await alert('Error exporting data: ' + error.message);
         }
     }
     
@@ -277,7 +269,6 @@ export async function handleFileImport(event) {
             // Load new format
             try {
                 setPositions(await db.getAllPositionsNew());
-                setRotations(await db.getAllRotations());
                 setScenarios(await db.getAllScenarios());
                 setSequences(await db.getAllSequences());
             } catch (error) {
@@ -285,17 +276,15 @@ export async function handleFileImport(event) {
             }
             
             renderLineup();
-            renderRotationsList();
             renderPositionsList();
             renderScenariosList();
             renderSequencesList();
             updateSavedPositionsList();
             updateScenarioSelects();
-            updatePositionRotationSelect();
             
-            alert('Data imported successfully! Saved to data.json file.');
+            await alert('Data imported successfully! Saved to data.json file.');
         } catch (error) {
-            alert('Error importing file: ' + error.message);
+            await alert('Error importing file: ' + error.message);
             console.error('Import error:', error);
         }
     };
