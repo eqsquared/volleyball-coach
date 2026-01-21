@@ -130,6 +130,12 @@ async function init() {
         // Set up event listeners
         setupEventListeners();
         
+        // Set up mobile drawer
+        setupMobileDrawer();
+        
+        // Set up court scaling for mobile
+        setupCourtScaling();
+        
         // Initialize court drag and drop
         initCourtListeners();
         
@@ -187,6 +193,11 @@ async function init() {
                     height: 16
                 }
             });
+            
+            // Re-initialize icons after a short delay to ensure mobile menu icon is created
+            setTimeout(() => {
+                lucide.createIcons();
+            }, 100);
         }
         
         // Set up modification tracking
@@ -264,6 +275,87 @@ function setupEventListeners() {
     }
     if (dom.importFileInput) {
         dom.importFileInput.addEventListener('change', handleFileImport);
+    }
+}
+
+// Set up mobile drawer functionality
+function setupMobileDrawer() {
+    if (!dom.mobileMenuBtn || !dom.drawerOverlay || !dom.sidebar) return;
+    
+    // Toggle drawer when menu button is clicked
+    dom.mobileMenuBtn.addEventListener('click', () => {
+        dom.sidebar.classList.toggle('open');
+        dom.drawerOverlay.classList.toggle('active');
+        // Prevent body scroll when drawer is open
+        if (dom.sidebar.classList.contains('open')) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    });
+    
+    // Close drawer when overlay is clicked
+    dom.drawerOverlay.addEventListener('click', () => {
+        dom.sidebar.classList.remove('open');
+        dom.drawerOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    });
+    
+    // Close drawer on window resize if it becomes desktop size
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+            dom.sidebar.classList.remove('open');
+            dom.drawerOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+}
+
+// Set up court scaling for mobile
+function setupCourtScaling() {
+    if (!dom.court) return;
+    
+    function scaleCourt() {
+        if (window.innerWidth <= 768) {
+            const container = dom.court.closest('.court-container');
+            if (!container) return;
+            
+            // Get available width (accounting for padding: 10px on each side = 20px total)
+            const containerWidth = container.clientWidth - 20;
+            const scale = Math.min(containerWidth / 600, 1);
+            
+            dom.court.style.transform = `scale(${scale})`;
+            dom.court.style.transformOrigin = 'center center';
+            
+            // Adjust container height to match scaled court height
+            const scaledHeight = 600 * scale;
+            container.style.height = `${scaledHeight}px`;
+        } else {
+            dom.court.style.transform = '';
+            dom.court.style.transformOrigin = '';
+            const container = dom.court.closest('.court-container');
+            if (container) {
+                container.style.height = '';
+            }
+        }
+    }
+    
+    // Initial scale (with a small delay to ensure DOM is ready)
+    setTimeout(scaleCourt, 50);
+    
+    // Scale on resize (with debouncing for performance)
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(scaleCourt, 100);
+    });
+    
+    // Also scale when drawer opens/closes (in case it affects layout)
+    if (dom.sidebar) {
+        const observer = new MutationObserver(() => {
+            setTimeout(scaleCourt, 100);
+        });
+        observer.observe(dom.sidebar, { attributes: true, attributeFilter: ['class'] });
     }
 }
 

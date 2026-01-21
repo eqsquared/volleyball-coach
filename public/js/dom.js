@@ -63,7 +63,12 @@ export const dom = {
     fileStatus: null,
     
     // Accordions
-    accordions: null
+    accordions: null,
+    
+    // Mobile
+    mobileMenuBtn: null,
+    drawerOverlay: null,
+    sidebar: null
 };
 
 // Initialize DOM references
@@ -131,4 +136,9 @@ export function initDOM() {
     
     // Accordions
     dom.accordions = document.querySelectorAll('.accordion');
+    
+    // Mobile
+    dom.mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    dom.drawerOverlay = document.getElementById('drawer-overlay');
+    dom.sidebar = document.getElementById('sidebar');
 }

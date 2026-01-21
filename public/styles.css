@@ -19,6 +19,64 @@ body {
     padding: 20px;
 }
 
+/* Mobile Header */
+.mobile-header {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    align-items: center;
+    padding: 0 16px;
+}
+
+.mobile-menu-btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2c3e50;
+    transition: background 0.2s;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.mobile-menu-btn:hover {
+    background: #f0f0f0;
+}
+
+.mobile-menu-btn svg {
+    width: 24px !important;
+    height: 24px !important;
+}
+
+.mobile-header-logo {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.mobile-logo-img {
+    width: 32px;
+    height: 32px;
+}
+
+.mobile-header-spacer {
+    width: 48px; /* Same width as menu button to center logo */
+    flex-shrink: 0;
+}
+
 header {
     text-align: center;
     margin-bottom: 20px;
@@ -36,6 +94,26 @@ header h1 {
 }
 
 /* ============================================
+   Drawer Overlay
+   ============================================ */
+.drawer-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.drawer-overlay.active {
+    opacity: 1;
+}
+
+/* ============================================
    Sidebar
    ============================================ */
 .sidebar {
@@ -49,6 +127,7 @@ header h1 {
     flex-direction: column;
     gap: 0;
     overflow: hidden;
+    transition: transform 0.3s ease;
 }
 
 .sidebar > * {
@@ -978,12 +1057,15 @@ svg[data-lucide] {
     align-items: center;
     justify-content: center;
     min-height: 0;
+    width: 100%;
 }
 
 .court-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    height: 100%;
 }
 
 .court {
@@ -994,6 +1076,7 @@ svg[data-lucide] {
     border: 3px solid #8b7355;
     border-radius: 4px;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 /* ============================================
@@ -1459,4 +1542,121 @@ svg[data-lucide] {
 .tag-selector-btn.selected {
     background: #e3f2fd;
     color: #1976d2;
+}
+
+/* ============================================
+   Mobile Responsive Styles
+   ============================================ */
+@media (max-width: 768px) {
+    body {
+        padding-top: 60px; /* Space for fixed mobile header */
+    }
+    
+    .app-container {
+        padding: 0;
+    }
+    
+    /* Show mobile header */
+    .mobile-header {
+        display: flex;
+    }
+    
+    /* Show drawer overlay when active */
+    .drawer-overlay {
+        display: block;
+    }
+    
+    /* Adjust main content for mobile header */
+    .main-content {
+        /* margin-top: 60px; */
+        gap: 0;
+        flex-direction: column;
+    }
+    
+    /* Sidebar as drawer */
+    .sidebar {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        width: 300px;
+        max-width: 85vw;
+        height: calc(100vh - 60px);
+        transform: translateX(-100%);
+        z-index: 1000;
+        border-radius: 0;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    /* Court section takes full width */
+    .court-section {
+        width: 100%;
+        padding: 10px;
+        height: auto;
+        min-height: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Court container scales to fit width */
+    .court-container {
+        width: 100%;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+        flex: 0 0 auto;
+        min-height: 0;
+    }
+    
+    /* Court scales to fit width while maintaining aspect ratio */
+    .court {
+        width: 600px;
+        height: 600px;
+        transform-origin: center center;
+        transition: transform 0.2s ease;
+    }
+    
+    /* Court top bar adjustments */
+    .court-top-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 20px;
+        padding: 20px;
+    }
+    
+    .animation-buttons {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .animation-buttons button {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+    
+    .animation-buttons button span {
+        display: none;
+    }
+    
+    .state-indicator {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    /* Position drop zones stack vertically on mobile */
+    .position-drop-zones {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Accordion content adjustments */
+    .accordion.active .accordion-content {
+        max-height: calc(100vh - 300px);
+    }
 }

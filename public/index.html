@@ -21,13 +21,23 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- <header>
-            <h1>Volleyball Position Training</h1>
-        </header> -->
+        <!-- Mobile Header -->
+        <header class="mobile-header">
+            <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">
+                <i data-lucide="menu"></i>
+            </button>
+            <div class="mobile-header-logo">
+                <img src="favicons/favicon-32x32.png" alt="Volleyball Coach" class="mobile-logo-img">
+            </div>
+            <div class="mobile-header-spacer"></div>
+        </header>
+        
+        <!-- Drawer Overlay -->
+        <div class="drawer-overlay" id="drawer-overlay"></div>
         
         <div class="main-content">
             <!-- Sidebar with Accordions -->
-            <div class="sidebar">
+            <div class="sidebar" id="sidebar">
 
                 <!-- Accordion: Players -->
                 <div class="accordion" data-accordion="players">
