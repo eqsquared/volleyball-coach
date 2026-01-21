@@ -154,6 +154,10 @@ async function init() {
         updateCurrentItemDisplay();
         updateDropZoneDisplay();
         
+        // Initialize scenario buttons visibility (all hidden by default)
+        const { updateScenarioButtonsVisibility } = await import('./js/ui.js');
+        updateScenarioButtonsVisibility();
+        
         // Restore last loaded item if it exists
         const savedItem = getSavedLoadedItem();
         if (savedItem) {
@@ -439,7 +443,7 @@ async function handleDiscard() {
         } else {
             // New unsaved scenario - just clear it
             const { clearScenario } = await import('./js/scenarios.js');
-            clearScenario();
+            await clearScenario();
         }
     }
 }

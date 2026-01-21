@@ -461,12 +461,37 @@ export function updateCurrentItemDisplay() {
     }
 }
 
+// Update scenario buttons visibility (all or nothing - show/hide entire container with fade)
+export function updateScenarioButtonsVisibility() {
+    const hasScenario = state.currentLoadedItem && state.currentLoadedItem.type === 'scenario';
+    const buttonsContainer = document.querySelector('.animation-buttons');
+    
+    if (buttonsContainer) {
+        if (hasScenario) {
+            buttonsContainer.classList.remove('hidden');
+        } else {
+            buttonsContainer.classList.add('hidden');
+        }
+    }
+}
+
 // Update modified indicator
 export function updateModifiedIndicator(isModified) {
     if (dom.modifiedIndicator) {
+        const badge = dom.modifiedIndicator.querySelector('.badge');
         if (isModified) {
             dom.modifiedIndicator.classList.remove('hidden');
             dom.modifiedIndicator.classList.add('show-flex');
+            
+            // Update badge text based on whether it's a new item or just modified
+            if (badge) {
+                const currentItem = getCurrentLoadedItem();
+                if (currentItem && !currentItem.id) {
+                    badge.textContent = 'Not Saved';
+                } else {
+                    badge.textContent = 'Modified';
+                }
+            }
         } else {
             dom.modifiedIndicator.classList.add('hidden');
             dom.modifiedIndicator.classList.remove('show-flex');
@@ -532,15 +557,6 @@ export function updateDropZoneDisplay() {
             dom.endPositionZone.classList.remove('has-content');
             dom.clearEndPositionBtn.classList.add('hidden');
             dom.clearEndPositionBtn.classList.remove('show-flex');
-        }
-    }
-    
-    // Show/hide clear scenario button
-    if (dom.clearScenarioBtn) {
-        if (getCurrentLoadedItem()?.type === 'scenario') {
-            dom.clearScenarioBtn.classList.remove('hidden');
-        } else {
-            dom.clearScenarioBtn.classList.add('hidden');
         }
     }
     
@@ -644,7 +660,7 @@ export function initDropZones() {
         dom.clearScenarioBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             const { clearScenario } = await import('./scenarios.js');
-            clearScenario();
+            await clearScenario();
         });
     }
 }
@@ -669,6 +685,9 @@ async function checkAndUpdateScenarioState() {
             setIsModified(true);
             updateCurrentItemDisplay();
             updateModifiedIndicator(true);
+            
+            // Show all scenario buttons
+            updateScenarioButtonsVisibility();
         }
     } else if (!startPos || !endPos) {
         // If either position is missing, clear scenario state if it was scenario-related
@@ -677,6 +696,9 @@ async function checkAndUpdateScenarioState() {
             setIsModified(false);
             updateCurrentItemDisplay();
             updateModifiedIndicator(false);
+            
+            // Hide all scenario buttons
+            updateScenarioButtonsVisibility();
         }
     }
 }

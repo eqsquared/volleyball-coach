@@ -954,43 +954,43 @@
           "playerId": "1768780851551",
           "jersey": "14",
           "name": "Cecily",
-          "x": 481,
-          "y": 441
+          "x": 393,
+          "y": 66
         },
         {
           "playerId": "1768785165038",
           "jersey": "24",
           "name": "Araceli",
-          "x": 464,
-          "y": 216
+          "x": 58,
+          "y": 19
         },
         {
           "playerId": "1768785149048",
           "jersey": "17",
           "name": "Anahi",
-          "x": 243,
-          "y": 178
+          "x": 469,
+          "y": 244
         },
         {
           "playerId": "1768780856106",
           "jersey": "22",
           "name": "Marley",
-          "x": 177,
-          "y": 475
+          "x": 135,
+          "y": 433
         },
         {
           "playerId": "1768785183653",
           "jersey": "4",
           "name": "Adley",
-          "x": 67,
-          "y": 317
+          "x": 144,
+          "y": 172
         },
         {
           "playerId": "1768785199992",
           "jersey": "64",
           "name": "Aubrey",
-          "x": 318,
-          "y": 382
+          "x": 389,
+          "y": 433
         }
       ],
       "tags": [
@@ -1362,6 +1362,15 @@
     {
       "id": "scen_1768957447441_h58axl2uf",
       "name": "R1 Return Right Side Hit",
+      "startPositionId": "pos_1768843988881_5_wd5t74wfe",
+      "endPositionId": "pos_1768843988881_4_d5rn863ap",
+      "tags": [
+        "Rotation 1"
+      ]
+    },
+    {
+      "id": "scen_1769014464720_tguz49wsx",
+      "name": "Defense: Right Side Hit",
       "startPositionId": "pos_1768843988881_5_wd5t74wfe",
       "endPositionId": "pos_1768843988881_4_d5rn863ap",
       "tags": [

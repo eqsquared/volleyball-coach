@@ -145,6 +145,7 @@ export async function createNewPosition() {
         
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
+                overlay.classList.add('hidden');
                 overlay.style.display = 'none';
                 document.body.style.overflow = '';
                 resolve(false);
@@ -204,6 +205,7 @@ export async function createNewPosition() {
         // Close on Escape or overlay click
         const closeHandler = (e) => {
             if (e.key === 'Escape' || (e.target === overlay && e.type === 'click')) {
+                overlay.classList.add('hidden');
                 overlay.style.display = 'none';
                 document.body.style.overflow = '';
                 resolve(false);
@@ -217,9 +219,15 @@ export async function createNewPosition() {
     });
 }
 
-// Save current position (updates existing position without modal)
+// Save current position (updates existing position without modal, or opens modal for new)
 export async function savePosition() {
     if (!state.currentLoadedItem || state.currentLoadedItem.type !== 'position') {
+        return;
+    }
+    
+    // If it's a new position (no ID), open the modal to create it
+    if (!state.currentLoadedItem.id) {
+        await createPositionFromModal();
         return;
     }
     
@@ -268,13 +276,13 @@ export async function savePosition() {
 }
 
 // Load position by ID
-export function loadPosition(positionId) {
+export function loadPosition(positionId, updateLoadedItem = true) {
     const position = getPositions().find(p => p.id === positionId);
     if (!position) {
         // Try legacy format
         const legacyPos = state.savedPositions[positionId];
         if (legacyPos) {
-            loadLegacyPosition(positionId, legacyPos);
+            loadLegacyPosition(positionId, legacyPos, updateLoadedItem);
             return;
         }
         return;
@@ -294,15 +302,17 @@ export function loadPosition(positionId) {
         }
     });
     
-    // Update state
-    setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
-    setIsModified(false);
-    
-    // Re-render positions list to update active state
-    renderPositionsList();
-    
-    // Update current item display
-    updateCurrentItemDisplay();
+    // Update state only if requested (don't override scenario/sequence when loading position for them)
+    if (updateLoadedItem) {
+        setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
+        setIsModified(false);
+        
+        // Re-render positions list to update active state
+        renderPositionsList();
+        
+        // Update current item display
+        updateCurrentItemDisplay();
+    }
     
     // Check for modifications when players move
     setTimeout(() => {
@@ -311,7 +321,7 @@ export function loadPosition(positionId) {
 }
 
 // Load legacy position (for backward compatibility)
-function loadLegacyPosition(positionName, positions) {
+function loadLegacyPosition(positionName, positions, updateLoadedItem = true) {
     // Clear current positions
     getPlayerElements().forEach((element) => {
         element.remove();
@@ -326,8 +336,11 @@ function loadLegacyPosition(positionName, positions) {
         }
     });
     
-    setCurrentLoadedItem({ type: 'position', id: positionName, name: positionName });
-    setIsModified(false);
+    // Update state only if requested
+    if (updateLoadedItem) {
+        setCurrentLoadedItem({ type: 'position', id: positionName, name: positionName });
+        setIsModified(false);
+    }
 }
 
 // Update position
@@ -486,6 +499,7 @@ export async function editPosition(positionId) {
         
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
+                overlay.classList.add('hidden');
                 overlay.style.display = 'none';
                 document.body.style.overflow = '';
                 resolve(false);
@@ -527,6 +541,7 @@ export async function editPosition(positionId) {
         // Close on Escape or overlay click
         const closeHandler = (e) => {
             if (e.key === 'Escape' || (e.target === overlay && e.type === 'click')) {
+                overlay.classList.add('hidden');
                 overlay.style.display = 'none';
                 document.body.style.overflow = '';
                 resolve(false);
@@ -575,8 +590,8 @@ export async function deletePosition(positionId) {
     }
 }
 
-// Save current position as new (used by save-as functionality)
-export async function savePositionAs() {
+// Create position from modal (for new positions or save as)
+export async function createPositionFromModal(isSaveAs = false) {
     // Collect current player positions
     const playerPositions = [];
     getPlayerElements().forEach((element, playerId) => {
@@ -592,30 +607,62 @@ export async function savePositionAs() {
         }
     });
     
-    const currentPosition = state.currentLoadedItem ? 
-        getPositions().find(p => p.id === state.currentLoadedItem.id) : null;
-    const currentName = currentPosition ? currentPosition.name + ' (Copy)' : 'New Position';
-    const currentTags = currentPosition ? (currentPosition.tags || []).join(', ') : '';
+    // Determine default name and tags
+    let defaultName = '';
+    let currentTags = new Set();
     
-    const nameInputId = 'save-as-position-name-' + Date.now();
-    const tagsInputId = 'save-as-position-tags-' + Date.now();
+    if (isSaveAs && state.currentLoadedItem && state.currentLoadedItem.type === 'position' && state.currentLoadedItem.id) {
+        // Save As on existing position - preserve name (with Copy) and tags
+        const currentPosition = getPositions().find(p => p.id === state.currentLoadedItem.id);
+        if (currentPosition) {
+            defaultName = currentPosition.name + ' (Copy)';
+            // Preserve tags from original position
+            currentTags = new Set((currentPosition.tags || []).map(t => t.trim()).filter(Boolean));
+        } else {
+            defaultName = 'New Position';
+        }
+    } else {
+        // New position or Save As on unsaved position
+        defaultName = state.currentLoadedItem && state.currentLoadedItem.name ? 
+            state.currentLoadedItem.name : 'New Position';
+    }
+    
+    const nameInputId = 'create-position-name-' + Date.now();
+    const tagsInputId = 'create-position-tags-' + Date.now();
+    const tagsContainerId = 'create-position-tags-container-' + Date.now();
+    const allTags = getAllTagsForModal();
+    
+    // Build tag selector HTML with pre-selected tags
+    const tagsSelectorHtml = allTags.length > 0 ? `
+        <div class="tag-selector-container">
+            <div class="tag-selector-header">Select from existing tags:</div>
+            <div class="tag-selector-buttons" id="${tagsContainerId}">
+                ${allTags.map(tag => `
+                    <button type="button" class="tag-selector-btn ${currentTags.has(tag) ? 'selected' : ''}" data-tag="${escapeHtml(tag)}">
+                        ${escapeHtml(tag)}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
     
     const bodyHtml = `
         <div class="modal-form-container">
             <div class="modal-form-group">
                 <label for="${nameInputId}" class="modal-label">Position Name</label>
-                <input type="text" id="${nameInputId}" class="modal-input modal-input-full" value="${escapeHtml(currentName)}">
+                <input type="text" id="${nameInputId}" class="modal-input modal-input-full" value="${escapeHtml(defaultName)}">
             </div>
             <div class="modal-form-group">
-                <label for="${tagsInputId}" class="modal-label">Tags (comma-separated)</label>
-                <input type="text" id="${tagsInputId}" class="modal-input modal-input-full" value="${escapeHtml(currentTags)}" placeholder="e.g., rotation-1, serve-receive">
+                <label for="${tagsInputId}" class="modal-label">Tags</label>
+                <input type="text" id="${tagsInputId}" class="modal-input modal-input-full" value="${Array.from(currentTags).join(', ')}" placeholder="Type tags (comma-separated) or select below">
+                ${tagsSelectorHtml}
             </div>
         </div>
     `;
     
     const footerHtml = `
         <button class="modal-btn modal-btn-secondary" id="modal-cancel">Cancel</button>
-        <button class="modal-btn modal-btn-primary" id="modal-confirm">Save As</button>
+        <button class="modal-btn modal-btn-primary" id="modal-confirm">Save</button>
     `;
     
     return new Promise(async (resolve) => {
@@ -625,23 +672,53 @@ export async function savePositionAs() {
         const footerEl = document.getElementById('modal-footer');
         
         if (!overlay || !titleEl || !bodyEl || !footerEl) {
+            console.error('Modal elements not found');
             resolve(false);
             return;
         }
         
-        titleEl.textContent = 'Save Position As';
+        titleEl.textContent = isSaveAs ? 'Save Position As' : 'Save Position';
         bodyEl.innerHTML = bodyHtml;
         footerEl.innerHTML = footerHtml;
         
+        // Remove hidden class and show modal
+        overlay.classList.remove('hidden');
         overlay.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         
         const nameInput = document.getElementById(nameInputId);
         const tagsInput = document.getElementById(tagsInputId);
+        const tagsContainer = document.getElementById(tagsContainerId);
         const cancelBtn = document.getElementById('modal-cancel');
         const confirmBtn = document.getElementById('modal-confirm');
         
-        // Focus name input and select all
+        // Track selected tags in modal (start with current tags)
+        let selectedTagsInModal = new Set(currentTags);
+        
+        // Handle tag selector buttons
+        if (tagsContainer) {
+            tagsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.tag-selector-btn');
+                if (btn) {
+                    const tag = btn.dataset.tag;
+                    if (selectedTagsInModal.has(tag)) {
+                        selectedTagsInModal.delete(tag);
+                        btn.classList.remove('selected');
+                    } else {
+                        selectedTagsInModal.add(tag);
+                        btn.classList.add('selected');
+                    }
+                    
+                    // Update input field
+                    if (tagsInput) {
+                        const allTags = Array.from(selectedTagsInModal);
+                        tagsInput.value = allTags.join(', ');
+                    }
+                }
+            });
+        }
+        
+        // Focus name input
         setTimeout(() => {
             if (nameInput) {
                 nameInput.focus();
@@ -650,19 +727,18 @@ export async function savePositionAs() {
         }, 100);
         
         // Handle Enter key in inputs
-        [nameInput, tagsInput].forEach(input => {
-            if (input) {
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (confirmBtn) confirmBtn.click();
-                    }
-                });
-            }
-        });
+        if (nameInput) {
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (confirmBtn) confirmBtn.click();
+                }
+            });
+        }
         
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
+                overlay.classList.add('hidden');
                 overlay.style.display = 'none';
                 document.body.style.overflow = '';
                 resolve(false);
@@ -689,7 +765,6 @@ export async function savePositionAs() {
                 const allSelectedTags = new Set([...selectedTagsInModal, ...typedTags]);
                 const newTags = Array.from(allSelectedTags);
                 
-                // Create new position (duplicate names allowed, distinguished by tags)
                 const position = {
                     id: generateId(),
                     name: newName,
@@ -703,14 +778,17 @@ export async function savePositionAs() {
                     state.positions.push(position);
                     setPositions([...state.positions]);
                     
-                    // Update state
+                    // Update state to the new position
                     setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
                     setIsModified(false);
                     
-                    renderPositionsList();
-                    
+                    overlay.classList.add('hidden');
                     overlay.style.display = 'none';
                     document.body.style.overflow = '';
+                    
+                    renderPositionsList();
+                    updateCurrentItemDisplay();
+                    
                     resolve(true);
                 } catch (error) {
                     console.error('Error saving position:', error);
@@ -722,6 +800,7 @@ export async function savePositionAs() {
         // Close on Escape or overlay click
         const closeHandler = (e) => {
             if (e.key === 'Escape' || (e.target === overlay && e.type === 'click')) {
+                overlay.classList.add('hidden');
                 overlay.style.display = 'none';
                 document.body.style.overflow = '';
                 resolve(false);
@@ -733,4 +812,9 @@ export async function savePositionAs() {
         document.addEventListener('keydown', closeHandler);
         overlay.addEventListener('click', closeHandler);
     });
+}
+
+// Save current position as new (always opens modal with tag selector)
+export async function savePositionAs() {
+    await createPositionFromModal(true);
 }

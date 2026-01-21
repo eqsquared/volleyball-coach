@@ -41,8 +41,9 @@ export async function playAnimation() {
     // Store the start position ID for refresh
     setLastStartPosition(startPos.id);
     
-    // Load start position first
-    loadPosition(startPos.id);
+    // Load start position first (don't update loaded item if scenario/sequence is loaded)
+    const shouldUpdateLoadedItem = !state.currentLoadedItem || state.currentLoadedItem.type === 'position';
+    loadPosition(startPos.id, shouldUpdateLoadedItem);
     
     // Wait a bit then animate
     setTimeout(() => {
@@ -110,19 +111,6 @@ function finishAnimation() {
     if (dom.refreshPositionBtn) {
         dom.refreshPositionBtn.disabled = false;
     }
-    // Show refresh button after animation completes
-    if (state.lastStartPosition && dom.refreshPositionBtn) {
-        dom.refreshPositionBtn.classList.remove('hidden');
-        // Re-initialize icons when button is shown
-        if (window.lucide) {
-            lucide.createIcons({
-                attrs: {
-                    width: 16,
-                    height: 16
-                }
-            });
-        }
-    }
 }
 
 export async function resetToStartPosition() {
@@ -174,12 +162,10 @@ export async function resetToStartPosition() {
     const totalAnimations = currentPositions.length;
     
     if (totalAnimations === 0) {
-        // No players on court, just load the position
-        loadPosition(state.lastStartPosition);
+        // No players on court, just load the position (don't update loaded item if scenario/sequence is loaded)
+        const shouldUpdateLoadedItem = !state.currentLoadedItem || state.currentLoadedItem.type === 'position';
+        loadPosition(state.lastStartPosition, shouldUpdateLoadedItem);
         finishAnimation();
-        if (dom.refreshPositionBtn) {
-            dom.refreshPositionBtn.classList.add('hidden');
-        }
         return;
     }
     
@@ -195,9 +181,6 @@ export async function resetToStartPosition() {
             animationsComplete++;
             if (animationsComplete === totalAnimations) {
                 finishAnimation();
-                if (dom.refreshPositionBtn) {
-                    dom.refreshPositionBtn.classList.add('hidden');
-                }
             }
             return;
         }
@@ -207,9 +190,6 @@ export async function resetToStartPosition() {
             animationsComplete++;
             if (animationsComplete === totalAnimations) {
                 finishAnimation();
-                if (dom.refreshPositionBtn) {
-                    dom.refreshPositionBtn.classList.add('hidden');
-                }
             }
             return;
         }
@@ -219,9 +199,6 @@ export async function resetToStartPosition() {
             animationsComplete++;
             if (animationsComplete === totalAnimations) {
                 finishAnimation();
-                if (dom.refreshPositionBtn) {
-                    dom.refreshPositionBtn.classList.add('hidden');
-                }
             }
             return;
         }
@@ -241,9 +218,6 @@ export async function resetToStartPosition() {
             
             if (animationsComplete === totalAnimations) {
                 finishAnimation();
-                if (dom.refreshPositionBtn) {
-                    dom.refreshPositionBtn.classList.add('hidden');
-                }
             }
         }, 1010); // 1s animation + 10ms buffer
     });

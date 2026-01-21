@@ -1191,6 +1191,16 @@ svg[data-lucide] {
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    min-height: 44px; /* Fixed height to prevent layout shift when buttons appear/disappear */
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.animation-buttons.hidden {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    display: flex !important; /* Keep display: flex to maintain layout space */
 }
 
 .animation-buttons button {
@@ -1265,7 +1275,7 @@ svg[data-lucide] {
     padding: 12px;
     background: #f8f9fa;
     transition: all 0.2s;
-    min-height: 60px;
+    min-height: 86px; /* Fixed height to prevent layout shift when position name and tags are added */
     display: flex;
     flex-direction: column;
 }
