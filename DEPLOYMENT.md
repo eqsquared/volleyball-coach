@@ -42,11 +42,28 @@ Railway is excellent for Node.js apps with file-based storage.
 **Environment Variables:**
 - None required (PORT is auto-set by Railway)
 
+**Data Persistence on Railway:**
+- ✅ **Changes ARE saved live**: Every API call (add player, save position, etc.) writes directly to `data/data.json` on Railway's persistent volume
+- ✅ **Data persists between deployments**: Railway uses persistent volumes, so your `data/data.json` file survives:
+  - Code deployments (git push)
+  - Server restarts
+  - Service updates
+- ✅ **No data loss risk**: As long as the service is running, all changes are immediately written to disk
+- ⚠️ **Important**: Make sure `data/data.json` is in `.gitignore` (it should be) so it's not overwritten during deployments
+
+**How it works:**
+1. User makes a change in the app (e.g., adds a player)
+2. Frontend calls API endpoint (e.g., `POST /api/players`)
+3. Server writes to `data/data.json` immediately
+4. Data is saved on Railway's persistent volume
+5. Next time the app loads, it reads from the same file
+
 **Pros:**
 - Easy file-based storage persistence
 - Automatic HTTPS
 - Free tier available
 - Simple deployment
+- **Live data updates** - no deployment needed for data changes
 
 ---
 
