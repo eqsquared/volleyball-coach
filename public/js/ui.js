@@ -431,11 +431,32 @@ export function renderSequencesList() {
 // Update current item display
 export function updateCurrentItemDisplay() {
     const item = getCurrentLoadedItem();
-    if (dom.currentItemValue) {
+    if (dom.currentItemDisplay && dom.currentItemBadge && dom.currentItemName) {
         if (item) {
-            dom.currentItemValue.textContent = `${item.type}: ${item.name}`;
+            // Show the current item display
+            dom.currentItemDisplay.classList.remove('hidden');
+            
+            // Set badge with icon and type
+            const typeLabels = {
+                'position': { label: 'Position', icon: 'map-pin' },
+                'scenario': { label: 'Scenario', icon: 'film' },
+                'sequence': { label: 'Sequence', icon: 'list-ordered' }
+            };
+            
+            const typeInfo = typeLabels[item.type] || { label: item.type, icon: 'file' };
+            dom.currentItemBadge.className = `item-badge ${item.type}`;
+            dom.currentItemBadge.innerHTML = `<i data-lucide="${typeInfo.icon}"></i> ${typeInfo.label}`;
+            
+            // Set name
+            dom.currentItemName.textContent = item.name;
+            
+            // Initialize icon
+            if (window.lucide) {
+                lucide.createIcons({ container: dom.currentItemBadge });
+            }
         } else {
-            dom.currentItemValue.textContent = 'None';
+            // Hide the current item display
+            dom.currentItemDisplay.classList.add('hidden');
         }
     }
 }

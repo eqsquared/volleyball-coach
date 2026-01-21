@@ -32,7 +32,7 @@ header h1 {
 .main-content {
     display: flex;
     gap: 30px;
-    align-items: flex-start;
+    align-items: stretch;
 }
 
 /* ============================================
@@ -72,47 +72,68 @@ header h1 {
    State Indicator
    ============================================ */
 .state-indicator {
-    padding: 12px;
-    background: #f8f9fa;
-    border-radius: 6px;
-    border: 2px solid #e9ecef;
-    flex-shrink: 0;
-}
-
-/* ============================================
-   Court Controls Container
-   ============================================ */
-.court-controls {
     display: flex;
-    flex-direction: column;
-    gap: 15px;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
 }
 
 .current-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
 }
 
-.current-item .label {
+.item-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
     font-weight: 600;
-    color: #6c757d;
-    font-size: 12px;
+    white-space: nowrap;
 }
 
-.current-item .value {
+.item-badge svg {
+    width: 12px !important;
+    height: 12px !important;
+}
+
+.item-badge.position {
+    background: #3498db;
+    color: white;
+}
+
+.item-badge.scenario {
+    background: #9b59b6;
+    color: white;
+}
+
+.item-badge.sequence {
+    background: #16a085;
+    color: white;
+}
+
+.item-name {
     font-weight: 600;
     color: #2c3e50;
     font-size: 13px;
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .modified-indicator {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 8px;
-    padding-top: 8px;
-    border-top: 1px solid #dee2e6;
+}
+
+.modified-indicator.hidden {
+    display: none !important;
 }
 
 .modified-indicator .badge {
@@ -122,16 +143,10 @@ header h1 {
     border-radius: 4px;
     font-size: 11px;
     font-weight: 600;
-    display: inline-block;
-    width: fit-content;
+    white-space: nowrap;
 }
 
-.save-actions {
-    display: flex;
-    gap: 6px;
-}
-
-.save-actions button {
+.modified-indicator button {
     padding: 6px 12px;
     border: none;
     border-radius: 4px;
@@ -139,6 +154,7 @@ header h1 {
     font-size: 11px;
     font-weight: 600;
     transition: background 0.2s;
+    white-space: nowrap;
 }
 
 .btn-save {
@@ -940,15 +956,33 @@ svg[data-lucide] {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    height: calc(100vh - 120px);
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 15px;
+    gap: 15px;
+}
+
+.court-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 15px;
 }
 
 .court-container {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    flex: 1;
     display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+
+.court-wrapper {
+    display: flex;
+    align-items: center;
     justify-content: center;
 }
 
@@ -1069,23 +1103,11 @@ svg[data-lucide] {
 /* ============================================
    Animation Controls
    ============================================ */
-.animation-controls {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.animation-header h3 {
-    margin-bottom: 15px;
-    color: #2c3e50;
-}
-
 .animation-buttons {
     display: flex;
+    align-items: center;
     gap: 10px;
     flex-wrap: wrap;
-    margin-bottom: 15px;
 }
 
 .animation-buttons button {
@@ -1134,13 +1156,13 @@ svg[data-lucide] {
 }
 
 .sequence-progress {
-    padding: 10px;
+    padding: 6px 12px;
     background: #e8f5e9;
     border-radius: 4px;
-    text-align: center;
     font-weight: 600;
     color: #2e7d32;
-    font-size: 13px;
+    font-size: 12px;
+    white-space: nowrap;
 }
 
 /* ============================================
@@ -1150,7 +1172,7 @@ svg[data-lucide] {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-bottom: 15px;
+    flex-shrink: 0;
 }
 
 .drop-zone {

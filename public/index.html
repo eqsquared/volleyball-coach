@@ -133,6 +133,35 @@
 
             <!-- Court Section -->
             <div class="court-section">
+                <!-- Top Bar: Animation Buttons (Left) and State Indicator (Right) -->
+                <div class="court-top-bar">
+                    <!-- Animation Buttons (Top Left) -->
+                    <div class="animation-buttons">
+                        <button id="play-animation-btn"><i data-lucide="play"></i> <span>Play</span></button>
+                        <button id="next-scenario-btn" class="hidden"><i data-lucide="skip-forward"></i> <span>Next</span></button>
+                        <button id="refresh-position-btn" class="hidden"><i data-lucide="refresh-cw"></i> <span>Reset</span></button>
+                        <button id="clear-scenario-btn" class="hidden" title="Clear scenario"><i data-lucide="x-circle"></i> <span>Clear</span></button>
+                        <div class="sequence-progress hidden" id="sequence-progress">
+                            <span id="sequence-progress-text">Scenario 1 of 3</span>
+                        </div>
+                    </div>
+
+                    <!-- State Indicator (Top Right) -->
+                    <div class="state-indicator" id="state-indicator">
+                        <div class="current-item hidden" id="current-item-display">
+                            <span class="item-badge" id="current-item-badge"></span>
+                            <span class="item-name" id="current-item-name"></span>
+                        </div>
+                        <div class="modified-indicator hidden" id="modified-indicator">
+                            <span class="badge">Modified</span>
+                            <button id="save-btn" class="btn-save">Save</button>
+                            <button id="save-as-btn" class="btn-save-as">Save As</button>
+                            <button id="discard-btn" class="btn-discard">Discard</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Court Container (Centered) -->
                 <div class="court-container">
                     <div class="court" id="court">
                         <!-- Net -->
@@ -143,60 +172,25 @@
                     </div>
                 </div>
 
-                <!-- State Indicator and Animation Controls -->
-                <div class="court-controls">
-                    <!-- State Indicator -->
-                    <div class="state-indicator" id="state-indicator">
-                        <div class="current-item" id="current-item-display">
-                            <span class="label">Loaded:</span>
-                            <span class="value" id="current-item-value">None</span>
+                <!-- Position Drop Zones (Below Court) -->
+                <div class="position-drop-zones">
+                    <div class="drop-zone" id="start-position-zone" data-zone-type="start">
+                        <div class="drop-zone-label">Start Position</div>
+                        <div class="drop-zone-content" id="start-position-content">
+                            <span class="drop-zone-placeholder">Drag position here</span>
                         </div>
-                        <div class="modified-indicator hidden" id="modified-indicator">
-                            <span class="badge">Modified</span>
-                            <div class="save-actions">
-                                <button id="save-btn" class="btn-save">Save</button>
-                                <button id="save-as-btn" class="btn-save-as">Save As</button>
-                                <button id="discard-btn" class="btn-discard">Discard</button>
-                            </div>
-                        </div>
+                        <button class="drop-zone-clear hidden" id="clear-start-position" title="Clear">
+                            <i data-lucide="x"></i>
+                        </button>
                     </div>
-
-                    <!-- Animation Controls -->
-                    <div class="animation-controls">
-                        <!-- <div class="animation-header">
-                            <h3>Animation</h3>
-                        </div> -->
-                        
-                        <!-- Position Drop Zones -->
-                        <div class="position-drop-zones">
-                            <div class="drop-zone" id="start-position-zone" data-zone-type="start">
-                                <div class="drop-zone-label">Start Position</div>
-                                <div class="drop-zone-content" id="start-position-content">
-                                    <span class="drop-zone-placeholder">Drag position here</span>
-                                </div>
-                                <button class="drop-zone-clear hidden" id="clear-start-position" title="Clear">
-                                    <i data-lucide="x"></i>
-                                </button>
-                            </div>
-                            <div class="drop-zone" id="end-position-zone" data-zone-type="end">
-                                <div class="drop-zone-label">End Position</div>
-                                <div class="drop-zone-content" id="end-position-content">
-                                    <span class="drop-zone-placeholder">Drag position here</span>
-                                </div>
-                                <button class="drop-zone-clear hidden" id="clear-end-position" title="Clear">
-                                    <i data-lucide="x"></i>
-                                </button>
-                            </div>
+                    <div class="drop-zone" id="end-position-zone" data-zone-type="end">
+                        <div class="drop-zone-label">End Position</div>
+                        <div class="drop-zone-content" id="end-position-content">
+                            <span class="drop-zone-placeholder">Drag position here</span>
                         </div>
-                        <div class="animation-buttons">
-                            <button id="play-animation-btn"><i data-lucide="play"></i> <span>Play</span></button>
-                            <button id="next-scenario-btn" class="hidden"><i data-lucide="skip-forward"></i> <span>Next</span></button>
-                            <button id="refresh-position-btn" class="hidden"><i data-lucide="refresh-cw"></i> <span>Reset</span></button>
-                            <button id="clear-scenario-btn" class="hidden" title="Clear scenario"><i data-lucide="x-circle"></i> <span>Clear</span></button>
-                        </div>
-                        <div class="sequence-progress hidden" id="sequence-progress">
-                            <span id="sequence-progress-text">Scenario 1 of 3</span>
-                        </div>
+                        <button class="drop-zone-clear hidden" id="clear-end-position" title="Clear">
+                            <i data-lucide="x"></i>
+                        </button>
                     </div>
                 </div>
             </div>

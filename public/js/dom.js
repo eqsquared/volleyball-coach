@@ -45,7 +45,8 @@ export const dom = {
     
     // State
     currentItemDisplay: null,
-    currentItemValue: null,
+    currentItemBadge: null,
+    currentItemName: null,
     modifiedIndicator: null,
     saveBtn: null,
     saveAsBtn: null,
@@ -111,7 +112,8 @@ export function initDOM() {
     
     // State
     dom.currentItemDisplay = document.getElementById('current-item-display');
-    dom.currentItemValue = document.getElementById('current-item-value');
+    dom.currentItemBadge = document.getElementById('current-item-badge');
+    dom.currentItemName = document.getElementById('current-item-name');
     dom.modifiedIndicator = document.getElementById('modified-indicator');
     dom.saveBtn = document.getElementById('save-btn');
     dom.saveAsBtn = document.getElementById('save-as-btn');
