@@ -45,11 +45,11 @@ export async function createNewPosition() {
     
     // Build tag selector HTML
     const tagsSelectorHtml = allTags.length > 0 ? `
-        <div style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; max-height: 150px; overflow-y: auto;">
-            <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px; font-weight: 500;">Select from existing tags:</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 4px;" id="${tagsContainerId}">
+        <div class="tag-selector-container">
+            <div class="tag-selector-header">Select from existing tags:</div>
+            <div class="tag-selector-buttons" id="${tagsContainerId}">
                 ${allTags.map(tag => `
-                    <button type="button" class="tag-selector-btn" data-tag="${escapeHtml(tag)}" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 12px; background: white; color: #333; cursor: pointer; font-size: 11px; transition: all 0.2s;">
+                    <button type="button" class="tag-selector-btn" data-tag="${escapeHtml(tag)}">
                         ${escapeHtml(tag)}
                     </button>
                 `).join('')}
@@ -58,14 +58,14 @@ export async function createNewPosition() {
     ` : '';
     
     const bodyHtml = `
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div>
-                <label for="${nameInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Position Name</label>
-                <input type="text" id="${nameInputId}" class="modal-input" placeholder="Enter position name" style="width: 100%;">
+        <div class="modal-form-container">
+            <div class="modal-form-group">
+                <label for="${nameInputId}" class="modal-label">Position Name</label>
+                <input type="text" id="${nameInputId}" class="modal-input modal-input-full" placeholder="Enter position name">
             </div>
-            <div>
-                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags</label>
-                <input type="text" id="${tagsInputId}" class="modal-input" placeholder="Type tags (comma-separated) or select below" style="width: 100%;">
+            <div class="modal-form-group">
+                <label for="${tagsInputId}" class="modal-label">Tags</label>
+                <input type="text" id="${tagsInputId}" class="modal-input modal-input-full" placeholder="Type tags (comma-separated) or select below">
                 ${tagsSelectorHtml}
             </div>
         </div>
@@ -112,13 +112,9 @@ export async function createNewPosition() {
                     if (selectedTagsInModal.has(tag)) {
                         selectedTagsInModal.delete(tag);
                         btn.classList.remove('selected');
-                        btn.style.background = 'white';
-                        btn.style.color = '#333';
                     } else {
                         selectedTagsInModal.add(tag);
                         btn.classList.add('selected');
-                        btn.style.background = '#e3f2fd';
-                        btn.style.color = '#1976d2';
                     }
                     
                     // Update input field
@@ -389,11 +385,11 @@ export async function editPosition(positionId) {
     
     // Build tag selector HTML
     const tagsSelectorHtml = allTags.length > 0 ? `
-        <div style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; max-height: 150px; overflow-y: auto;">
-            <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px; font-weight: 500;">Select from existing tags:</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 4px;" id="${tagsContainerId}">
+        <div class="tag-selector-container">
+            <div class="tag-selector-header">Select from existing tags:</div>
+            <div class="tag-selector-buttons" id="${tagsContainerId}">
                 ${allTags.map(tag => `
-                    <button type="button" class="tag-selector-btn ${currentTags.has(tag) ? 'selected' : ''}" data-tag="${escapeHtml(tag)}" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 12px; background: ${currentTags.has(tag) ? '#e3f2fd' : 'white'}; color: ${currentTags.has(tag) ? '#1976d2' : '#333'}; cursor: pointer; font-size: 11px; transition: all 0.2s;">
+                    <button type="button" class="tag-selector-btn ${currentTags.has(tag) ? 'selected' : ''}" data-tag="${escapeHtml(tag)}">
                         ${escapeHtml(tag)}
                     </button>
                 `).join('')}
@@ -402,14 +398,14 @@ export async function editPosition(positionId) {
     ` : '';
     
     const bodyHtml = `
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div>
-                <label for="${nameInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Position Name</label>
-                <input type="text" id="${nameInputId}" class="modal-input" value="${escapeHtml(position.name)}" style="width: 100%;">
+        <div class="modal-form-container">
+            <div class="modal-form-group">
+                <label for="${nameInputId}" class="modal-label">Position Name</label>
+                <input type="text" id="${nameInputId}" class="modal-input modal-input-full" value="${escapeHtml(position.name)}">
             </div>
-            <div>
-                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags</label>
-                <input type="text" id="${tagsInputId}" class="modal-input" value="${Array.from(currentTags).join(', ')}" placeholder="Type tags (comma-separated) or select below" style="width: 100%;">
+            <div class="modal-form-group">
+                <label for="${tagsInputId}" class="modal-label">Tags</label>
+                <input type="text" id="${tagsInputId}" class="modal-input modal-input-full" value="${Array.from(currentTags).join(', ')}" placeholder="Type tags (comma-separated) or select below">
                 ${tagsSelectorHtml}
             </div>
         </div>
@@ -456,13 +452,9 @@ export async function editPosition(positionId) {
                     if (selectedTagsInModal.has(tag)) {
                         selectedTagsInModal.delete(tag);
                         btn.classList.remove('selected');
-                        btn.style.background = 'white';
-                        btn.style.color = '#333';
                     } else {
                         selectedTagsInModal.add(tag);
                         btn.classList.add('selected');
-                        btn.style.background = '#e3f2fd';
-                        btn.style.color = '#1976d2';
                     }
                     
                     // Update input field
@@ -609,14 +601,14 @@ export async function savePositionAs() {
     const tagsInputId = 'save-as-position-tags-' + Date.now();
     
     const bodyHtml = `
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div>
-                <label for="${nameInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Position Name</label>
-                <input type="text" id="${nameInputId}" class="modal-input" value="${escapeHtml(currentName)}" style="width: 100%;">
+        <div class="modal-form-container">
+            <div class="modal-form-group">
+                <label for="${nameInputId}" class="modal-label">Position Name</label>
+                <input type="text" id="${nameInputId}" class="modal-input modal-input-full" value="${escapeHtml(currentName)}">
             </div>
-            <div>
-                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags (comma-separated)</label>
-                <input type="text" id="${tagsInputId}" class="modal-input" value="${escapeHtml(currentTags)}" placeholder="e.g., rotation-1, serve-receive" style="width: 100%;">
+            <div class="modal-form-group">
+                <label for="${tagsInputId}" class="modal-label">Tags (comma-separated)</label>
+                <input type="text" id="${tagsInputId}" class="modal-input modal-input-full" value="${escapeHtml(currentTags)}" placeholder="e.g., rotation-1, serve-receive">
             </div>
         </div>
     `;

@@ -100,14 +100,14 @@ export async function editPlayer(playerId) {
     const nameInputId = 'edit-player-name-' + Date.now();
     
     const bodyHtml = `
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-            <div>
-                <label for="${jerseyInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Jersey Number</label>
-                <input type="number" id="${jerseyInputId}" class="modal-input" value="${escapeHtml(player.jersey)}" min="1" max="99" style="width: 100%;">
+        <div class="modal-form-container">
+            <div class="modal-form-group">
+                <label for="${jerseyInputId}" class="modal-label">Jersey Number</label>
+                <input type="number" id="${jerseyInputId}" class="modal-input modal-input-full" value="${escapeHtml(player.jersey)}" min="1" max="99">
             </div>
-            <div>
-                <label for="${nameInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Player Name</label>
-                <input type="text" id="${nameInputId}" class="modal-input" value="${escapeHtml(player.name)}" style="width: 100%;">
+            <div class="modal-form-group">
+                <label for="${nameInputId}" class="modal-label">Player Name</label>
+                <input type="text" id="${nameInputId}" class="modal-input modal-input-full" value="${escapeHtml(player.name)}">
             </div>
         </div>
     `;

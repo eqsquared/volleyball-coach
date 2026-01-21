@@ -1,3 +1,6 @@
+/* ============================================
+   Base Styles & Reset
+   ============================================ */
 * {
     margin: 0;
     padding: 0;
@@ -32,7 +35,9 @@ header h1 {
     align-items: flex-start;
 }
 
-/* Sidebar */
+/* ============================================
+   Sidebar
+   ============================================ */
 .sidebar {
     flex: 0 0 350px;
     background: white;
@@ -63,7 +68,9 @@ header h1 {
     flex-direction: column;
 }
 
-/* State Indicator */
+/* ============================================
+   State Indicator
+   ============================================ */
 .state-indicator {
     padding: 12px;
     background: #f8f9fa;
@@ -72,7 +79,9 @@ header h1 {
     flex-shrink: 0;
 }
 
-/* Court Controls Container */
+/* ============================================
+   Court Controls Container
+   ============================================ */
 .court-controls {
     display: flex;
     flex-direction: column;
@@ -160,7 +169,9 @@ header h1 {
 }
 
 
-/* Accordion */
+/* ============================================
+   Accordion
+   ============================================ */
 .accordion {
     border: 1px solid #e9ecef;
     border-radius: 6px;
@@ -193,7 +204,9 @@ header h1 {
     gap: 6px;
 }
 
-/* Lucide Icons - Global sizing (default 16px, override for specific cases) */
+/* ============================================
+   Lucide Icons - Global Sizing
+   ============================================ */
 svg[data-lucide] {
     width: 16px !important;
     height: 16px !important;
@@ -237,7 +250,9 @@ svg[data-lucide] {
     flex-direction: column;
 }
 
-/* Accordion Content Styles */
+/* ============================================
+   Accordion Content Styles
+   ============================================ */
 .search-filter-bar {
     margin-bottom: 8px;
     flex-shrink: 0;
@@ -440,9 +455,8 @@ svg[data-lucide] {
     background: #f8f9fa;
     border-radius: 4px;
     border: 1px solid #e9ecef;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    position: relative;
+    width: 100%;
     transition: all 0.2s;
 }
 
@@ -460,12 +474,26 @@ svg[data-lucide] {
     font-weight: 600;
     color: #2c3e50;
     font-size: 13px;
-    flex: 1;
+    width: 100%;
 }
 
 .item-card-actions {
-    display: flex;
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    display: none;
     gap: 4px;
+    background: rgba(255, 255, 255, 0.98);
+    padding: 4px 6px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+    backdrop-filter: blur(4px);
+}
+
+.item-card:hover .item-card-actions {
+    display: flex;
 }
 
 .item-card-actions button {
@@ -478,6 +506,7 @@ svg[data-lucide] {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    white-space: nowrap;
 }
 
 .item-card-actions button svg {
@@ -519,7 +548,9 @@ svg[data-lucide] {
     border: 1px solid #bbdefb;
 }
 
-/* Modal Styles */
+/* ============================================
+   Modal Styles
+   ============================================ */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -700,7 +731,9 @@ svg[data-lucide] {
     background: #c0392b;
 }
 
-/* Add Player Form (now in accordion) */
+/* ============================================
+   Add Player Form
+   ============================================ */
 .add-player-form {
     display: flex;
     flex-direction: row;
@@ -846,7 +879,9 @@ svg[data-lucide] {
     background: #c0392b;
 }
 
-/* Data Management (now in accordion) */
+/* ============================================
+   Data Management
+   ============================================ */
 .data-buttons {
     display: flex;
     flex-direction: column;
@@ -898,7 +933,9 @@ svg[data-lucide] {
     font-style: italic;
 }
 
-/* Court Section */
+/* ============================================
+   Court Section
+   ============================================ */
 .court-section {
     flex: 1;
     display: flex;
@@ -925,7 +962,9 @@ svg[data-lucide] {
     overflow: hidden;
 }
 
-/* Net */
+/* ============================================
+   Court Net
+   ============================================ */
 .net {
     position: absolute;
     top: 0;
@@ -942,7 +981,9 @@ svg[data-lucide] {
     z-index: 10;
 }
 
-/* Attack line (10ft line) */
+/* ============================================
+   Attack Line (10ft Line)
+   ============================================ */
 .attack-line {
     position: absolute;
     top: 200px; /* 1/3 of the way down from top (600px / 3 = 200px) */
@@ -953,7 +994,9 @@ svg[data-lucide] {
     z-index: 5;
 }
 
-/* Player container */
+/* ============================================
+   Player Container
+   ============================================ */
 .player-container {
     position: absolute;
     display: flex;
@@ -985,7 +1028,9 @@ svg[data-lucide] {
     cursor: not-allowed;
 }
 
-/* Player on court */
+/* ============================================
+   Player on Court
+   ============================================ */
 .player-on-court {
     position: relative;
     width: 50px;
@@ -1021,7 +1066,9 @@ svg[data-lucide] {
     text-overflow: ellipsis;
 }
 
-/* Animation Controls */
+/* ============================================
+   Animation Controls
+   ============================================ */
 .animation-controls {
     background: white;
     padding: 15px;
@@ -1096,7 +1143,9 @@ svg[data-lucide] {
     font-size: 13px;
 }
 
-/* Position Drop Zones */
+/* ============================================
+   Position Drop Zones
+   ============================================ */
 .position-drop-zones {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1198,7 +1247,9 @@ svg[data-lucide] {
     height: 12px !important;
 }
 
-/* Make position cards draggable */
+/* ============================================
+   Draggable Item Cards
+   ============================================ */
 .item-card.draggable {
     cursor: grab;
 }
@@ -1211,7 +1262,9 @@ svg[data-lucide] {
     opacity: 0.5;
 }
 
-/* Clear Scenario Button */
+/* ============================================
+   Clear Scenario Button
+   ============================================ */
 .clear-scenario-btn {
     width: 100%;
     padding: 8px 12px;
@@ -1238,4 +1291,169 @@ svg[data-lucide] {
 .clear-scenario-btn svg {
     width: 14px !important;
     height: 14px !important;
+}
+
+/* ============================================
+   Utility Classes - Display & Visibility
+   ============================================ */
+.hidden {
+    display: none !important;
+}
+
+.show-flex {
+    display: flex !important;
+}
+
+.show-inline-flex {
+    display: inline-flex !important;
+}
+
+/* ============================================
+   Legacy Position Indicator
+   ============================================ */
+.legacy-indicator {
+    font-size: 10px;
+    color: #6c757d;
+}
+
+/* ============================================
+   Tag Badge Styles
+   ============================================ */
+.tag-badge-dynamic {
+    /* Base styles for tag badges - colors are set inline dynamically */
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    border: 1px solid;
+}
+
+.tag-badge-small {
+    font-size: 10px;
+    padding: 2px 6px;
+}
+
+.tag-badge-no-tags {
+    font-size: 10px;
+    color: #999;
+}
+
+/* ============================================
+   Item Card Tag Container
+   ============================================ */
+.item-card-tags-container {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* ============================================
+   Item Card Metadata
+   ============================================ */
+.item-card-metadata {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+/* ============================================
+   Play Button Styles
+   ============================================ */
+.btn-play-active {
+    background: #27ae60 !important;
+}
+
+.btn-play-inactive {
+    background: #9b59b6 !important;
+}
+
+.btn-play-sequence {
+    background: #9b59b6;
+}
+
+/* ============================================
+   Modal Form Styles
+   ============================================ */
+.modal-form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modal-form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.modal-input-full {
+    width: 100%;
+}
+
+.modal-input-with-padding {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.modal-body-text {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.modal-body-text-with-margin {
+    margin: 0 0 12px 0;
+    line-height: 1.5;
+}
+
+/* ============================================
+   Tag Selector Container
+   ============================================ */
+.tag-selector-container {
+    margin-top: 8px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.tag-selector-header {
+    font-size: 11px;
+    color: #6c757d;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.tag-selector-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.tag-selector-btn {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: white;
+    color: #333;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s;
+}
+
+.tag-selector-btn.selected {
+    background: #e3f2fd;
+    color: #1976d2;
 }

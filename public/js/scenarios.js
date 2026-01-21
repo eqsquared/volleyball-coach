@@ -8,6 +8,34 @@ import { loadPosition } from './positions.js';
 import { playAnimation } from './animation.js';
 import { alert, confirm, prompt } from './modal.js';
 
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Get all unique tags from scenarios
+function getAllScenarioTags() {
+    const allTags = new Set();
+    getScenarios().forEach(scenario => {
+        (scenario.tags || []).forEach(tag => {
+            if (tag.trim()) {
+                allTags.add(tag.trim());
+            }
+        });
+    });
+    // Also get tags from positions
+    getPositions().forEach(position => {
+        (position.tags || []).forEach(tag => {
+            if (tag.trim()) {
+                allTags.add(tag.trim());
+            }
+        });
+    });
+    return Array.from(allTags).sort();
+}
+
 // Generate unique ID
 function generateId() {
     return `scen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -45,7 +73,8 @@ export async function createScenario() {
         id: generateId(),
         name: name,
         startPositionId: startPositionId,
-        endPositionId: endPositionId
+        endPositionId: endPositionId,
+        tags: []
     };
     
     try {
@@ -66,16 +95,19 @@ export async function createScenario() {
 }
 
 // Update scenario
-export async function updateScenario(scenarioId, name, startPositionId, endPositionId) {
+export async function updateScenario(scenarioId, updates) {
     const scenario = getScenarios().find(s => s.id === scenarioId);
     if (!scenario) return;
     
     const updated = {
         ...scenario,
-        name: name || scenario.name,
-        startPositionId: startPositionId || scenario.startPositionId,
-        endPositionId: endPositionId || scenario.endPositionId
+        ...updates
     };
+    
+    // Ensure tags array exists
+    if (!updated.tags) {
+        updated.tags = [];
+    }
     
     try {
         await db.saveScenario(updated);
@@ -153,6 +185,9 @@ export function loadScenario(scenarioId) {
     setIsModified(false);
     updateCurrentItemDisplay();
     updateModifiedIndicator(false);
+    
+    // Re-render scenarios list to show active state
+    renderScenariosList();
 }
 
 // Play scenario (animates from start to end)
@@ -220,7 +255,8 @@ export async function saveScenario() {
     const updated = {
         ...scenario,
         startPositionId: startPos.id,
-        endPositionId: endPos.id
+        endPositionId: endPos.id,
+        tags: scenario.tags || [] // Preserve existing tags
     };
     
     try {
@@ -276,7 +312,8 @@ export async function saveScenarioAs() {
         id: generateId(),
         name: name.trim(),
         startPositionId: startPos.id,
-        endPositionId: endPos.id
+        endPositionId: endPos.id,
+        tags: []
     };
     
     try {
@@ -329,6 +366,180 @@ export function clearScenario() {
     setIsModified(false);
     updateCurrentItemDisplay();
     updateModifiedIndicator(false);
+}
+
+// Edit scenario (name and tags)
+export async function editScenario(scenarioId) {
+    const scenario = getScenarios().find(s => s.id === scenarioId);
+    if (!scenario) return;
+    
+    const nameInputId = 'edit-scenario-name-' + Date.now();
+    const tagsInputId = 'edit-scenario-tags-' + Date.now();
+    const tagsContainerId = 'edit-scenario-tags-container-' + Date.now();
+    const currentTags = new Set((scenario.tags || []).map(t => t.trim()).filter(Boolean));
+    const allTags = getAllScenarioTags();
+    
+    // Build tag selector HTML
+    const tagsSelectorHtml = allTags.length > 0 ? `
+        <div class="tag-selector-container">
+            <div class="tag-selector-header">Select from existing tags:</div>
+            <div class="tag-selector-buttons" id="${tagsContainerId}">
+                ${allTags.map(tag => `
+                    <button type="button" class="tag-selector-btn ${currentTags.has(tag) ? 'selected' : ''}" data-tag="${escapeHtml(tag)}">
+                        ${escapeHtml(tag)}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
+    
+    const bodyHtml = `
+        <div class="modal-form-container">
+            <div class="modal-form-group">
+                <label for="${nameInputId}" class="modal-label">Scenario Name</label>
+                <input type="text" id="${nameInputId}" class="modal-input modal-input-full" value="${escapeHtml(scenario.name)}">
+            </div>
+            <div class="modal-form-group">
+                <label for="${tagsInputId}" class="modal-label">Tags</label>
+                <input type="text" id="${tagsInputId}" class="modal-input modal-input-full" value="${Array.from(currentTags).join(', ')}" placeholder="Type tags (comma-separated) or select below">
+                ${tagsSelectorHtml}
+            </div>
+        </div>
+    `;
+    
+    const footerHtml = `
+        <button class="modal-btn modal-btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="modal-confirm">Save</button>
+    `;
+    
+    return new Promise(async (resolve) => {
+        const overlay = document.getElementById('modal-overlay');
+        const titleEl = document.getElementById('modal-title');
+        const bodyEl = document.getElementById('modal-body');
+        const footerEl = document.getElementById('modal-footer');
+        
+        if (!overlay || !titleEl || !bodyEl || !footerEl) {
+            resolve(false);
+            return;
+        }
+        
+        titleEl.textContent = 'Edit Scenario';
+        bodyEl.innerHTML = bodyHtml;
+        footerEl.innerHTML = footerHtml;
+        
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        const nameInput = document.getElementById(nameInputId);
+        const tagsInput = document.getElementById(tagsInputId);
+        const tagsContainer = document.getElementById(tagsContainerId);
+        const cancelBtn = document.getElementById('modal-cancel');
+        const confirmBtn = document.getElementById('modal-confirm');
+        
+        // Track selected tags in modal
+        let selectedTagsInModal = new Set(currentTags);
+        
+        // Handle tag selector buttons
+        if (tagsContainer) {
+            tagsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.tag-selector-btn');
+                if (btn) {
+                    const tag = btn.dataset.tag;
+                    if (selectedTagsInModal.has(tag)) {
+                        selectedTagsInModal.delete(tag);
+                        btn.classList.remove('selected');
+                    } else {
+                        selectedTagsInModal.add(tag);
+                        btn.classList.add('selected');
+                    }
+                    
+                    // Update input field
+                    if (tagsInput) {
+                        const allTags = Array.from(selectedTagsInModal);
+                        tagsInput.value = allTags.join(', ');
+                    }
+                }
+            });
+        }
+        
+        // Focus name input
+        setTimeout(() => {
+            if (nameInput) {
+                nameInput.focus();
+                nameInput.select();
+            }
+        }, 100);
+        
+        // Handle Enter key in inputs
+        if (nameInput) {
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (confirmBtn) confirmBtn.click();
+                }
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+            });
+        }
+        
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async () => {
+                const newName = nameInput ? nameInput.value.trim() : '';
+                const newTagsStr = tagsInput ? tagsInput.value.trim() : '';
+                
+                if (!newName) {
+                    await alert('Scenario name cannot be empty');
+                    return;
+                }
+                
+                // Parse tags - combine selected tags from buttons and any typed tags
+                const typedTags = newTagsStr
+                    .split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag.length > 0);
+                
+                // Merge selected tags and typed tags
+                const allSelectedTags = new Set([...selectedTagsInModal, ...typedTags]);
+                const newTags = Array.from(allSelectedTags);
+                
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                
+                await updateScenario(scenarioId, { 
+                    name: newName,
+                    tags: newTags
+                });
+                
+                // Update current loaded item name if it's this scenario
+                if (state.currentLoadedItem && state.currentLoadedItem.id === scenarioId) {
+                    setCurrentLoadedItem({ ...state.currentLoadedItem, name: newName });
+                    updateCurrentItemDisplay();
+                }
+                
+                resolve(true);
+            });
+        }
+        
+        // Close on Escape or overlay click
+        const closeHandler = (e) => {
+            if (e.key === 'Escape' || (e.target === overlay && e.type === 'click')) {
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+                document.removeEventListener('keydown', closeHandler);
+                overlay.removeEventListener('click', closeHandler);
+            }
+        };
+        
+        document.addEventListener('keydown', closeHandler);
+        overlay.addEventListener('click', closeHandler);
+    });
 }
 
 // Update scenario selects

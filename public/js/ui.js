@@ -31,8 +31,9 @@ function getTagColor(tag) {
 import { dom } from './dom.js';
 import { deletePlayer } from './players.js';
 import { loadPosition, deletePosition as deletePositionNew, editPosition } from './positions.js';
-import { loadScenario, playScenario, deleteScenario } from './scenarios.js';
+import { loadScenario, playScenario, deleteScenario, editScenario } from './scenarios.js';
 import { loadSequence, playNextScenario, deleteSequence } from './sequences.js';
+import { createSearchAndTagsFilter } from './searchAndTags.js';
 
 // Helper function to initialize Lucide icons for a container
 // This ensures icons are always initialized after DOM updates
@@ -156,159 +157,49 @@ export function updateSavedPositionsList() {
     });
 }
 
-// Get all unique tags from positions
-function getAllTags() {
-    const allTags = new Set();
-    getPositions().forEach(position => {
-        (position.tags || []).forEach(tag => {
-            if (tag.trim()) {
-                allTags.add(tag.trim());
-            }
-        });
+// Create filter instances
+let positionFilter = null;
+let scenarioFilter = null;
+
+// Initialize filters
+export function initFilters() {
+    // Position filter
+    positionFilter = createSearchAndTagsFilter({
+        searchInputId: 'position-search-input',
+        tagFilterBtnId: 'tag-filter-btn',
+        selectedTagsContainerId: 'selected-tags-container',
+        getAllItems: () => getPositions(),
+        getItemTags: (position) => position.tags || [],
+        getItemName: (position) => position.name,
+        onFilterChange: () => renderPositionsList()
     });
-    return Array.from(allTags).sort();
-}
-
-// Filter positions based on search and selected tags
-function filterPositions(positions) {
-    let filtered = positions;
+    positionFilter.init();
     
-    // Filter by search term (name only)
-    if (dom.positionSearchInput) {
-        const searchTerm = (dom.positionSearchInput.value || '').toLowerCase();
-        if (searchTerm) {
-            filtered = filtered.filter(position => {
-                return position.name.toLowerCase().includes(searchTerm);
-            });
-        }
-    }
-    
-    // Filter by selected tags (position must have ALL selected tags)
-    if (selectedTags.size > 0) {
-        filtered = filtered.filter(position => {
-            const positionTags = new Set((position.tags || []).map(t => t.trim().toLowerCase()));
-            return Array.from(selectedTags).every(selectedTag => 
-                positionTags.has(selectedTag.toLowerCase())
-            );
-        });
-    }
-    
-    return filtered;
-}
-
-// Render selected tags
-function renderSelectedTags() {
-    if (!dom.selectedTagsContainer) return;
-    
-    dom.selectedTagsContainer.innerHTML = '';
-    
-    if (selectedTags.size === 0) {
-        dom.selectedTagsContainer.style.display = 'none';
-        return;
-    }
-    
-    dom.selectedTagsContainer.style.display = 'flex';
-    
-    Array.from(selectedTags).forEach(tag => {
-        const tagColor = getTagColor(tag);
-        const tagChip = document.createElement('div');
-        tagChip.className = 'selected-tag-chip';
-        tagChip.style.background = tagColor.bg;
-        tagChip.style.color = tagColor.text;
-        tagChip.style.borderColor = tagColor.border;
-        tagChip.innerHTML = `
-            <span>${escapeHtml(tag)}</span>
-            <button class="remove-tag-btn" data-tag="${escapeHtml(tag)}" title="Remove filter">
-                <i data-lucide="x"></i>
-            </button>
-        `;
-        
-        const removeBtn = tagChip.querySelector('.remove-tag-btn');
-        removeBtn.style.color = tagColor.text;
-        removeBtn.addEventListener('click', () => {
-            selectedTags.delete(tag);
-            renderSelectedTags();
-            renderPositionsList();
-        });
-        
-        dom.selectedTagsContainer.appendChild(tagChip);
+    // Scenario filter
+    scenarioFilter = createSearchAndTagsFilter({
+        searchInputId: 'scenario-search-input',
+        tagFilterBtnId: 'scenario-tag-filter-btn',
+        selectedTagsContainerId: 'selected-scenario-tags-container',
+        getAllItems: () => getScenarios(),
+        getItemTags: (scenario) => scenario.tags || [],
+        getItemName: (scenario) => scenario.name,
+        onFilterChange: () => renderScenariosList()
     });
-    
-    // Initialize icons after all tags are added
-    initializeIcons(dom.selectedTagsContainer);
+    scenarioFilter.init();
 }
 
-// Export function to show tag filter dropdown
+// Legacy function for backward compatibility
 export function showTagFilterDropdown() {
-    // Remove existing dropdown
-    const existing = document.querySelector('.tag-filter-dropdown');
-    if (existing) {
-        existing.remove();
-        return;
+    if (positionFilter) {
+        positionFilter.showTagFilterDropdown();
     }
-    
-    const allTags = getAllTags();
-    if (allTags.length === 0) {
-        return;
+}
+
+// Render selected tags (legacy - now handled by filter)
+function renderSelectedTags() {
+    if (positionFilter) {
+        positionFilter.renderSelectedTags();
     }
-    
-    const dropdown = document.createElement('div');
-    dropdown.className = 'tag-filter-dropdown';
-    
-    const tagsList = document.createElement('div');
-    tagsList.className = 'tag-filter-list';
-    
-    allTags.forEach(tag => {
-        const tagItem = document.createElement('div');
-        tagItem.className = 'tag-filter-item';
-        if (selectedTags.has(tag)) {
-            tagItem.classList.add('selected');
-        }
-        
-        tagItem.innerHTML = `
-            <input type="checkbox" id="tag-${escapeHtml(tag)}" ${selectedTags.has(tag) ? 'checked' : ''}>
-            <label for="tag-${escapeHtml(tag)}">${escapeHtml(tag)}</label>
-        `;
-        
-        tagItem.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const checkbox = tagItem.querySelector('input[type="checkbox"]');
-            checkbox.checked = !checkbox.checked;
-            
-            if (checkbox.checked) {
-                selectedTags.add(tag);
-                tagItem.classList.add('selected');
-            } else {
-                selectedTags.delete(tag);
-                tagItem.classList.remove('selected');
-            }
-            
-            renderSelectedTags();
-            renderPositionsList();
-        });
-        
-        tagsList.appendChild(tagItem);
-    });
-    
-    dropdown.appendChild(tagsList);
-    
-    // Position dropdown
-    const rect = dom.tagFilterBtn.getBoundingClientRect();
-    dropdown.style.left = rect.left + 'px';
-    dropdown.style.top = (rect.bottom + 4) + 'px';
-    
-    document.body.appendChild(dropdown);
-    
-    // Close on outside click
-    setTimeout(() => {
-        const closeHandler = (e) => {
-            if (!dropdown.contains(e.target) && e.target !== dom.tagFilterBtn) {
-                dropdown.remove();
-                document.removeEventListener('click', closeHandler);
-            }
-        };
-        document.addEventListener('click', closeHandler);
-    }, 0);
 }
 
 // Helper to escape HTML
@@ -340,9 +231,7 @@ export function renderPositionsList() {
             
             const count = savedPositions[positionName].length || 0;
             item.innerHTML = `
-                <div style="flex: 1;">
-                    <div class="item-card-name">${positionName} <span style="font-size: 10px; color: #6c757d;">(Legacy)</span></div>
-                </div>
+                <div class="item-card-name">${positionName} <span class="legacy-indicator">(Legacy)</span></div>
                 <div class="item-card-actions">
                     <button class="btn-load" title="Load position"><i data-lucide="folder-open"></i></button>
                 </div>
@@ -362,7 +251,7 @@ export function renderPositionsList() {
     }
     
     // Filter positions
-    const filteredPositions = filterPositions(allPositions);
+    const filteredPositions = positionFilter ? positionFilter.filterItems(allPositions) : allPositions;
     
     // Render new format positions
     filteredPositions.forEach(position => {
@@ -379,16 +268,14 @@ export function renderPositionsList() {
         const tagsDisplay = tags.length > 0 
             ? tags.map(tag => {
                 const tagColor = getTagColor(tag);
-                return `<span class="tag-badge" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
+                return `<span class="tag-badge tag-badge-dynamic" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
             }).join('')
-            : '<span style="font-size: 10px; color: #999;">No tags</span>';
+            : '<span class="tag-badge-no-tags">No tags</span>';
         
         item.innerHTML = `
-            <div style="flex: 1;">
-                <div class="item-card-name">${position.name}</div>
-                <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
-                    ${tagsDisplay}
-                </div>
+            <div class="item-card-name">${position.name}</div>
+            <div class="item-card-tags-container">
+                ${tagsDisplay}
             </div>
             <div class="item-card-actions">
                 <button class="btn-load" title="Load position"><i data-lucide="folder-open"></i></button>
@@ -444,7 +331,10 @@ export function renderScenariosList() {
     
     dom.scenariosList.innerHTML = '';
     
-    getScenarios().forEach(scenario => {
+    const allScenarios = getScenarios();
+    const filteredScenarios = scenarioFilter ? scenarioFilter.filterItems(allScenarios) : allScenarios;
+    
+    filteredScenarios.forEach(scenario => {
         const item = document.createElement('div');
         item.className = 'item-card';
         if (getCurrentLoadedItem()?.type === 'scenario' && getCurrentLoadedItem()?.id === scenario.id) {
@@ -456,28 +346,40 @@ export function renderScenariosList() {
         
         const isActive = getCurrentLoadedItem()?.type === 'scenario' && getCurrentLoadedItem()?.id === scenario.id;
         const playBtnClass = isActive ? 'btn-load' : 'btn-play';
-        const playBtnStyle = isActive ? 'background: #27ae60;' : 'background: #9b59b6;';
+        
+        const tags = scenario.tags || [];
+        const tagsDisplay = tags.length > 0 
+            ? tags.map(tag => {
+                const tagColor = getTagColor(tag);
+                return `<span class="tag-badge tag-badge-dynamic" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
+            }).join('')
+            : '';
         
         item.innerHTML = `
-            <div style="flex: 1;">
-                <div class="item-card-name">${scenario.name}</div>
-                <div style="font-size: 11px; color: #6c757d; margin-top: 2px;">
-                    ${startPos?.name || 'Unknown'} → ${endPos?.name || 'Unknown'}
-                </div>
+            <div class="item-card-name">${scenario.name}</div>
+            <div class="item-card-metadata">
+                ${startPos?.name || 'Unknown'} → ${endPos?.name || 'Unknown'}
             </div>
+            ${tagsDisplay ? `<div class="item-card-tags-container">${tagsDisplay}</div>` : ''}
             <div class="item-card-actions">
                 <button class="btn-load" title="Load scenario"><i data-lucide="folder-open"></i></button>
-                <button class="${playBtnClass}" title="Play scenario" style="${playBtnStyle}"><i data-lucide="play"></i></button>
+                <button class="${playBtnClass} ${isActive ? 'btn-play-active' : 'btn-play-inactive'}" title="Play scenario"><i data-lucide="play"></i></button>
+                <button class="btn-edit" title="Edit scenario"><i data-lucide="edit"></i></button>
                 <button class="btn-delete" title="Delete scenario"><i data-lucide="trash-2"></i></button>
             </div>
         `;
         
         const loadBtn = item.querySelectorAll('.btn-load')[0];
         const playBtn = item.querySelectorAll('button[title="Play scenario"]')[0];
+        const editBtn = item.querySelector('.btn-edit');
         const deleteBtn = item.querySelector('.btn-delete');
         
         loadBtn.addEventListener('click', () => loadScenario(scenario.id));
         playBtn.addEventListener('click', () => playScenario(scenario.id));
+        editBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await editScenario(scenario.id);
+        });
         deleteBtn.addEventListener('click', () => deleteScenario(scenario.id));
         
         dom.scenariosList.appendChild(item);
@@ -500,15 +402,13 @@ export function renderSequencesList() {
         const scenarioCount = sequence.scenarioIds?.length || 0;
         
         item.innerHTML = `
-            <div style="flex: 1;">
-                <div class="item-card-name">${sequence.name}</div>
-                <div style="font-size: 11px; color: #6c757d; margin-top: 2px;">
-                    ${scenarioCount} scenarios
-                </div>
+            <div class="item-card-name">${sequence.name}</div>
+            <div class="item-card-metadata">
+                ${scenarioCount} scenarios
             </div>
             <div class="item-card-actions">
                 <button class="btn-load" title="Load sequence"><i data-lucide="folder-open"></i></button>
-                <button class="btn-load" title="Play sequence" style="background: #9b59b6;"><i data-lucide="play"></i></button>
+                <button class="btn-load btn-play-sequence" title="Play sequence"><i data-lucide="play"></i></button>
                 <button class="btn-delete" title="Delete sequence"><i data-lucide="trash-2"></i></button>
             </div>
         `;
@@ -543,7 +443,13 @@ export function updateCurrentItemDisplay() {
 // Update modified indicator
 export function updateModifiedIndicator(isModified) {
     if (dom.modifiedIndicator) {
-        dom.modifiedIndicator.style.display = isModified ? 'flex' : 'none';
+        if (isModified) {
+            dom.modifiedIndicator.classList.remove('hidden');
+            dom.modifiedIndicator.classList.add('show-flex');
+        } else {
+            dom.modifiedIndicator.classList.add('hidden');
+            dom.modifiedIndicator.classList.remove('show-flex');
+        }
     }
 }
 
@@ -559,7 +465,7 @@ export function updateDropZoneDisplay() {
             const tagsDisplay = tags.length > 0 
                 ? tags.map(tag => {
                     const tagColor = getTagColor(tag);
-                    return `<span class="tag-badge" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border}; font-size: 10px; padding: 2px 6px;">${escapeHtml(tag)}</span>`;
+                    return `<span class="tag-badge tag-badge-dynamic tag-badge-small" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
                 }).join('')
                 : '';
             
@@ -570,11 +476,13 @@ export function updateDropZoneDisplay() {
                 </div>
             `;
             dom.startPositionZone.classList.add('has-content');
-            dom.clearStartPositionBtn.style.display = 'flex';
+            dom.clearStartPositionBtn.classList.remove('hidden');
+            dom.clearStartPositionBtn.classList.add('show-flex');
         } else {
             dom.startPositionContent.innerHTML = '<span class="drop-zone-placeholder">Drag position here</span>';
             dom.startPositionZone.classList.remove('has-content');
-            dom.clearStartPositionBtn.style.display = 'none';
+            dom.clearStartPositionBtn.classList.add('hidden');
+            dom.clearStartPositionBtn.classList.remove('show-flex');
         }
     }
     
@@ -585,7 +493,7 @@ export function updateDropZoneDisplay() {
             const tagsDisplay = tags.length > 0 
                 ? tags.map(tag => {
                     const tagColor = getTagColor(tag);
-                    return `<span class="tag-badge" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border}; font-size: 10px; padding: 2px 6px;">${escapeHtml(tag)}</span>`;
+                    return `<span class="tag-badge tag-badge-dynamic tag-badge-small" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
                 }).join('')
                 : '';
             
@@ -596,20 +504,24 @@ export function updateDropZoneDisplay() {
                 </div>
             `;
             dom.endPositionZone.classList.add('has-content');
-            dom.clearEndPositionBtn.style.display = 'flex';
+            dom.clearEndPositionBtn.classList.remove('hidden');
+            dom.clearEndPositionBtn.classList.add('show-flex');
         } else {
             dom.endPositionContent.innerHTML = '<span class="drop-zone-placeholder">Drag position here</span>';
             dom.endPositionZone.classList.remove('has-content');
-            dom.clearEndPositionBtn.style.display = 'none';
+            dom.clearEndPositionBtn.classList.add('hidden');
+            dom.clearEndPositionBtn.classList.remove('show-flex');
         }
     }
     
     // Show/hide clear scenario button
     if (dom.clearScenarioBtn) {
         if (startPos && endPos && getCurrentLoadedItem()?.type === 'scenario') {
-            dom.clearScenarioBtn.style.display = 'inline-flex';
+            dom.clearScenarioBtn.classList.remove('hidden');
+            dom.clearScenarioBtn.classList.add('show-inline-flex');
         } else {
-            dom.clearScenarioBtn.style.display = 'none';
+            dom.clearScenarioBtn.classList.add('hidden');
+            dom.clearScenarioBtn.classList.remove('show-inline-flex');
         }
     }
     

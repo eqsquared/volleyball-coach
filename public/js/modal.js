@@ -70,7 +70,7 @@ function hideModal() {
 // Alert modal
 export function alert(message, title = 'Alert') {
     return new Promise((resolve) => {
-        const body = `<p style="margin: 0; line-height: 1.5;">${escapeHtml(message)}</p>`;
+        const body = `<p class="modal-body-text">${escapeHtml(message)}</p>`;
         const footer = `
             <button class="modal-btn modal-btn-primary" id="modal-ok">OK</button>
         `;
@@ -93,7 +93,7 @@ export function confirm(message, title = 'Confirm') {
     return new Promise((resolve) => {
         currentResolve = resolve;
         
-        const body = `<p style="margin: 0; line-height: 1.5;">${escapeHtml(message)}</p>`;
+        const body = `<p class="modal-body-text">${escapeHtml(message)}</p>`;
         const footer = `
             <button class="modal-btn modal-btn-secondary" id="modal-cancel">Cancel</button>
             <button class="modal-btn modal-btn-primary" id="modal-confirm">Confirm</button>
@@ -130,8 +130,8 @@ export function prompt(message, defaultValue = '', title = 'Input') {
         
         const inputId = 'modal-prompt-input-' + Date.now();
         const body = `
-            <p style="margin: 0 0 12px 0; line-height: 1.5;">${escapeHtml(message)}</p>
-            <input type="text" id="${inputId}" class="modal-input" value="${escapeHtml(defaultValue)}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+            <p class="modal-body-text-with-margin">${escapeHtml(message)}</p>
+            <input type="text" id="${inputId}" class="modal-input modal-input-with-padding" value="${escapeHtml(defaultValue)}">
         `;
         const footer = `
             <button class="modal-btn modal-btn-secondary" id="modal-cancel">Cancel</button>

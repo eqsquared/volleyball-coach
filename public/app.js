@@ -30,10 +30,11 @@ import {
     updateCurrentItemDisplay,
     updateModifiedIndicator,
     initDropZones,
-    updateDropZoneDisplay
+    updateDropZoneDisplay,
+    initFilters
 } from './js/ui.js';
 import { initAccordions, openAccordion, getSavedActiveAccordion } from './js/accordion.js';
-import { createScenario, updateScenarioSelects } from './js/scenarios.js';
+import { updateScenarioSelects } from './js/scenarios.js';
 import { createSequence, playNextScenario } from './js/sequences.js';
 import { 
     migrateFromLegacyStorage, 
@@ -132,6 +133,9 @@ async function init() {
         // Initialize court drag and drop
         initCourtListeners();
         
+        // Initialize filters
+        initFilters();
+        
         // Initialize drop zones
         initDropZones();
         
@@ -215,26 +219,9 @@ function setupEventListeners() {
         dom.newPositionBtn.addEventListener('click', createNewPosition);
     }
     
-    // Position search
-    if (dom.positionSearchInput) {
-        dom.positionSearchInput.addEventListener('input', () => {
-            renderPositionsList();
-        });
-    }
+    // Search and tag filters are now handled by the filter module (initFilters)
     
-    // Tag filter button
-    if (dom.tagFilterBtn) {
-        dom.tagFilterBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const { showTagFilterDropdown } = await import('./js/ui.js');
-            showTagFilterDropdown();
-        });
-    }
-    
-    // Scenarios
-    if (dom.createScenarioBtn) {
-        dom.createScenarioBtn.addEventListener('click', createScenario);
-    }
+    // Scenarios - creation is now done via drop zones
     
     // Sequences
     if (dom.createSequenceBtn) {
