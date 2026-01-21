@@ -40,6 +40,22 @@ export async function createNewPosition() {
     
     const nameInputId = 'new-position-name-' + Date.now();
     const tagsInputId = 'new-position-tags-' + Date.now();
+    const tagsContainerId = 'new-position-tags-container-' + Date.now();
+    const allTags = getAllTagsForModal();
+    
+    // Build tag selector HTML
+    const tagsSelectorHtml = allTags.length > 0 ? `
+        <div style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; max-height: 150px; overflow-y: auto;">
+            <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px; font-weight: 500;">Select from existing tags:</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;" id="${tagsContainerId}">
+                ${allTags.map(tag => `
+                    <button type="button" class="tag-selector-btn" data-tag="${escapeHtml(tag)}" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 12px; background: white; color: #333; cursor: pointer; font-size: 11px; transition: all 0.2s;">
+                        ${escapeHtml(tag)}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
     
     const bodyHtml = `
         <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -48,8 +64,9 @@ export async function createNewPosition() {
                 <input type="text" id="${nameInputId}" class="modal-input" placeholder="Enter position name" style="width: 100%;">
             </div>
             <div>
-                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags (comma-separated)</label>
-                <input type="text" id="${tagsInputId}" class="modal-input" placeholder="e.g., rotation-1, serve-receive" style="width: 100%;">
+                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags</label>
+                <input type="text" id="${tagsInputId}" class="modal-input" placeholder="Type tags (comma-separated) or select below" style="width: 100%;">
+                ${tagsSelectorHtml}
             </div>
         </div>
     `;
@@ -79,8 +96,39 @@ export async function createNewPosition() {
         
         const nameInput = document.getElementById(nameInputId);
         const tagsInput = document.getElementById(tagsInputId);
+        const tagsContainer = document.getElementById(tagsContainerId);
         const cancelBtn = document.getElementById('modal-cancel');
         const confirmBtn = document.getElementById('modal-confirm');
+        
+        // Track selected tags in modal
+        let selectedTagsInModal = new Set();
+        
+        // Handle tag selector buttons
+        if (tagsContainer) {
+            tagsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.tag-selector-btn');
+                if (btn) {
+                    const tag = btn.dataset.tag;
+                    if (selectedTagsInModal.has(tag)) {
+                        selectedTagsInModal.delete(tag);
+                        btn.classList.remove('selected');
+                        btn.style.background = 'white';
+                        btn.style.color = '#333';
+                    } else {
+                        selectedTagsInModal.add(tag);
+                        btn.classList.add('selected');
+                        btn.style.background = '#e3f2fd';
+                        btn.style.color = '#1976d2';
+                    }
+                    
+                    // Update input field
+                    if (tagsInput) {
+                        const allTags = Array.from(selectedTagsInModal);
+                        tagsInput.value = allTags.join(', ');
+                    }
+                }
+            });
+        }
         
         // Focus name input
         setTimeout(() => {
@@ -89,17 +137,15 @@ export async function createNewPosition() {
             }
         }, 100);
         
-        // Handle Enter key in inputs
-        [nameInput, tagsInput].forEach(input => {
-            if (input) {
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (confirmBtn) confirmBtn.click();
-                    }
-                });
-            }
-        });
+        // Handle Enter key in name input
+        if (nameInput) {
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (confirmBtn) confirmBtn.click();
+                }
+            });
+        }
         
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
@@ -119,27 +165,18 @@ export async function createNewPosition() {
                     return;
                 }
                 
-                // Check for duplicate name
-                const existing = getPositions().find(p => p.name === newName);
-                if (existing) {
-                    const overwrite = await confirm(`Position "${newName}" already exists. Overwrite?`);
-                    if (!overwrite) {
-                        return;
-                    }
-                }
-                
-                // Parse tags
-                const newTags = newTagsStr
+                // Parse tags - combine selected tags from buttons and any typed tags
+                const typedTags = newTagsStr
                     .split(',')
                     .map(tag => tag.trim())
                     .filter(tag => tag.length > 0);
                 
-                // Create or update position
-                const position = existing ? {
-                    ...existing,
-                    tags: newTags,
-                    playerPositions: playerPositions
-                } : {
+                // Merge selected tags and typed tags
+                const allSelectedTags = new Set([...selectedTagsInModal, ...typedTags]);
+                const newTags = Array.from(allSelectedTags);
+                
+                // Create new position (duplicate names allowed, distinguished by tags)
+                const position = {
                     id: generateId(),
                     name: newName,
                     tags: newTags,
@@ -149,12 +186,7 @@ export async function createNewPosition() {
                 try {
                     await db.savePositionNew(position);
                     
-                    const index = state.positions.findIndex(p => p.id === position.id);
-                    if (index >= 0) {
-                        state.positions[index] = position;
-                    } else {
-                        state.positions.push(position);
-                    }
+                    state.positions.push(position);
                     setPositions([...state.positions]);
                     
                     // Update state
@@ -331,6 +363,19 @@ export async function updatePosition(positionId, updates) {
     }
 }
 
+// Get all unique tags from positions
+function getAllTagsForModal() {
+    const allTags = new Set();
+    getPositions().forEach(position => {
+        (position.tags || []).forEach(tag => {
+            if (tag.trim()) {
+                allTags.add(tag.trim());
+            }
+        });
+    });
+    return Array.from(allTags).sort();
+}
+
 // Edit position (name and tags)
 export async function editPosition(positionId) {
     const position = getPositions().find(p => p.id === positionId);
@@ -338,7 +383,23 @@ export async function editPosition(positionId) {
     
     const nameInputId = 'edit-position-name-' + Date.now();
     const tagsInputId = 'edit-position-tags-' + Date.now();
-    const currentTags = (position.tags || []).join(', ');
+    const tagsContainerId = 'edit-position-tags-container-' + Date.now();
+    const currentTags = new Set((position.tags || []).map(t => t.trim()).filter(Boolean));
+    const allTags = getAllTagsForModal();
+    
+    // Build tag selector HTML
+    const tagsSelectorHtml = allTags.length > 0 ? `
+        <div style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; max-height: 150px; overflow-y: auto;">
+            <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px; font-weight: 500;">Select from existing tags:</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;" id="${tagsContainerId}">
+                ${allTags.map(tag => `
+                    <button type="button" class="tag-selector-btn ${currentTags.has(tag) ? 'selected' : ''}" data-tag="${escapeHtml(tag)}" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 12px; background: ${currentTags.has(tag) ? '#e3f2fd' : 'white'}; color: ${currentTags.has(tag) ? '#1976d2' : '#333'}; cursor: pointer; font-size: 11px; transition: all 0.2s;">
+                        ${escapeHtml(tag)}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
     
     const bodyHtml = `
         <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -347,8 +408,9 @@ export async function editPosition(positionId) {
                 <input type="text" id="${nameInputId}" class="modal-input" value="${escapeHtml(position.name)}" style="width: 100%;">
             </div>
             <div>
-                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags (comma-separated)</label>
-                <input type="text" id="${tagsInputId}" class="modal-input" value="${escapeHtml(currentTags)}" placeholder="e.g., rotation-1, serve-receive" style="width: 100%;">
+                <label for="${tagsInputId}" style="display: block; margin-bottom: 4px; font-size: 13px; font-weight: 500; color: #2c3e50;">Tags</label>
+                <input type="text" id="${tagsInputId}" class="modal-input" value="${Array.from(currentTags).join(', ')}" placeholder="Type tags (comma-separated) or select below" style="width: 100%;">
+                ${tagsSelectorHtml}
             </div>
         </div>
     `;
@@ -378,8 +440,39 @@ export async function editPosition(positionId) {
         
         const nameInput = document.getElementById(nameInputId);
         const tagsInput = document.getElementById(tagsInputId);
+        const tagsContainer = document.getElementById(tagsContainerId);
         const cancelBtn = document.getElementById('modal-cancel');
         const confirmBtn = document.getElementById('modal-confirm');
+        
+        // Track selected tags in modal
+        let selectedTagsInModal = new Set(currentTags);
+        
+        // Handle tag selector buttons
+        if (tagsContainer) {
+            tagsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.tag-selector-btn');
+                if (btn) {
+                    const tag = btn.dataset.tag;
+                    if (selectedTagsInModal.has(tag)) {
+                        selectedTagsInModal.delete(tag);
+                        btn.classList.remove('selected');
+                        btn.style.background = 'white';
+                        btn.style.color = '#333';
+                    } else {
+                        selectedTagsInModal.add(tag);
+                        btn.classList.add('selected');
+                        btn.style.background = '#e3f2fd';
+                        btn.style.color = '#1976d2';
+                    }
+                    
+                    // Update input field
+                    if (tagsInput) {
+                        const allTags = Array.from(selectedTagsInModal);
+                        tagsInput.value = allTags.join(', ');
+                    }
+                }
+            });
+        }
         
         // Focus name input
         setTimeout(() => {
@@ -390,16 +483,14 @@ export async function editPosition(positionId) {
         }, 100);
         
         // Handle Enter key in inputs
-        [nameInput, tagsInput].forEach(input => {
-            if (input) {
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (confirmBtn) confirmBtn.click();
-                    }
-                });
-            }
-        });
+        if (nameInput) {
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (confirmBtn) confirmBtn.click();
+                }
+            });
+        }
         
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
@@ -419,18 +510,15 @@ export async function editPosition(positionId) {
                     return;
                 }
                 
-                // Check for duplicate name
-                const existing = getPositions().find(p => p.name === newName && p.id !== positionId);
-                if (existing) {
-                    await alert('A position with this name already exists');
-                    return;
-                }
-                
-                // Parse tags
-                const newTags = newTagsStr
+                // Parse tags - combine selected tags from buttons and any typed tags
+                const typedTags = newTagsStr
                     .split(',')
                     .map(tag => tag.trim())
                     .filter(tag => tag.length > 0);
+                
+                // Merge selected tags and typed tags
+                const allSelectedTags = new Set([...selectedTagsInModal, ...typedTags]);
+                const newTags = Array.from(allSelectedTags);
                 
                 overlay.style.display = 'none';
                 document.body.style.overflow = '';
@@ -599,27 +687,18 @@ export async function savePositionAs() {
                     return;
                 }
                 
-                // Check for duplicate name
-                const existing = getPositions().find(p => p.name === newName);
-                if (existing) {
-                    const overwrite = await confirm(`Position "${newName}" already exists. Overwrite?`);
-                    if (!overwrite) {
-                        return;
-                    }
-                }
-                
-                // Parse tags
-                const newTags = newTagsStr
+                // Parse tags - combine selected tags from buttons and any typed tags
+                const typedTags = newTagsStr
                     .split(',')
                     .map(tag => tag.trim())
                     .filter(tag => tag.length > 0);
                 
-                // Create or update position
-                const position = existing ? {
-                    ...existing,
-                    tags: newTags,
-                    playerPositions: playerPositions
-                } : {
+                // Merge selected tags and typed tags
+                const allSelectedTags = new Set([...selectedTagsInModal, ...typedTags]);
+                const newTags = Array.from(allSelectedTags);
+                
+                // Create new position (duplicate names allowed, distinguished by tags)
+                const position = {
                     id: generateId(),
                     name: newName,
                     tags: newTags,
@@ -629,12 +708,7 @@ export async function savePositionAs() {
                 try {
                     await db.savePositionNew(position);
                     
-                    const index = state.positions.findIndex(p => p.id === position.id);
-                    if (index >= 0) {
-                        state.positions[index] = position;
-                    } else {
-                        state.positions.push(position);
-                    }
+                    state.positions.push(position);
                     setPositions([...state.positions]);
                     
                     // Update state

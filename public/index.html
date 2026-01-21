@@ -46,7 +46,15 @@
                     </div>
                     <div class="accordion-content">
                         <div class="search-filter-bar">
-                            <input type="text" id="position-search-input" placeholder="Search positions or tags...">
+                            <div class="search-input-wrapper">
+                                <input type="text" id="position-search-input" placeholder="Search positions...">
+                                <button id="tag-filter-btn" class="tag-filter-btn" title="Filter by tags">
+                                    <i data-lucide="tag"></i>
+                                </button>
+                            </div>
+                            <div class="selected-tags" id="selected-tags-container">
+                                <!-- Selected tags will appear here -->
+                            </div>
                         </div>
                         <button id="new-position-btn" class="new-position-btn">+ New Position</button>
                         <div class="items-list" id="positions-list">

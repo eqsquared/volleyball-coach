@@ -12,6 +12,8 @@ export const dom = {
     
     // Positions
     positionSearchInput: null,
+    tagFilterBtn: null,
+    selectedTagsContainer: null,
     newPositionBtn: null,
     positionsList: null,
     
@@ -69,6 +71,8 @@ export function initDOM() {
     
     // Positions
     dom.positionSearchInput = document.getElementById('position-search-input');
+    dom.tagFilterBtn = document.getElementById('tag-filter-btn');
+    dom.selectedTagsContainer = document.getElementById('selected-tags-container');
     dom.newPositionBtn = document.getElementById('new-position-btn');
     dom.positionsList = document.getElementById('positions-list');
     

@@ -179,6 +179,15 @@ function setupEventListeners() {
         });
     }
     
+    // Tag filter button
+    if (dom.tagFilterBtn) {
+        dom.tagFilterBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { showTagFilterDropdown } = await import('./js/ui.js');
+            showTagFilterDropdown();
+        });
+    }
+    
     // Scenarios
     if (dom.createScenarioBtn) {
         dom.createScenarioBtn.addEventListener('click', createScenario);

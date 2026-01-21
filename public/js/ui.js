@@ -1,11 +1,67 @@
 // UI rendering and updates
 
 import { state, getPlayers, getSavedPositions, getPlayerElements, getPositions, getScenarios, getSequences, getCurrentLoadedItem, setDraggedPlayer } from './state.js';
+
+// Tag filter state
+let selectedTags = new Set();
+// Tag color assignment - tracks which color each tag gets
+let tagColorMap = new Map();
+// Color palette for tags (cycling through these colors)
+const TAG_COLORS = [
+    { bg: '#e3f2fd', text: '#1976d2', border: '#bbdefb' }, // Blue
+    { bg: '#f3e5f5', text: '#7b1fa2', border: '#e1bee7' }, // Purple
+    { bg: '#e8f5e9', text: '#388e3c', border: '#c8e6c9' }, // Green
+    { bg: '#fff3e0', text: '#f57c00', border: '#ffe0b2' }, // Orange
+    { bg: '#fce4ec', text: '#c2185b', border: '#f8bbd0' }, // Pink
+    { bg: '#e0f2f1', text: '#00796b', border: '#b2dfdb' }, // Teal
+    { bg: '#fff9c4', text: '#f9a825', border: '#fff59d' }, // Yellow
+    { bg: '#e1f5fe', text: '#0277bd', border: '#b3e5fc' }, // Light Blue
+];
+
+// Get or assign a color for a tag based on selection order
+function getTagColor(tag) {
+    if (!tagColorMap.has(tag)) {
+        // Assign next color in cycle
+        const colorIndex = tagColorMap.size % TAG_COLORS.length;
+        tagColorMap.set(tag, TAG_COLORS[colorIndex]);
+    }
+    return tagColorMap.get(tag);
+}
+
 import { dom } from './dom.js';
 import { deletePlayer } from './players.js';
 import { loadPosition, deletePosition as deletePositionNew, editPosition } from './positions.js';
 import { loadScenario, playScenario, deleteScenario } from './scenarios.js';
 import { loadSequence, playNextScenario, deleteSequence } from './sequences.js';
+
+// Helper function to initialize Lucide icons for a container
+// This ensures icons are always initialized after DOM updates
+function initializeIcons(container) {
+    if (!window.lucide || !container) return;
+    
+    // Use double requestAnimationFrame to ensure DOM is fully updated and rendered
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            try {
+                if (container instanceof Element) {
+                    // Use root option to target the specific container
+                    // This ensures we only initialize icons within this container
+                    lucide.createIcons({
+                        root: container
+                    });
+                }
+            } catch (error) {
+                console.warn('Error initializing icons:', error);
+                // Fallback: try without root (scans entire document)
+                try {
+                    lucide.createIcons();
+                } catch (e) {
+                    console.warn('Fallback icon initialization failed:', e);
+                }
+            }
+        });
+    });
+}
 
 // Render lineup
 export function renderLineup() {
@@ -20,8 +76,18 @@ export function renderLineup() {
         item.innerHTML = `
             <div class="player-jersey">${player.jersey}</div>
             <div class="player-name">${player.name}</div>
-            <button class="delete-player-btn">×</button>
+            <div class="player-actions">
+                <button class="edit-player-btn" title="Edit player"><i data-lucide="edit"></i></button>
+                <button class="delete-player-btn" title="Delete player">×</button>
+            </div>
         `;
+        
+        // Add edit button event listener
+        const editBtn = item.querySelector('.edit-player-btn');
+        editBtn.addEventListener('click', async () => {
+            const { editPlayer } = await import('./players.js');
+            await editPlayer(player.id);
+        });
         
         // Add delete button event listener
         const deleteBtn = item.querySelector('.delete-player-btn');
@@ -35,6 +101,9 @@ export function renderLineup() {
         
         dom.lineupList.appendChild(item);
     });
+    
+    // Initialize all icons in the lineup after all items are added
+    initializeIcons(dom.lineupList);
 }
 
 // Update saved positions list (legacy support)
@@ -87,32 +156,174 @@ export function updateSavedPositionsList() {
     });
 }
 
-// Filter positions based on search (name and tags)
-function filterPositions(positions) {
-    if (!dom.positionSearchInput) {
-        return positions;
-    }
-    
-    const searchTerm = (dom.positionSearchInput.value || '').toLowerCase();
-    
-    if (!searchTerm) {
-        return positions;
-    }
-    
-    return positions.filter(position => {
-        // Search in name
-        const nameMatch = position.name.toLowerCase().includes(searchTerm);
-        
-        // Search in tags
-        const tagMatch = (position.tags || []).some(tag => tag.toLowerCase().includes(searchTerm));
-        
-        return nameMatch || tagMatch;
+// Get all unique tags from positions
+function getAllTags() {
+    const allTags = new Set();
+    getPositions().forEach(position => {
+        (position.tags || []).forEach(tag => {
+            if (tag.trim()) {
+                allTags.add(tag.trim());
+            }
+        });
     });
+    return Array.from(allTags).sort();
+}
+
+// Filter positions based on search and selected tags
+function filterPositions(positions) {
+    let filtered = positions;
+    
+    // Filter by search term (name only)
+    if (dom.positionSearchInput) {
+        const searchTerm = (dom.positionSearchInput.value || '').toLowerCase();
+        if (searchTerm) {
+            filtered = filtered.filter(position => {
+                return position.name.toLowerCase().includes(searchTerm);
+            });
+        }
+    }
+    
+    // Filter by selected tags (position must have ALL selected tags)
+    if (selectedTags.size > 0) {
+        filtered = filtered.filter(position => {
+            const positionTags = new Set((position.tags || []).map(t => t.trim().toLowerCase()));
+            return Array.from(selectedTags).every(selectedTag => 
+                positionTags.has(selectedTag.toLowerCase())
+            );
+        });
+    }
+    
+    return filtered;
+}
+
+// Render selected tags
+function renderSelectedTags() {
+    if (!dom.selectedTagsContainer) return;
+    
+    dom.selectedTagsContainer.innerHTML = '';
+    
+    if (selectedTags.size === 0) {
+        dom.selectedTagsContainer.style.display = 'none';
+        return;
+    }
+    
+    dom.selectedTagsContainer.style.display = 'flex';
+    
+    Array.from(selectedTags).forEach(tag => {
+        const tagColor = getTagColor(tag);
+        const tagChip = document.createElement('div');
+        tagChip.className = 'selected-tag-chip';
+        tagChip.style.background = tagColor.bg;
+        tagChip.style.color = tagColor.text;
+        tagChip.style.borderColor = tagColor.border;
+        tagChip.innerHTML = `
+            <span>${escapeHtml(tag)}</span>
+            <button class="remove-tag-btn" data-tag="${escapeHtml(tag)}" title="Remove filter">
+                <i data-lucide="x"></i>
+            </button>
+        `;
+        
+        const removeBtn = tagChip.querySelector('.remove-tag-btn');
+        removeBtn.style.color = tagColor.text;
+        removeBtn.addEventListener('click', () => {
+            selectedTags.delete(tag);
+            renderSelectedTags();
+            renderPositionsList();
+        });
+        
+        dom.selectedTagsContainer.appendChild(tagChip);
+    });
+    
+    // Initialize icons after all tags are added
+    initializeIcons(dom.selectedTagsContainer);
+}
+
+// Export function to show tag filter dropdown
+export function showTagFilterDropdown() {
+    // Remove existing dropdown
+    const existing = document.querySelector('.tag-filter-dropdown');
+    if (existing) {
+        existing.remove();
+        return;
+    }
+    
+    const allTags = getAllTags();
+    if (allTags.length === 0) {
+        return;
+    }
+    
+    const dropdown = document.createElement('div');
+    dropdown.className = 'tag-filter-dropdown';
+    
+    const tagsList = document.createElement('div');
+    tagsList.className = 'tag-filter-list';
+    
+    allTags.forEach(tag => {
+        const tagItem = document.createElement('div');
+        tagItem.className = 'tag-filter-item';
+        if (selectedTags.has(tag)) {
+            tagItem.classList.add('selected');
+        }
+        
+        tagItem.innerHTML = `
+            <input type="checkbox" id="tag-${escapeHtml(tag)}" ${selectedTags.has(tag) ? 'checked' : ''}>
+            <label for="tag-${escapeHtml(tag)}">${escapeHtml(tag)}</label>
+        `;
+        
+        tagItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const checkbox = tagItem.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+            
+            if (checkbox.checked) {
+                selectedTags.add(tag);
+                tagItem.classList.add('selected');
+            } else {
+                selectedTags.delete(tag);
+                tagItem.classList.remove('selected');
+            }
+            
+            renderSelectedTags();
+            renderPositionsList();
+        });
+        
+        tagsList.appendChild(tagItem);
+    });
+    
+    dropdown.appendChild(tagsList);
+    
+    // Position dropdown
+    const rect = dom.tagFilterBtn.getBoundingClientRect();
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.top = (rect.bottom + 4) + 'px';
+    
+    document.body.appendChild(dropdown);
+    
+    // Close on outside click
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!dropdown.contains(e.target) && e.target !== dom.tagFilterBtn) {
+                dropdown.remove();
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 0);
+}
+
+// Helper to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Render positions list
 export function renderPositionsList() {
     if (!dom.positionsList) return;
+    
+    // Update selected tags display
+    renderSelectedTags();
     
     dom.positionsList.innerHTML = '';
     
@@ -131,9 +342,6 @@ export function renderPositionsList() {
             item.innerHTML = `
                 <div style="flex: 1;">
                     <div class="item-card-name">${positionName} <span style="font-size: 10px; color: #6c757d;">(Legacy)</span></div>
-                    <div style="font-size: 11px; color: #6c757d; margin-top: 2px;">
-                        ${count} players • Will be migrated on next save
-                    </div>
                 </div>
                 <div class="item-card-actions">
                     <button class="btn-load" title="Load position"><i data-lucide="folder-open"></i></button>
@@ -145,12 +353,11 @@ export function renderPositionsList() {
                 loadBtn.addEventListener('click', () => loadPosition(positionName));
             }
             
-            if (window.lucide) {
-                lucide.createIcons();
-            }
-            
             dom.positionsList.appendChild(item);
         });
+        
+        // Initialize all icons in the positions list after all legacy items are added
+        initializeIcons(dom.positionsList);
         return;
     }
     
@@ -168,15 +375,15 @@ export function renderPositionsList() {
         const playerCount = position.playerPositions?.length || 0;
         const tags = position.tags || [];
         const tagsDisplay = tags.length > 0 
-            ? tags.map(tag => `<span class="tag-badge">${tag}</span>`).join('')
+            ? tags.map(tag => {
+                const tagColor = getTagColor(tag);
+                return `<span class="tag-badge" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
+            }).join('')
             : '<span style="font-size: 10px; color: #999;">No tags</span>';
         
         item.innerHTML = `
             <div style="flex: 1;">
                 <div class="item-card-name">${position.name}</div>
-                <div style="font-size: 11px; color: #6c757d; margin-top: 2px;">
-                    ${playerCount} players
-                </div>
                 <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
                     ${tagsDisplay}
                 </div>
@@ -199,12 +406,11 @@ export function renderPositionsList() {
         });
         deleteBtn.addEventListener('click', () => deletePositionNew(position.id));
         
-        if (window.lucide) {
-            lucide.createIcons();
-        }
-        
         dom.positionsList.appendChild(item);
     });
+    
+    // Initialize all icons in the positions list after all items are added
+    initializeIcons(dom.positionsList);
 }
 
 // Render scenarios list
@@ -245,12 +451,11 @@ export function renderScenariosList() {
         playBtn.addEventListener('click', () => playScenario(scenario.id));
         deleteBtn.addEventListener('click', () => deleteScenario(scenario.id));
         
-        if (window.lucide) {
-            lucide.createIcons();
-        }
-        
         dom.scenariosList.appendChild(item);
     });
+    
+    // Initialize all icons in the scenarios list after all items are added
+    initializeIcons(dom.scenariosList);
 }
 
 // Render sequences list
@@ -287,12 +492,11 @@ export function renderSequencesList() {
         playBtn.addEventListener('click', () => loadSequence(sequence.id));
         deleteBtn.addEventListener('click', () => deleteSequence(sequence.id));
         
-        if (window.lucide) {
-            lucide.createIcons();
-        }
-        
         dom.sequencesList.appendChild(item);
     });
+    
+    // Initialize all icons in the sequences list after all items are added
+    initializeIcons(dom.sequencesList);
 }
 
 // Update current item display

@@ -243,12 +243,130 @@ svg[data-lucide] {
     flex-shrink: 0;
 }
 
+.search-input-wrapper {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
 .search-filter-bar input {
-    width: 100%;
+    flex: 1;
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 13px;
+}
+
+.tag-filter-btn {
+    padding: 8px 10px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.tag-filter-btn:hover {
+    background: #2980b9;
+}
+
+.tag-filter-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.selected-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.selected-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #e3f2fd;
+    color: #1976d2;
+    border-radius: 12px;
+    font-size: 11px;
+    border: 1px solid #bbdefb;
+}
+
+.selected-tag-chip .remove-tag-btn {
+    background: none;
+    border: none;
+    color: #1976d2;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    width: 16px;
+    height: 16px;
+}
+
+.selected-tag-chip:hover .remove-tag-btn {
+    opacity: 1;
+}
+
+.selected-tag-chip .remove-tag-btn svg {
+    width: 12px;
+    height: 12px;
+}
+
+.tag-filter-dropdown {
+    position: absolute;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 200px;
+    max-width: 300px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.tag-filter-list {
+    padding: 4px;
+}
+
+.tag-filter-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.2s;
+}
+
+.tag-filter-item:hover {
+    background: #f0f0f0;
+}
+
+.tag-filter-item.selected {
+    background: #e3f2fd;
+}
+
+.tag-filter-item input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.tag-filter-item label {
+    cursor: pointer;
+    flex: 1;
+    font-size: 13px;
+    user-select: none;
 }
 
 .new-position-btn {
@@ -667,6 +785,37 @@ svg[data-lucide] {
     color: #2c3e50;
 }
 
+.player-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.edit-player-btn {
+    background: #f39c12;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 2px 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    width: 24px;
+    height: 24px;
+}
+
+.edit-player-btn:hover {
+    background: #d68910;
+}
+
+.edit-player-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
 .delete-player-btn {
     background: #e74c3c;
     color: white;
@@ -676,6 +825,11 @@ svg[data-lucide] {
     cursor: pointer;
     font-size: 14px;
     line-height: 1;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .delete-player-btn:hover {
