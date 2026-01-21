@@ -54,6 +54,8 @@ function showModal(title, body, footer) {
     bodyEl.innerHTML = body;
     footerEl.innerHTML = footer;
     
+    // Remove hidden class and show modal
+    overlay.classList.remove('hidden');
     overlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
@@ -62,6 +64,7 @@ function showModal(title, body, footer) {
 function hideModal() {
     const overlay = document.getElementById('modal-overlay');
     if (overlay) {
+        overlay.classList.add('hidden');
         overlay.style.display = 'none';
         document.body.style.overflow = '';
     }

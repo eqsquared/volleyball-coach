@@ -553,6 +553,7 @@ svg[data-lucide] {
     position: relative;
     width: 100%;
     transition: all 0.2s;
+    cursor: pointer;
 }
 
 .item-card:hover {

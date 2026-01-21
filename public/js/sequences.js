@@ -232,3 +232,133 @@ export function reorderScenariosInSequence(sequenceId, fromIndex, toIndex) {
     
     updateSequence(sequenceId, null, scenarioIds);
 }
+
+// Edit sequence (name only)
+export async function editSequence(sequenceId) {
+    const sequence = getSequences().find(s => s.id === sequenceId);
+    if (!sequence) return;
+    
+    const nameInputId = 'edit-sequence-name-' + Date.now();
+    
+    const bodyHtml = `
+        <div class="modal-form-container">
+            <div class="modal-form-group">
+                <label for="${nameInputId}" class="modal-label">Sequence Name</label>
+                <input type="text" id="${nameInputId}" class="modal-input modal-input-full" value="${escapeHtml(sequence.name)}">
+            </div>
+        </div>
+    `;
+    
+    const footerHtml = `
+        <button class="modal-btn modal-btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="modal-confirm">Save</button>
+    `;
+    
+    return new Promise(async (resolve) => {
+        const overlay = document.getElementById('modal-overlay');
+        const titleEl = document.getElementById('modal-title');
+        const bodyEl = document.getElementById('modal-body');
+        const footerEl = document.getElementById('modal-footer');
+        
+        if (!overlay || !titleEl || !bodyEl || !footerEl) {
+            resolve(false);
+            return;
+        }
+        
+        titleEl.textContent = 'Edit Sequence';
+        bodyEl.innerHTML = bodyHtml;
+        footerEl.innerHTML = footerHtml;
+        
+        // Remove hidden class and show modal
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        const nameInput = document.getElementById(nameInputId);
+        const cancelBtn = document.getElementById('modal-cancel');
+        const confirmBtn = document.getElementById('modal-confirm');
+        
+        // Focus name input
+        setTimeout(() => {
+            if (nameInput) {
+                nameInput.focus();
+                nameInput.select();
+            }
+        }, 100);
+        
+        // Handle Enter key in input
+        if (nameInput) {
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (confirmBtn) confirmBtn.click();
+                }
+            });
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                overlay.classList.add('hidden');
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+            });
+        }
+        
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', async () => {
+                const newName = nameInput ? nameInput.value.trim() : '';
+                
+                if (!newName) {
+                    await alert('Sequence name cannot be empty');
+                    return;
+                }
+                
+                // Check for duplicate name (excluding current sequence)
+                const existing = getSequences().find(s => s.name === newName && s.id !== sequenceId);
+                if (existing) {
+                    await alert('A sequence with this name already exists');
+                    return;
+                }
+                
+                overlay.classList.add('hidden');
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                
+                await updateSequence(sequenceId, newName, null);
+                
+                // Update current loaded item name if it's this sequence
+                const { setCurrentLoadedItem } = await import('./state.js');
+                if (state.currentLoadedItem && state.currentLoadedItem.id === sequenceId) {
+                    setCurrentLoadedItem({ ...state.currentLoadedItem, name: newName });
+                    const { updateCurrentItemDisplay } = await import('./ui.js');
+                    updateCurrentItemDisplay();
+                }
+                
+                resolve(true);
+            });
+        }
+        
+        // Close on Escape or overlay click
+        const closeHandler = (e) => {
+            if (e.key === 'Escape' || (e.target === overlay && e.type === 'click')) {
+                overlay.classList.add('hidden');
+                overlay.style.display = 'none';
+                document.body.style.overflow = '';
+                resolve(false);
+                document.removeEventListener('keydown', closeHandler);
+                overlay.removeEventListener('click', closeHandler);
+            }
+        };
+        
+        document.addEventListener('keydown', closeHandler);
+        overlay.addEventListener('click', closeHandler);
+    });
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}

@@ -278,18 +278,40 @@ export function renderPositionsList() {
                 ${tagsDisplay}
             </div>
             <div class="item-card-actions">
-                <button class="btn-load" title="Load position"><i data-lucide="folder-open"></i></button>
                 <button class="btn-edit" title="Edit position"><i data-lucide="edit"></i></button>
                 <button class="btn-delete" title="Delete position"><i data-lucide="trash-2"></i></button>
             </div>
         `;
         
-        const loadBtn = item.querySelector('.btn-load');
         const editBtn = item.querySelector('.btn-edit');
         const deleteBtn = item.querySelector('.btn-delete');
         
+        // Track if we're dragging to distinguish from clicks
+        let isDragging = false;
+        let mouseDownTime = 0;
+        let mouseDownX = 0;
+        let mouseDownY = 0;
+        
+        // Make item clickable to load (but not when dragging)
+        item.addEventListener('click', (e) => {
+            // Don't load if clicking on buttons
+            if (e.target.closest('.item-card-actions')) {
+                return;
+            }
+            // Don't load if we just dragged (check if mouse moved significantly)
+            if (isDragging) {
+                return;
+            }
+            // Check if mouse moved significantly (more than 5px) - if so, it was a drag
+            const timeDiff = Date.now() - mouseDownTime;
+            if (timeDiff > 200) { // If mousedown was more than 200ms ago, likely a drag
+                return;
+            }
+            loadPosition(position.id);
+        });
+        
         // Prevent drag when clicking buttons
-        [loadBtn, editBtn, deleteBtn].forEach(btn => {
+        [editBtn, deleteBtn].forEach(btn => {
             btn.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
             });
@@ -298,15 +320,29 @@ export function renderPositionsList() {
             });
         });
         
-        loadBtn.addEventListener('click', () => loadPosition(position.id));
         editBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
+            // Load the position first, then open edit modal
+            loadPosition(position.id);
             await editPosition(position.id);
         });
-        deleteBtn.addEventListener('click', () => deletePositionNew(position.id));
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deletePositionNew(position.id);
+        });
+        
+        // Track mouse down for click detection
+        item.addEventListener('mousedown', (e) => {
+            if (!e.target.closest('.item-card-actions')) {
+                mouseDownTime = Date.now();
+                mouseDownX = e.clientX;
+                mouseDownY = e.clientY;
+            }
+        });
         
         // Drag handlers
         item.addEventListener('dragstart', (e) => {
+            isDragging = true;
             setDraggedPosition(position);
             item.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'copy';
@@ -316,6 +352,10 @@ export function renderPositionsList() {
         item.addEventListener('dragend', () => {
             item.classList.remove('dragging');
             setDraggedPosition(null);
+            // Reset dragging flag after a short delay to prevent click from firing
+            setTimeout(() => {
+                isDragging = false;
+            }, 100);
         });
         
         dom.positionsList.appendChild(item);
@@ -362,25 +402,63 @@ export function renderScenariosList() {
             </div>
             ${tagsDisplay ? `<div class="item-card-tags-container">${tagsDisplay}</div>` : ''}
             <div class="item-card-actions">
-                <button class="btn-load" title="Load scenario"><i data-lucide="folder-open"></i></button>
                 <button class="${playBtnClass} ${isActive ? 'btn-play-active' : 'btn-play-inactive'}" title="Play scenario"><i data-lucide="play"></i></button>
                 <button class="btn-edit" title="Edit scenario"><i data-lucide="edit"></i></button>
                 <button class="btn-delete" title="Delete scenario"><i data-lucide="trash-2"></i></button>
             </div>
         `;
         
-        const loadBtn = item.querySelectorAll('.btn-load')[0];
         const playBtn = item.querySelectorAll('button[title="Play scenario"]')[0];
         const editBtn = item.querySelector('.btn-edit');
         const deleteBtn = item.querySelector('.btn-delete');
         
-        loadBtn.addEventListener('click', () => loadScenario(scenario.id));
+        // Track mouse down for click detection
+        let mouseDownTime = 0;
+        
+        // Make item clickable to load (but not when clicking on buttons)
+        item.addEventListener('click', (e) => {
+            // Don't load if clicking on buttons
+            if (e.target.closest('.item-card-actions')) {
+                return;
+            }
+            // Check if mouse moved significantly (more than 5px) - if so, it was a drag
+            const timeDiff = Date.now() - mouseDownTime;
+            if (timeDiff > 200) { // If mousedown was more than 200ms ago, likely a drag
+                return;
+            }
+            loadScenario(scenario.id);
+        });
+        
+        // Track mouse down
+        item.addEventListener('mousedown', (e) => {
+            if (!e.target.closest('.item-card-actions')) {
+                mouseDownTime = Date.now();
+            }
+        });
+        
+        // Prevent drag when clicking buttons
+        [playBtn, editBtn, deleteBtn].forEach(btn => {
+            if (btn) {
+                btn.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                });
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            }
+        });
+        
         playBtn.addEventListener('click', () => playScenario(scenario.id));
         editBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
+            // Load the scenario first, then open edit modal
+            await loadScenario(scenario.id);
             await editScenario(scenario.id);
         });
-        deleteBtn.addEventListener('click', () => deleteScenario(scenario.id));
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteScenario(scenario.id);
+        });
         
         dom.scenariosList.appendChild(item);
     });
@@ -407,19 +485,49 @@ export function renderSequencesList() {
                 ${scenarioCount} scenarios
             </div>
             <div class="item-card-actions">
-                <button class="btn-load" title="Load sequence"><i data-lucide="folder-open"></i></button>
                 <button class="btn-load btn-play-sequence" title="Play sequence"><i data-lucide="play"></i></button>
+                <button class="btn-edit" title="Edit sequence"><i data-lucide="edit"></i></button>
                 <button class="btn-delete" title="Delete sequence"><i data-lucide="trash-2"></i></button>
             </div>
         `;
         
-        const loadBtn = item.querySelectorAll('.btn-load')[0];
-        const playBtn = item.querySelectorAll('.btn-load')[1];
+        const playBtn = item.querySelector('.btn-play-sequence');
+        const editBtn = item.querySelector('.btn-edit');
         const deleteBtn = item.querySelector('.btn-delete');
         
-        loadBtn.addEventListener('click', () => loadSequence(sequence.id));
+        // Make item clickable to load (but not when clicking on buttons)
+        item.addEventListener('click', (e) => {
+            // Don't load if clicking on buttons
+            if (e.target.closest('.item-card-actions')) {
+                return;
+            }
+            loadSequence(sequence.id);
+        });
+        
+        // Prevent drag when clicking buttons
+        [playBtn, editBtn, deleteBtn].forEach(btn => {
+            if (btn) {
+                btn.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                });
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            }
+        });
+        
         playBtn.addEventListener('click', () => loadSequence(sequence.id));
-        deleteBtn.addEventListener('click', () => deleteSequence(sequence.id));
+        editBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            // Load the sequence first, then open edit modal
+            await loadSequence(sequence.id);
+            const { editSequence } = await import('./sequences.js');
+            await editSequence(sequence.id);
+        });
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteSequence(sequence.id);
+        });
         
         dom.sequencesList.appendChild(item);
     });

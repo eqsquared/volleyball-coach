@@ -647,6 +647,8 @@ export async function editScenario(scenarioId) {
         bodyEl.innerHTML = bodyHtml;
         footerEl.innerHTML = footerHtml;
         
+        // Remove hidden class and show modal
+        overlay.classList.remove('hidden');
         overlay.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         
