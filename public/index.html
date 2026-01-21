@@ -146,13 +146,18 @@
                 <!-- Top Bar: Animation Buttons (Left) and State Indicator (Right) -->
                 <div class="court-top-bar">
                     <!-- Animation Buttons (Top Left) -->
-                    <div class="animation-buttons hidden">
+                    <div class="animation-buttons hidden" id="animation-buttons">
+                        <!-- Scenario buttons -->
                         <button id="play-animation-btn"><i data-lucide="play"></i> <span>Play</span></button>
-                        <button id="next-scenario-btn" class="hidden"><i data-lucide="skip-forward"></i> <span>Next</span></button>
                         <button id="refresh-position-btn"><i data-lucide="refresh-cw"></i> <span>Reset</span></button>
                         <button id="clear-scenario-btn" title="Clear scenario"><i data-lucide="x-circle"></i> <span>Clear</span></button>
+                        
+                        <!-- Sequence buttons -->
+                        <button id="sequence-play-btn" class="hidden"><i data-lucide="play"></i> <span>Play</span></button>
+                        <button id="sequence-prev-btn" class="hidden"><i data-lucide="skip-back"></i> <span>Prev</span></button>
+                        <button id="sequence-next-btn" class="hidden"><i data-lucide="skip-forward"></i> <span>Next</span></button>
                         <div class="sequence-progress hidden" id="sequence-progress">
-                            <span id="sequence-progress-text">Scenario 1 of 3</span>
+                            <span id="sequence-progress-text">Position 1 of 3</span>
                         </div>
                     </div>
 
@@ -182,8 +187,8 @@
                     </div>
                 </div>
 
-                <!-- Position Drop Zones (Below Court) -->
-                <div class="position-drop-zones">
+                <!-- Position Drop Zones (Below Court) - for scenarios -->
+                <div class="position-drop-zones" id="position-drop-zones">
                     <div class="drop-zone" id="start-position-zone" data-zone-type="start">
                         <div class="drop-zone-label">Start Position</div>
                         <div class="drop-zone-content" id="start-position-content">
@@ -201,6 +206,14 @@
                         <button class="drop-zone-clear hidden" id="clear-end-position" title="Clear">
                             <i data-lucide="x"></i>
                         </button>
+                    </div>
+                </div>
+                
+                <!-- Sequence Timeline (Below Court) - for sequences -->
+                <div class="sequence-timeline hidden" id="sequence-timeline">
+                    <div class="timeline-label">Sequence Timeline</div>
+                    <div class="timeline-container" id="timeline-container">
+                        <div class="timeline-placeholder">Drag positions or scenarios here to build your sequence</div>
                     </div>
                 </div>
             </div>

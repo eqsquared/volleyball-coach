@@ -172,6 +172,10 @@ export async function loadScenario(scenarioId) {
         return;
     }
     
+    // Show drop zones, hide timeline
+    const { showDropZones } = await import('./ui.js');
+    showDropZones();
+    
     // Populate drop zones
     setSelectedStartPosition(startPos);
     setSelectedEndPosition(endPos);
@@ -207,6 +211,10 @@ export async function playScenario(scenarioId) {
         await alert('Position not found');
         return;
     }
+    
+    // Show drop zones, hide timeline
+    const { showDropZones } = await import('./ui.js');
+    showDropZones();
     
     // Set the drop zones with the scenario positions
     setSelectedStartPosition(startPos);
@@ -337,6 +345,10 @@ export async function clearScenario() {
     setSelectedStartPosition(null);
     setSelectedEndPosition(null);
     updateDropZoneDisplay();
+    
+    // Show drop zones, hide timeline
+    const { showDropZones } = await import('./ui.js');
+    showDropZones();
     
     // Clear players from court
     getPlayerElements().forEach((element) => {

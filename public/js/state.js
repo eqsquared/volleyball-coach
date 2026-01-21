@@ -50,6 +50,7 @@ export const state = {
     selectedStartPosition: null, // { id: string, name: string, ... }
     selectedEndPosition: null, // { id: string, name: string, ... }
     draggedPosition: null, // Position being dragged
+    draggedScenario: null, // Scenario being dragged
 };
 
 // State getters
@@ -170,6 +171,14 @@ export function setSelectedEndPosition(position) {
 
 export function setDraggedPosition(position) {
     state.draggedPosition = position;
+}
+
+export function setDraggedScenario(scenario) {
+    state.draggedScenario = scenario;
+}
+
+export function getDraggedScenario() {
+    return state.draggedScenario;
 }
 
 export function getSelectedStartPosition() {

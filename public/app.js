@@ -35,7 +35,7 @@ import {
 } from './js/ui.js';
 import { initAccordions, openAccordion, getSavedActiveAccordion } from './js/accordion.js';
 import { updateScenarioSelects } from './js/scenarios.js';
-import { createSequence, playNextScenario } from './js/sequences.js';
+import { createSequence } from './js/sequences.js';
 import { 
     migrateFromLegacyStorage, 
     exportToJSON, 
@@ -70,26 +70,14 @@ async function init() {
                 const savedPositions = await db.getAllPositions();
                 setSavedPositions(savedPositions);
                 
-                // If new format is empty but old format has data, trigger migration
-                if (positions.length === 0 && savedPositions && Object.keys(savedPositions).length > 0) {
-                    console.log('New format empty but legacy data exists. Migration may be needed. Triggering migration...');
-                    // The migration should have run on server start, but let's check
-                    // For now, we'll show legacy positions in the UI
-                    console.log('Showing legacy positions until migration completes');
-                }
-                
                 setPositions(positions);
                 setScenarios(scenarios);
                 setSequences(sequences);
-                
-                console.log(`Data loaded: ${positions.length} positions, ${scenarios.length} scenarios, ${sequences.length} sequences`);
-                console.log(`Legacy positions: ${Object.keys(savedPositions || {}).length}`);
             } catch (error) {
                 // Fall back to old format
                 console.error('Error loading new format:', error);
                 const savedPositions = await db.getAllPositions();
                 setSavedPositions(savedPositions);
-                console.log('Data loaded from file-based storage (v3.0, will migrate on next server restart)');
             }
             
             if (dom.fileStatus) {
@@ -247,11 +235,29 @@ function setupEventListeners() {
     if (dom.playAnimationBtn) {
         dom.playAnimationBtn.addEventListener('click', () => playAnimation());
     }
-    if (dom.nextScenarioBtn) {
-        dom.nextScenarioBtn.addEventListener('click', playNextScenario);
-    }
+    // nextScenarioBtn is now only used for sequences, handled below
     if (dom.refreshPositionBtn) {
         dom.refreshPositionBtn.addEventListener('click', () => resetToStartPosition());
+    }
+    
+    // Sequence buttons
+    if (dom.sequencePlayBtn) {
+        dom.sequencePlayBtn.addEventListener('click', async () => {
+            const { startSequencePlayback } = await import('./js/sequences.js');
+            await startSequencePlayback();
+        });
+    }
+    if (dom.sequenceNextBtn) {
+        dom.sequenceNextBtn.addEventListener('click', async () => {
+            const { playNextPosition } = await import('./js/sequences.js');
+            await playNextPosition();
+        });
+    }
+    if (dom.sequencePrevBtn) {
+        dom.sequencePrevBtn.addEventListener('click', async () => {
+            const { playPreviousPosition } = await import('./js/sequences.js');
+            await playPreviousPosition();
+        });
     }
     
     // State management buttons

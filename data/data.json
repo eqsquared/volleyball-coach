@@ -1378,5 +1378,20 @@
       ]
     }
   ],
-  "sequences": []
+  "sequences": [
+    {
+      "id": "seq_1769018761626_1uqnf0au6",
+      "name": "Rotation 1 Sequence",
+      "items": [
+        {
+          "type": "scenario",
+          "id": "scen_1769014464720_tguz49wsx"
+        },
+        {
+          "type": "position",
+          "id": "pos_1768843988881_5_wd5t74wfe"
+        }
+      ]
+    }
+  ]
 }

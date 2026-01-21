@@ -31,7 +31,7 @@ export async function createSequence() {
     const sequence = {
         id: generateId(),
         name: name,
-        scenarioIds: []
+        items: [] // Array of { type: 'position'|'scenario', id: string }
     };
     
     try {
@@ -48,14 +48,22 @@ export async function createSequence() {
 }
 
 // Update sequence
-export async function updateSequence(sequenceId, name, scenarioIds) {
+export async function updateSequence(sequenceId, name, items) {
     const sequence = getSequences().find(s => s.id === sequenceId);
     if (!sequence) return;
+    
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
+    }
     
     const updated = {
         ...sequence,
         name: name || sequence.name,
-        scenarioIds: scenarioIds !== undefined ? scenarioIds : sequence.scenarioIds
+        items: items !== undefined ? items : (sequence.items || [])
     };
     
     try {
@@ -106,25 +114,28 @@ export async function deleteSequence(sequenceId) {
     }
 }
 
-// Load sequence (loads first scenario's start position)
+// Load sequence (enters edit mode with timeline)
 export async function loadSequence(sequenceId) {
     const sequence = getSequences().find(s => s.id === sequenceId);
-    if (!sequence || sequence.scenarioIds.length === 0) {
-        await alert('This sequence has no scenarios');
+    if (!sequence) {
+        await alert('Sequence not found');
         return;
     }
     
-    // Load first scenario
-    const firstScenarioId = sequence.scenarioIds[0];
-    const scenario = getScenarios().find(s => s.id === firstScenarioId);
-    if (scenario) {
-        playScenario(scenario.id);
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
+        // Save migrated format
+        await updateSequence(sequenceId, null, sequence.items);
     }
     
     // Set current sequence
     setCurrentSequence({
         sequenceId: sequenceId,
-        currentScenarioIndex: 0
+        currentPositionIndex: -1 // -1 means not playing, in edit mode
     });
     
     // Update state to track loaded sequence
@@ -132,105 +143,316 @@ export async function loadSequence(sequenceId) {
     setCurrentLoadedItem({ type: 'sequence', id: sequence.id, name: sequence.name });
     setIsModified(false);
     
-    // Update UI
-    updateSequenceProgress();
-    dom.nextScenarioBtn.style.display = 'inline-flex';
-    dom.sequenceProgress.style.display = 'block';
+    // Update UI - show timeline instead of start/end drop zones
+    const { renderSequenceTimeline, updateSequenceButtons, updateScenarioButtonsVisibility } = await import('./ui.js');
+    renderSequenceTimeline(sequence);
+    updateSequenceButtons('edit');
+    updateScenarioButtonsVisibility();
     
     // Update current item display
     const { updateCurrentItemDisplay } = await import('./ui.js');
     updateCurrentItemDisplay();
+    
+    // Load first position if available
+    if (sequence.items && sequence.items.length > 0) {
+        const firstItem = sequence.items[0];
+        if (firstItem.type === 'position') {
+            const { loadPosition } = await import('./positions.js');
+            loadPosition(firstItem.id, false);
+        } else if (firstItem.type === 'scenario') {
+            const scenario = getScenarios().find(s => s.id === firstItem.id);
+            if (scenario) {
+                const { loadPosition } = await import('./positions.js');
+                loadPosition(scenario.startPositionId, false);
+            }
+        }
+    }
 }
 
-// Play next scenario in sequence
-export async function playNextScenario() {
+// Flatten sequence items to positions (scenarios become two positions)
+function flattenSequenceToPositions(sequence) {
+    const positions = [];
+    
+    if (!sequence.items) return positions;
+    
+    sequence.items.forEach((item, itemIndex) => {
+        if (item.type === 'position') {
+            positions.push({ type: 'position', id: item.id, itemIndex: itemIndex });
+        } else if (item.type === 'scenario') {
+            const scenario = getScenarios().find(s => s.id === item.id);
+            if (scenario) {
+                // Add start position
+                positions.push({ 
+                    type: 'scenario-start', 
+                    id: scenario.startPositionId, 
+                    scenarioId: scenario.id,
+                    itemIndex: itemIndex
+                });
+                // Add end position
+                positions.push({ 
+                    type: 'scenario-end', 
+                    id: scenario.endPositionId, 
+                    scenarioId: scenario.id,
+                    itemIndex: itemIndex
+                });
+            }
+        }
+    });
+    
+    return positions;
+}
+
+// Play next position in sequence
+export async function playNextPosition() {
     if (!state.currentSequence) return;
     
     const sequence = getSequences().find(s => s.id === state.currentSequence.sequenceId);
     if (!sequence) return;
     
-    const nextIndex = state.currentSequence.currentScenarioIndex + 1;
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
+    }
     
-    if (nextIndex >= sequence.scenarioIds.length) {
+    const flattened = flattenSequenceToPositions(sequence);
+    const currentIndex = state.currentSequence.currentPositionIndex;
+    const nextIndex = currentIndex + 1;
+    
+    if (nextIndex >= flattened.length) {
         // Sequence complete
         await alert('Sequence complete!');
-        setCurrentSequence(null);
-        dom.nextScenarioBtn.style.display = 'none';
-        dom.sequenceProgress.style.display = 'none';
+        setCurrentSequence({
+            sequenceId: sequence.id,
+            currentPositionIndex: -1 // Back to edit mode
+        });
+        const { updateSequenceButtons, renderSequenceTimeline } = await import('./ui.js');
+        updateSequenceButtons('edit');
+        renderSequenceTimeline(sequence);
         return;
     }
     
-    const nextScenarioId = sequence.scenarioIds[nextIndex];
-    const scenario = getScenarios().find(s => s.id === nextScenarioId);
+    const nextPosition = flattened[nextIndex];
+    const { loadPosition } = await import('./positions.js');
+    const { getPositions } = await import('./state.js');
+    const positionsList = getPositions();
     
-    if (scenario) {
-        playScenario(scenario.id);
+    const position = positionsList.find(p => p.id === nextPosition.id);
+    if (position) {
+        loadPosition(position.id, false);
         
         // Update current sequence
         setCurrentSequence({
             sequenceId: sequence.id,
-            currentScenarioIndex: nextIndex
+            currentPositionIndex: nextIndex
         });
         
         updateSequenceProgress();
+        const { updateSequenceTimelineActive } = await import('./ui.js');
+        updateSequenceTimelineActive(sequence, nextIndex);
+    }
+}
+
+// Play previous position in sequence
+export async function playPreviousPosition() {
+    if (!state.currentSequence) return;
+    
+    const sequence = getSequences().find(s => s.id === state.currentSequence.sequenceId);
+    if (!sequence) return;
+    
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
+    }
+    
+    const flattened = flattenSequenceToPositions(sequence);
+    const currentIndex = state.currentSequence.currentPositionIndex;
+    
+    if (currentIndex <= 0) {
+        // Already at start
+        return;
+    }
+    
+    const prevIndex = currentIndex - 1;
+    const prevPosition = flattened[prevIndex];
+    const { loadPosition } = await import('./positions.js');
+    const { getPositions } = await import('./state.js');
+    const positionsList = getPositions();
+    
+    const position = positionsList.find(p => p.id === prevPosition.id);
+    if (position) {
+        loadPosition(position.id, false);
+        
+        // Update current sequence
+        setCurrentSequence({
+            sequenceId: sequence.id,
+            currentPositionIndex: prevIndex
+        });
+        
+        updateSequenceProgress();
+        const { updateSequenceTimelineActive } = await import('./ui.js');
+        updateSequenceTimelineActive(sequence, prevIndex);
+    }
+}
+
+// Start playing sequence from beginning
+export async function startSequencePlayback() {
+    if (!state.currentSequence) return;
+    
+    const sequence = getSequences().find(s => s.id === state.currentSequence.sequenceId);
+    if (!sequence) return;
+    
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
+    }
+    
+    const flattened = flattenSequenceToPositions(sequence);
+    if (flattened.length === 0) {
+        await alert('Sequence is empty');
+        return;
+    }
+    
+    // Start from first position
+    setCurrentSequence({
+        sequenceId: sequence.id,
+        currentPositionIndex: 0
+    });
+    
+    const { updateSequenceButtons } = await import('./ui.js');
+    updateSequenceButtons('play');
+    
+    // Load first position
+    const firstPosition = flattened[0];
+    const { loadPosition } = await import('./positions.js');
+    const { getPositions } = await import('./state.js');
+    const positionsList = getPositions();
+    const position = positionsList.find(p => p.id === firstPosition.id);
+    if (position) {
+        loadPosition(position.id, false);
+        updateSequenceProgress();
+        const { updateSequenceTimelineActive } = await import('./ui.js');
+        updateSequenceTimelineActive(sequence, 0);
     }
 }
 
 // Update sequence progress display
 export function updateSequenceProgress() {
-    if (!state.currentSequence) return;
+    if (!state.currentSequence || state.currentSequence.currentPositionIndex < 0) return;
     
     const sequence = getSequences().find(s => s.id === state.currentSequence.sequenceId);
     if (!sequence) return;
     
-    const current = state.currentSequence.currentScenarioIndex + 1;
-    const total = sequence.scenarioIds.length;
-    
-    if (dom.sequenceProgressText) {
-        dom.sequenceProgressText.textContent = `Scenario ${current} of ${total}`;
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
     }
     
-    // Hide next button if on last scenario
-    if (current >= total) {
-        dom.nextScenarioBtn.style.display = 'none';
-    } else {
-        dom.nextScenarioBtn.style.display = 'inline-flex';
+    const flattened = flattenSequenceToPositions(sequence);
+    const current = state.currentSequence.currentPositionIndex + 1;
+    const total = flattened.length;
+    
+    if (dom.sequenceProgressText) {
+        dom.sequenceProgressText.textContent = `Position ${current} of ${total}`;
     }
 }
 
-// Add scenario to sequence
-export async function addScenarioToSequence(sequenceId, scenarioId) {
+// Add item (position or scenario) to sequence
+export async function addItemToSequence(sequenceId, itemType, itemId) {
     const sequence = getSequences().find(s => s.id === sequenceId);
     if (!sequence) return;
     
-    if (sequence.scenarioIds.includes(scenarioId)) {
-        await alert('Scenario already in sequence');
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
+    }
+    
+    if (!sequence.items) {
+        sequence.items = [];
+    }
+    
+    // Check if already in sequence
+    const exists = sequence.items.some(item => item.type === itemType && item.id === itemId);
+    if (exists) {
+        await alert(`${itemType === 'position' ? 'Position' : 'Scenario'} already in sequence`);
         return;
     }
     
-    sequence.scenarioIds.push(scenarioId);
-    updateSequence(sequenceId, null, sequence.scenarioIds);
+    sequence.items.push({ type: itemType, id: itemId });
+    await updateSequence(sequenceId, null, sequence.items);
+    
+    // Update timeline if sequence is loaded
+    if (state.currentLoadedItem && state.currentLoadedItem.id === sequenceId) {
+        const { renderSequenceTimeline } = await import('./ui.js');
+        renderSequenceTimeline(sequence);
+    }
 }
 
-// Remove scenario from sequence
-export function removeScenarioFromSequence(sequenceId, scenarioId) {
+// Remove item from sequence
+export async function removeItemFromSequence(sequenceId, itemIndex) {
     const sequence = getSequences().find(s => s.id === sequenceId);
     if (!sequence) return;
     
-    sequence.scenarioIds = sequence.scenarioIds.filter(id => id !== scenarioId);
-    updateSequence(sequenceId, null, sequence.scenarioIds);
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
+    }
+    
+    if (!sequence.items || itemIndex < 0 || itemIndex >= sequence.items.length) return;
+    
+    sequence.items.splice(itemIndex, 1);
+    await updateSequence(sequenceId, null, sequence.items);
+    
+    // Update timeline if sequence is loaded
+    if (state.currentLoadedItem && state.currentLoadedItem.id === sequenceId) {
+        const { renderSequenceTimeline } = await import('./ui.js');
+        renderSequenceTimeline(sequence);
+    }
 }
 
-// Reorder scenarios in sequence
-export function reorderScenariosInSequence(sequenceId, fromIndex, toIndex) {
+// Reorder items in sequence
+export async function reorderItemsInSequence(sequenceId, fromIndex, toIndex) {
     const sequence = getSequences().find(s => s.id === sequenceId);
     if (!sequence) return;
     
-    const scenarioIds = [...sequence.scenarioIds];
-    const [moved] = scenarioIds.splice(fromIndex, 1);
-    scenarioIds.splice(toIndex, 0, moved);
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
+    }
     
-    updateSequence(sequenceId, null, scenarioIds);
+    if (!sequence.items) return;
+    
+    const items = [...sequence.items];
+    const [moved] = items.splice(fromIndex, 1);
+    items.splice(toIndex, 0, moved);
+    
+    await updateSequence(sequenceId, null, items);
+    
+    // Update timeline if sequence is loaded
+    if (state.currentLoadedItem && state.currentLoadedItem.id === sequenceId) {
+        const { renderSequenceTimeline } = await import('./ui.js');
+        renderSequenceTimeline(sequence);
+    }
 }
 
 // Edit sequence (name only)

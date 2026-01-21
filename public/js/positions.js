@@ -309,6 +309,12 @@ export function loadPosition(positionId, updateLoadedItem = true) {
         setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
         setIsModified(false);
         
+        // Show drop zones, hide timeline (async import)
+        import('./ui.js').then(({ showDropZones, updateScenarioButtonsVisibility }) => {
+            showDropZones();
+            updateScenarioButtonsVisibility();
+        });
+        
         // Re-render positions list to update active state
         renderPositionsList();
         

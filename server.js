@@ -285,6 +285,17 @@ app.delete('/api/positions/:id', async (req, res) => {
             );
         }
         
+        // Remove position from sequences (new format)
+        if (data.sequences) {
+            data.sequences.forEach(sequence => {
+                if (sequence.items) {
+                    sequence.items = sequence.items.filter(item => 
+                        !(item.type === 'position' && item.id === positionId)
+                    );
+                }
+            });
+        }
+        
         // Remove position
         if (data.positions) {
             data.positions = data.positions.filter(p => p.id !== positionId);
@@ -404,10 +415,19 @@ app.delete('/api/scenarios/:id', async (req, res) => {
         const data = await readData();
         const scenarioId = req.params.id;
         
-        // Remove scenario from sequences
+        // Remove scenario from sequences (both old and new format)
         if (data.sequences) {
             data.sequences.forEach(sequence => {
-                sequence.scenarioIds = sequence.scenarioIds.filter(id => id !== scenarioId);
+                // Old format
+                if (sequence.scenarioIds) {
+                    sequence.scenarioIds = sequence.scenarioIds.filter(id => id !== scenarioId);
+                }
+                // New format
+                if (sequence.items) {
+                    sequence.items = sequence.items.filter(item => 
+                        !(item.type === 'scenario' && item.id === scenarioId)
+                    );
+                }
             });
         }
         
@@ -439,8 +459,23 @@ app.post('/api/sequences', async (req, res) => {
         const data = await readData();
         const sequence = req.body;
         
-        if (!sequence.id || !sequence.name || !Array.isArray(sequence.scenarioIds)) {
-            return res.status(400).json({ error: 'Sequence must have id, name, and scenarioIds array' });
+        if (!sequence.id || !sequence.name) {
+            return res.status(400).json({ error: 'Sequence must have id and name' });
+        }
+        
+        // Support both old format (scenarioIds) and new format (items)
+        // If old format, migrate to new format
+        if (sequence.scenarioIds && !sequence.items) {
+            sequence.items = sequence.scenarioIds.map(id => ({
+                type: 'scenario',
+                id: id
+            }));
+            // Keep scenarioIds for backward compatibility during transition
+        }
+        
+        // Ensure items array exists (default to empty)
+        if (!sequence.items) {
+            sequence.items = [];
         }
         
         if (!data.sequences) {

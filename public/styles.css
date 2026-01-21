@@ -1364,6 +1364,301 @@ svg[data-lucide] {
 }
 
 /* ============================================
+   Sequence Timeline
+   ============================================ */
+.sequence-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.timeline-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.timeline-container {
+    border: 2px dashed #bdc3c7;
+    border-radius: 6px;
+    padding: 12px;
+    background: #f8f9fa;
+    min-height: 80px;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    transition: all 0.2s;
+    scrollbar-width: thin;
+    scrollbar-color: #bdc3c7 #f8f9fa;
+}
+
+.timeline-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.timeline-container::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.timeline-container::-webkit-scrollbar-thumb {
+    background: #bdc3c7;
+    border-radius: 4px;
+}
+
+.timeline-container::-webkit-scrollbar-thumb:hover {
+    background: #95a5a6;
+}
+
+.timeline-container.drag-over {
+    border-color: #9b59b6;
+    background: #f4ecf7;
+    border-style: solid;
+}
+
+.timeline-placeholder {
+    color: #95a5a6;
+    font-size: 12px;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    min-width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-item {
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: 3px solid #1976d2;
+    border-radius: 6px;
+    cursor: grab;
+    transition: all 0.2s;
+    position: relative;
+    width: 100px;
+    flex-shrink: 0;
+    height: 100px;
+    padding: 0;
+    gap: 0;
+}
+
+.timeline-item:active {
+    cursor: grabbing;
+}
+
+.timeline-item.dragging {
+    opacity: 0.5;
+}
+
+.timeline-item.drag-over {
+    border-color: #9b59b6;
+    background: #f4ecf7;
+}
+
+.timeline-item.active {
+    border-color: #27ae60;
+    background: #e8f5e9;
+    box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.2);
+}
+
+.timeline-item.active-start .timeline-item-bottom,
+.timeline-item.active-start .timeline-scenario-start {
+    border-top: 4px solid #27ae60;
+    background: #e8f5e9;
+}
+
+.timeline-item.active-end .timeline-item-bottom,
+.timeline-item.active-end .timeline-scenario-end {
+    border-top: 4px solid #27ae60;
+    background: #e8f5e9;
+}
+
+.timeline-item-scenario {
+    width: 200px; /* 2 × 100px for the two position cards */
+    height: 100px;
+    border-top: 3px solid #9b59b6;
+}
+
+.timeline-item-bottom {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 8px;
+    min-height: 0;
+}
+
+.timeline-item-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.timeline-item-name {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 11px;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+.timeline-item-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    border: none;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.2s;
+    opacity: 0.6;
+    z-index: 10;
+}
+
+.timeline-item-remove:hover {
+    background: rgba(231, 76, 60, 0.2);
+    opacity: 1;
+}
+
+.timeline-item-remove svg {
+    width: 10px !important;
+    height: 10px !important;
+}
+
+/* Position header (for solo positions) */
+.timeline-position-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #e3f2fd;
+    border-bottom: 1px solid #ddd;
+    font-size: 10px;
+    font-weight: 600;
+    color: #1976d2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.timeline-position-icon {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1976d2;
+}
+
+.timeline-position-icon i {
+    width: 12px;
+    height: 12px;
+}
+
+.timeline-position-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Scenario-specific styles */
+.timeline-scenario-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #f4ecf7;
+    border-bottom: 1px solid #ddd;
+    font-size: 10px;
+    font-weight: 600;
+    color: #9b59b6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.timeline-scenario-icon {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9b59b6;
+}
+
+.timeline-scenario-icon i {
+    width: 12px;
+    height: 12px;
+}
+
+.timeline-scenario-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.timeline-scenario-positions {
+    display: flex;
+    flex: 1;
+    gap: 0;
+}
+
+.timeline-scenario-position {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    border-right: 1px solid #ddd;
+    background: white;
+    min-height: 0;
+}
+
+.timeline-scenario-position:last-child {
+    border-right: none;
+}
+
+.timeline-scenario-start.active-start {
+    border-top: 4px solid #27ae60;
+    background: #e8f5e9;
+}
+
+.timeline-scenario-end.active-end {
+    border-top: 4px solid #27ae60;
+    background: #e8f5e9;
+}
+
+/* ============================================
    Draggable Item Cards
    ============================================ */
 .item-card.draggable {

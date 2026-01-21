@@ -1,6 +1,6 @@
 // UI rendering and updates
 
-import { state, getPlayers, getSavedPositions, getPlayerElements, getPositions, getScenarios, getSequences, getCurrentLoadedItem, setDraggedPlayer, setDraggedPosition, setSelectedStartPosition, setSelectedEndPosition, getSelectedStartPosition, getSelectedEndPosition, setCurrentLoadedItem, setIsModified } from './state.js';
+import { state, getPlayers, getSavedPositions, getPlayerElements, getPositions, getScenarios, getSequences, getCurrentLoadedItem, setDraggedPlayer, setDraggedPosition, setDraggedScenario, setSelectedStartPosition, setSelectedEndPosition, getSelectedStartPosition, getSelectedEndPosition, setCurrentLoadedItem, setIsModified } from './state.js';
 
 // Tag filter state
 let selectedTags = new Set();
@@ -32,7 +32,7 @@ import { dom } from './dom.js';
 import { deletePlayer } from './players.js';
 import { loadPosition, deletePosition as deletePositionNew, editPosition } from './positions.js';
 import { loadScenario, playScenario, deleteScenario, editScenario } from './scenarios.js';
-import { loadSequence, playNextScenario, deleteSequence } from './sequences.js';
+import { loadSequence, deleteSequence } from './sequences.js';
 import { createSearchAndTagsFilter } from './searchAndTags.js';
 
 // Helper function to initialize Lucide icons for a container
@@ -376,7 +376,9 @@ export function renderScenariosList() {
     
     filteredScenarios.forEach(scenario => {
         const item = document.createElement('div');
-        item.className = 'item-card';
+        item.className = 'item-card draggable';
+        item.draggable = true;
+        item.dataset.scenarioId = scenario.id;
         if (getCurrentLoadedItem()?.type === 'scenario' && getCurrentLoadedItem()?.id === scenario.id) {
             item.classList.add('active');
         }
@@ -412,13 +414,20 @@ export function renderScenariosList() {
         const editBtn = item.querySelector('.btn-edit');
         const deleteBtn = item.querySelector('.btn-delete');
         
-        // Track mouse down for click detection
+        // Track if we're dragging to distinguish from clicks
+        let isDragging = false;
         let mouseDownTime = 0;
+        let mouseDownX = 0;
+        let mouseDownY = 0;
         
-        // Make item clickable to load (but not when clicking on buttons)
+        // Make item clickable to load (but not when dragging)
         item.addEventListener('click', (e) => {
             // Don't load if clicking on buttons
             if (e.target.closest('.item-card-actions')) {
+                return;
+            }
+            // Don't load if we just dragged
+            if (isDragging) {
                 return;
             }
             // Check if mouse moved significantly (more than 5px) - if so, it was a drag
@@ -429,11 +438,31 @@ export function renderScenariosList() {
             loadScenario(scenario.id);
         });
         
-        // Track mouse down
+        // Track mouse down for click detection
         item.addEventListener('mousedown', (e) => {
             if (!e.target.closest('.item-card-actions')) {
                 mouseDownTime = Date.now();
+                mouseDownX = e.clientX;
+                mouseDownY = e.clientY;
             }
+        });
+        
+        // Drag handlers
+        item.addEventListener('dragstart', (e) => {
+            isDragging = true;
+            setDraggedScenario(scenario);
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('text/plain', scenario.id);
+        });
+        
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            setDraggedScenario(null);
+            // Reset dragging flag after a short delay to prevent click from firing
+            setTimeout(() => {
+                isDragging = false;
+            }, 100);
         });
         
         // Prevent drag when clicking buttons
@@ -572,14 +601,32 @@ export function updateCurrentItemDisplay() {
 // Update scenario buttons visibility (all or nothing - show/hide entire container with fade)
 export function updateScenarioButtonsVisibility() {
     const hasScenario = state.currentLoadedItem && state.currentLoadedItem.type === 'scenario';
+    const hasSequence = state.currentLoadedItem && state.currentLoadedItem.type === 'sequence';
     const buttonsContainer = document.querySelector('.animation-buttons');
     
     if (buttonsContainer) {
-        if (hasScenario) {
+        if (hasScenario || hasSequence) {
             buttonsContainer.classList.remove('hidden');
         } else {
             buttonsContainer.classList.add('hidden');
         }
+    }
+    
+    // Show/hide appropriate buttons based on type
+    if (hasSequence) {
+        // Hide scenario-specific buttons
+        if (dom.playAnimationBtn) dom.playAnimationBtn.classList.add('hidden');
+        if (dom.refreshPositionBtn) dom.refreshPositionBtn.classList.add('hidden');
+        if (dom.clearScenarioBtn) dom.clearScenarioBtn.classList.add('hidden');
+        // Sequence buttons are handled by updateSequenceButtons
+    } else if (hasScenario) {
+        // Show scenario buttons, hide sequence buttons
+        if (dom.playAnimationBtn) dom.playAnimationBtn.classList.remove('hidden');
+        if (dom.refreshPositionBtn) dom.refreshPositionBtn.classList.remove('hidden');
+        if (dom.clearScenarioBtn) dom.clearScenarioBtn.classList.remove('hidden');
+        if (dom.sequencePlayBtn) dom.sequencePlayBtn.classList.add('hidden');
+        if (dom.sequencePrevBtn) dom.sequencePrevBtn.classList.add('hidden');
+        if (dom.sequenceNextBtn) dom.sequenceNextBtn.classList.add('hidden');
     }
 }
 
@@ -808,5 +855,324 @@ async function checkAndUpdateScenarioState() {
             // Hide all scenario buttons
             updateScenarioButtonsVisibility();
         }
+    }
+}
+
+// Render sequence timeline (replaces start/end drop zones)
+export function renderSequenceTimeline(sequence) {
+    if (!dom.timelineContainer) return;
+    
+    // Show timeline, hide drop zones
+    showTimeline();
+    
+    if (!sequence) {
+        dom.timelineContainer.innerHTML = '<div class="timeline-placeholder">No sequence loaded</div>';
+        return;
+    }
+    
+    // Migrate old format if needed
+    if (sequence.scenarioIds && !sequence.items) {
+        sequence.items = sequence.scenarioIds.map(id => ({
+            type: 'scenario',
+            id: id
+        }));
+    }
+    
+    const items = sequence.items || [];
+    
+    if (items.length === 0) {
+        dom.timelineContainer.innerHTML = '<div class="timeline-placeholder">Drag positions or scenarios here to build your sequence</div>';
+        // Still set up drop zone even when empty
+        setupTimelineDropZone(sequence);
+        return;
+    }
+    
+    dom.timelineContainer.innerHTML = '';
+    
+    items.forEach((item, index) => {
+        const timelineItem = document.createElement('div');
+        timelineItem.className = 'timeline-item';
+        timelineItem.draggable = true;
+        timelineItem.dataset.itemIndex = index;
+        timelineItem.dataset.itemType = item.type;
+        timelineItem.dataset.itemId = item.id;
+        
+        if (item.type === 'position') {
+            const position = getPositions().find(p => p.id === item.id);
+            if (position) {
+                timelineItem.innerHTML = `
+                    <div class="timeline-position-header">
+                        <div class="timeline-position-icon"><i data-lucide="map-pin"></i></div>
+                        <div class="timeline-position-label">Position</div>
+                    </div>
+                    <div class="timeline-item-bottom">
+                        <div class="timeline-item-content">
+                            <div class="timeline-item-name">${escapeHtml(position.name)}</div>
+                        </div>
+                    </div>
+                    <button class="timeline-item-remove" title="Remove"><i data-lucide="x"></i></button>
+                `;
+            }
+        } else if (item.type === 'scenario') {
+            const scenario = getScenarios().find(s => s.id === item.id);
+            if (scenario) {
+                const startPos = getPositions().find(p => p.id === scenario.startPositionId);
+                const endPos = getPositions().find(p => p.id === scenario.endPositionId);
+                
+                timelineItem.classList.add('timeline-item-scenario');
+                timelineItem.innerHTML = `
+                    <div class="timeline-scenario-header">
+                        <div class="timeline-scenario-icon"><i data-lucide="film"></i></div>
+                        <div class="timeline-scenario-name">${escapeHtml(scenario.name)}</div>
+                    </div>
+                    <div class="timeline-scenario-positions">
+                        <div class="timeline-scenario-position timeline-scenario-start">
+                            <div class="timeline-item-content">
+                                <div class="timeline-item-name">${escapeHtml(startPos?.name || '?')}</div>
+                            </div>
+                        </div>
+                        <div class="timeline-scenario-position timeline-scenario-end">
+                            <div class="timeline-item-content">
+                                <div class="timeline-item-name">${escapeHtml(endPos?.name || '?')}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="timeline-item-remove" title="Remove"><i data-lucide="x"></i></button>
+                `;
+            }
+        }
+        
+        // Remove button
+        const removeBtn = timelineItem.querySelector('.timeline-item-remove');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const { removeItemFromSequence } = await import('./sequences.js');
+                await removeItemFromSequence(sequence.id, index);
+            });
+        }
+        
+        // Drag handlers for reordering
+        timelineItem.addEventListener('dragstart', (e) => {
+            timelineItem.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index.toString());
+        });
+        
+        timelineItem.addEventListener('dragend', () => {
+            timelineItem.classList.remove('dragging');
+        });
+        
+        // Drop handlers for reordering (only when dragging timeline items)
+        timelineItem.addEventListener('dragover', (e) => {
+            // Only handle if we're reordering (have a numeric index in dataTransfer)
+            const dragData = e.dataTransfer.getData('text/plain');
+            const draggingIndex = parseInt(dragData);
+            
+            // Only handle reordering, not when dragging positions/scenarios from lists
+            if (!isNaN(draggingIndex) && draggingIndex !== index) {
+                e.preventDefault();
+                e.stopPropagation();
+                timelineItem.classList.add('drag-over');
+                e.dataTransfer.dropEffect = 'move';
+            }
+        });
+        
+        timelineItem.addEventListener('dragleave', () => {
+            timelineItem.classList.remove('drag-over');
+        });
+        
+        timelineItem.addEventListener('drop', async (e) => {
+            const dragData = e.dataTransfer.getData('text/plain');
+            const draggingIndex = parseInt(dragData);
+            
+            // Only handle reordering
+            if (!isNaN(draggingIndex) && draggingIndex !== index) {
+                e.preventDefault();
+                e.stopPropagation();
+                timelineItem.classList.remove('drag-over');
+                
+                const { reorderItemsInSequence } = await import('./sequences.js');
+                await reorderItemsInSequence(sequence.id, draggingIndex, index);
+            }
+        });
+        
+        dom.timelineContainer.appendChild(timelineItem);
+    });
+    
+    // Initialize icons
+    initializeIcons(dom.timelineContainer);
+    
+    // Set up drop zone for timeline
+    setupTimelineDropZone(sequence);
+}
+
+// Set up timeline as drop zone for positions and scenarios
+function setupTimelineDropZone(sequence) {
+    if (!dom.timelineContainer) return;
+    
+    // Remove existing listeners by cloning (but preserve the structure)
+    const newContainer = dom.timelineContainer.cloneNode(true);
+    dom.timelineContainer.parentNode.replaceChild(newContainer, dom.timelineContainer);
+    dom.timelineContainer = newContainer;
+    
+    // Make sure placeholder doesn't block drops
+    const placeholder = dom.timelineContainer.querySelector('.timeline-placeholder');
+    if (placeholder) {
+        placeholder.style.pointerEvents = 'none';
+    }
+    
+    // Add drop zone handlers - these should work even when dragging over items
+    dom.timelineContainer.addEventListener('dragover', (e) => {
+        // Only handle if we're dragging a position or scenario (not reordering timeline items)
+        // Check if we're dragging from outside (position/scenario) vs inside (reordering)
+        const isDraggingFromOutside = state.draggedPosition || state.draggedScenario;
+        
+        if (isDraggingFromOutside) {
+            e.preventDefault();
+            e.stopPropagation();
+            dom.timelineContainer.classList.add('drag-over');
+            e.dataTransfer.dropEffect = 'copy';
+        }
+    }, true); // Use capture phase to catch before item handlers
+    
+    dom.timelineContainer.addEventListener('dragleave', (e) => {
+        // Only handle if we're actually leaving the container
+        if (!dom.timelineContainer.contains(e.relatedTarget)) {
+            dom.timelineContainer.classList.remove('drag-over');
+        }
+    });
+    
+    dom.timelineContainer.addEventListener('drop', async (e) => {
+        // Only handle if we're dropping a position or scenario (not reordering)
+        // Check the dataTransfer to see if it's a reorder (numeric) or new item
+        const dragData = e.dataTransfer.getData('text/plain');
+        const isReordering = dragData && !isNaN(parseInt(dragData));
+        
+        // Only process if we have a dragged position/scenario and it's not a reorder
+        if (!isReordering && (state.draggedPosition || state.draggedScenario)) {
+            e.preventDefault();
+            e.stopPropagation();
+            dom.timelineContainer.classList.remove('drag-over');
+            
+            if (state.draggedPosition) {
+                const { addItemToSequence } = await import('./sequences.js');
+                await addItemToSequence(sequence.id, 'position', state.draggedPosition.id);
+                setDraggedPosition(null);
+            } else if (state.draggedScenario) {
+                const { addItemToSequence } = await import('./sequences.js');
+                await addItemToSequence(sequence.id, 'scenario', state.draggedScenario.id);
+                setDraggedScenario(null);
+            }
+        }
+    }, true); // Use capture phase
+}
+
+// Update sequence timeline to show active position during playback
+export async function updateSequenceTimelineActive(sequence, activePositionIndex) {
+    if (!dom.timelineContainer) return;
+    
+    // Flatten sequence to get position indices (using the function from sequences.js)
+    // We'll calculate it here since we can't easily export it
+    const flattened = [];
+    if (sequence.items) {
+        sequence.items.forEach((item, itemIndex) => {
+            if (item.type === 'position') {
+                flattened.push({ type: 'position', id: item.id, itemIndex: itemIndex });
+            } else if (item.type === 'scenario') {
+                const scenario = getScenarios().find(s => s.id === item.id);
+                if (scenario) {
+                    flattened.push({ 
+                        type: 'scenario-start', 
+                        id: scenario.startPositionId, 
+                        scenarioId: scenario.id,
+                        itemIndex: itemIndex
+                    });
+                    flattened.push({ 
+                        type: 'scenario-end', 
+                        id: scenario.endPositionId, 
+                        scenarioId: scenario.id,
+                        itemIndex: itemIndex
+                    });
+                }
+            }
+        });
+    }
+    
+    // Remove all active classes
+    dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+        item.classList.remove('active', 'active-start', 'active-end');
+    });
+    dom.timelineContainer.querySelectorAll('.timeline-scenario-position').forEach(card => {
+        card.classList.remove('active-start', 'active-end');
+    });
+    
+    // Find and highlight active item
+    if (activePositionIndex >= 0 && activePositionIndex < flattened.length) {
+        const activePos = flattened[activePositionIndex];
+        const itemIndex = activePos.itemIndex;
+        const timelineItem = dom.timelineContainer.querySelector(`[data-item-index="${itemIndex}"]`);
+        if (timelineItem) {
+            // If it's a scenario, highlight the specific position card
+            if (activePos.type === 'scenario-start') {
+                timelineItem.classList.add('active-start');
+                const startCard = timelineItem.querySelector('.timeline-scenario-start');
+                if (startCard) {
+                    startCard.classList.add('active-start');
+                }
+            } else if (activePos.type === 'scenario-end') {
+                timelineItem.classList.add('active-end');
+                const endCard = timelineItem.querySelector('.timeline-scenario-end');
+                if (endCard) {
+                    endCard.classList.add('active-end');
+                }
+            } else {
+                // Regular position
+                timelineItem.classList.add('active');
+            }
+        }
+    }
+}
+
+// Update sequence buttons (edit mode vs play mode)
+export function updateSequenceButtons(mode) {
+    if (!dom.sequencePlayBtn || !dom.sequencePrevBtn || !dom.sequenceNextBtn) return;
+    
+    if (mode === 'edit') {
+        // Hide play buttons, show edit mode (no special buttons needed)
+        dom.sequencePlayBtn.classList.remove('hidden'); // Show play button to start
+        dom.sequencePrevBtn.classList.add('hidden');
+        dom.sequenceNextBtn.classList.add('hidden');
+        if (dom.sequenceProgress) {
+            dom.sequenceProgress.classList.add('hidden');
+        }
+    } else if (mode === 'play') {
+        // Show play buttons
+        dom.sequencePlayBtn.classList.add('hidden'); // Hide play, show prev/next
+        dom.sequencePrevBtn.classList.remove('hidden');
+        dom.sequenceNextBtn.classList.remove('hidden');
+        if (dom.sequenceProgress) {
+            dom.sequenceProgress.classList.remove('hidden');
+        }
+    }
+}
+
+// Show drop zones, hide timeline
+export function showDropZones() {
+    if (dom.positionDropZones) {
+        dom.positionDropZones.classList.remove('hidden');
+    }
+    if (dom.sequenceTimeline) {
+        dom.sequenceTimeline.classList.add('hidden');
+    }
+}
+
+// Show timeline, hide drop zones
+export function showTimeline() {
+    if (dom.positionDropZones) {
+        dom.positionDropZones.classList.add('hidden');
+    }
+    if (dom.sequenceTimeline) {
+        dom.sequenceTimeline.classList.remove('hidden');
     }
 }
