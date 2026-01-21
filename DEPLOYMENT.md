@@ -30,6 +30,15 @@ Railway is excellent for Node.js apps with file-based storage.
 4. Railway will auto-detect Node.js and run `npm start`
 5. The `data/` directory will persist between deployments
 
+**Finding Your App URL:**
+1. In Railway dashboard, click on your **service** (the deployed app)
+2. Go to the **Settings** tab
+3. Scroll down to **Networking** section
+4. Click **Generate Domain** (if you haven't already)
+5. Railway will generate a public URL like: `https://your-app-name.up.railway.app`
+6. Click the URL or copy it to open your app in a browser
+7. **Alternative**: The URL is also shown in the **Deployments** tab after a successful deployment
+
 **Environment Variables:**
 - None required (PORT is auto-set by Railway)
 
