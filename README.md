@@ -59,7 +59,7 @@ A web-based volleyball coaching tool designed to help new players visualize cour
    npm start
    ```
    This will:
-   - Start the Express server on http://localhost:8000
+   - Start the Express server on http://localhost:8000 (or the port specified by `PORT` environment variable)
    - Create `data/data.json` file automatically if it doesn't exist
    - Serve the application and handle all data persistence
    - All changes are automatically saved to `data/data.json`
@@ -67,6 +67,17 @@ A web-based volleyball coaching tool designed to help new players visualize cour
 3. **Open your browser**:
    - Navigate to http://localhost:8000
    - The app will load and automatically save all changes to `data.json`
+
+### Deployment
+
+For instructions on deploying this application to production, see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
+The app is ready to deploy to platforms like:
+- Railway (recommended for file-based storage)
+- Render
+- Heroku
+- DigitalOcean App Platform
+- Self-hosted VPS
 
 ### First Time Setup
 

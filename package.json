@@ -2,9 +2,14 @@
   "name": "volleyball-coach",
   "version": "1.0.0",
   "description": "Volleyball coaching tool for position training",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
   },
   "dependencies": {
     "express": "^4.18.2",
