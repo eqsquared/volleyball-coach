@@ -516,12 +516,10 @@ export function updateDropZoneDisplay() {
     
     // Show/hide clear scenario button
     if (dom.clearScenarioBtn) {
-        if (startPos && endPos && getCurrentLoadedItem()?.type === 'scenario') {
+        if (getCurrentLoadedItem()?.type === 'scenario') {
             dom.clearScenarioBtn.classList.remove('hidden');
-            dom.clearScenarioBtn.classList.add('show-inline-flex');
         } else {
             dom.clearScenarioBtn.classList.add('hidden');
-            dom.clearScenarioBtn.classList.remove('show-inline-flex');
         }
     }
     

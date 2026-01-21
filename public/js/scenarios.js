@@ -1,7 +1,7 @@
 // Scenarios management module
 
 import * as db from '../db.js';
-import { state, getScenarios, setScenarios, getPositions, setSelectedStartPosition, setSelectedEndPosition, getSelectedStartPosition, getSelectedEndPosition, setCurrentLoadedItem, setIsModified } from './state.js';
+import { state, getScenarios, setScenarios, getPositions, setSelectedStartPosition, setSelectedEndPosition, getSelectedStartPosition, getSelectedEndPosition, setCurrentLoadedItem, setIsModified, getPlayerElements } from './state.js';
 import { dom } from './dom.js';
 import { renderScenariosList, updateDropZoneDisplay, updateCurrentItemDisplay, updateModifiedIndicator } from './ui.js';
 import { loadPosition } from './positions.js';
@@ -362,10 +362,19 @@ export function clearScenario() {
     setSelectedEndPosition(null);
     updateDropZoneDisplay();
     
+    // Clear players from court
+    getPlayerElements().forEach((element) => {
+        element.remove();
+    });
+    getPlayerElements().clear();
+    
     setCurrentLoadedItem(null);
     setIsModified(false);
     updateCurrentItemDisplay();
     updateModifiedIndicator(false);
+    
+    // Re-render scenarios list to remove active state
+    renderScenariosList();
 }
 
 // Edit scenario (name and tags)

@@ -1265,32 +1265,13 @@ svg[data-lucide] {
 /* ============================================
    Clear Scenario Button
    ============================================ */
-.clear-scenario-btn {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #dc3545;
-    background: white;
-    color: #dc3545;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 8px;
-}
-
-.clear-scenario-btn:hover {
-    background: #dc3545;
+#clear-scenario-btn {
+    background: #e74c3c;
     color: white;
 }
 
-.clear-scenario-btn svg {
-    width: 14px !important;
-    height: 14px !important;
+#clear-scenario-btn:hover {
+    background: #c0392b;
 }
 
 /* ============================================
