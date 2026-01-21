@@ -1,5 +1,34 @@
 // Application state management
 
+const STORAGE_KEY_LOADED_ITEM = 'volleyball-coach-loaded-item';
+
+// Save loaded item to localStorage
+function saveLoadedItem(item) {
+    try {
+        if (item) {
+            localStorage.setItem(STORAGE_KEY_LOADED_ITEM, JSON.stringify(item));
+        } else {
+            localStorage.removeItem(STORAGE_KEY_LOADED_ITEM);
+        }
+    } catch (error) {
+        console.warn('Failed to save loaded item to localStorage:', error);
+    }
+}
+
+// Get saved loaded item from localStorage
+export function getSavedLoadedItem() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY_LOADED_ITEM);
+        if (saved) {
+            return JSON.parse(saved);
+        }
+        return null;
+    } catch (error) {
+        console.warn('Failed to read loaded item from localStorage:', error);
+        return null;
+    }
+}
+
 export const state = {
     players: [],
     positions: [], // Array of position objects { id, name, tags[], playerPositions[] }
@@ -96,6 +125,8 @@ export function setDbInitialized(value) {
 
 export function setCurrentLoadedItem(item) {
     state.currentLoadedItem = item;
+    // Persist to localStorage
+    saveLoadedItem(item);
 }
 
 export function setIsModified(value) {

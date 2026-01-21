@@ -113,6 +113,13 @@ export async function deleteScenario(scenarioId) {
         });
         
         renderScenariosList();
+        
+        // Clear loaded item if it was this scenario
+        if (state.currentLoadedItem && state.currentLoadedItem.id === scenarioId) {
+            const { setCurrentLoadedItem, setIsModified } = await import('./state.js');
+            setCurrentLoadedItem(null);
+            setIsModified(false);
+        }
     } catch (error) {
         console.error('Error deleting scenario:', error);
         await alert('Error deleting scenario: ' + error.message);

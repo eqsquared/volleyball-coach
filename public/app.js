@@ -15,7 +15,8 @@ import {
     setEditMode, 
     setIsModified, 
     setCurrentLoadedItem, 
-    checkForModifications 
+    checkForModifications,
+    getSavedLoadedItem
 } from './js/state.js';
 import { addPlayer } from './js/players.js';
 import { savePosition, savePositionAs, createNewPosition } from './js/positions.js';
@@ -29,7 +30,7 @@ import {
     updateCurrentItemDisplay,
     updateModifiedIndicator
 } from './js/ui.js';
-import { initAccordions, openAccordion } from './js/accordion.js';
+import { initAccordions, openAccordion, getSavedActiveAccordion } from './js/accordion.js';
 import { createScenario, updateScenarioSelects } from './js/scenarios.js';
 import { createSequence, playNextScenario } from './js/sequences.js';
 import { 
@@ -115,8 +116,13 @@ async function init() {
         // Initialize accordions
         initAccordions();
         
-        // Open Players accordion by default
-        openAccordion('players');
+        // Restore last open accordion or default to Players
+        const savedAccordion = getSavedActiveAccordion();
+        if (savedAccordion) {
+            openAccordion(savedAccordion);
+        } else {
+            openAccordion('players');
+        }
         
         // Set up event listeners
         setupEventListeners();
@@ -131,6 +137,37 @@ async function init() {
         renderSequencesList();
         updateScenarioSelects();
         updateCurrentItemDisplay();
+        
+        // Restore last loaded item if it exists
+        const savedItem = getSavedLoadedItem();
+        if (savedItem) {
+            // Verify the item still exists before loading
+            let itemExists = false;
+            if (savedItem.type === 'position') {
+                itemExists = state.positions.some(p => p.id === savedItem.id);
+                if (itemExists) {
+                    const { loadPosition } = await import('./js/positions.js');
+                    loadPosition(savedItem.id);
+                }
+            } else if (savedItem.type === 'scenario') {
+                itemExists = state.scenarios.some(s => s.id === savedItem.id);
+                if (itemExists) {
+                    const { loadScenario } = await import('./js/scenarios.js');
+                    loadScenario(savedItem.id);
+                }
+            } else if (savedItem.type === 'sequence') {
+                itemExists = state.sequences.some(s => s.id === savedItem.id);
+                if (itemExists) {
+                    const { loadSequence } = await import('./js/sequences.js');
+                    await loadSequence(savedItem.id);
+                }
+            }
+            
+            // If item no longer exists, clear the saved state
+            if (!itemExists) {
+                setCurrentLoadedItem(null);
+            }
+        }
         
         // Initialize Lucide icons with smaller default size
         if (window.lucide) {

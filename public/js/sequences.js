@@ -93,6 +93,13 @@ export async function deleteSequence(sequenceId) {
         if (state.currentSequence && state.currentSequence.sequenceId === sequenceId) {
             setCurrentSequence(null);
         }
+        
+        // Clear loaded item if it was this sequence
+        if (state.currentLoadedItem && state.currentLoadedItem.id === sequenceId) {
+            const { setCurrentLoadedItem, setIsModified } = await import('./state.js');
+            setCurrentLoadedItem(null);
+            setIsModified(false);
+        }
     } catch (error) {
         console.error('Error deleting sequence:', error);
         await alert('Error deleting sequence: ' + error.message);
@@ -120,10 +127,19 @@ export async function loadSequence(sequenceId) {
         currentScenarioIndex: 0
     });
     
+    // Update state to track loaded sequence
+    const { setCurrentLoadedItem, setIsModified } = await import('./state.js');
+    setCurrentLoadedItem({ type: 'sequence', id: sequence.id, name: sequence.name });
+    setIsModified(false);
+    
     // Update UI
     updateSequenceProgress();
     dom.nextScenarioBtn.style.display = 'inline-flex';
     dom.sequenceProgress.style.display = 'block';
+    
+    // Update current item display
+    const { updateCurrentItemDisplay } = await import('./ui.js');
+    updateCurrentItemDisplay();
 }
 
 // Play next scenario in sequence
