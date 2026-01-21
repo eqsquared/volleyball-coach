@@ -143,8 +143,14 @@ async function init() {
         updateDropZoneDisplay();
         
         // Initialize scenario buttons visibility (all hidden by default)
-        const { updateScenarioButtonsVisibility } = await import('./js/ui.js');
+        const { updateScenarioButtonsVisibility, updateMobileUI } = await import('./js/ui.js');
         updateScenarioButtonsVisibility();
+        updateMobileUI();
+        
+        // Update mobile UI on window resize
+        window.addEventListener('resize', () => {
+            updateMobileUI();
+        });
         
         // Restore last loaded item if it exists
         const savedItem = getSavedLoadedItem();
@@ -321,7 +327,7 @@ function setupMobileDrawer() {
     });
 }
 
-// Set up court scaling - responsive to both width and height
+// Set up court scaling - uses CSS transform to scale court while keeping 600x600 coordinate system
 function setupCourtScaling() {
     if (!dom.court) return;
     
@@ -340,44 +346,36 @@ function setupCourtScaling() {
         const scaleY = availableHeight / 600;
         const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
         
-        // Apply scaling
+        // Apply scaling via CSS transform
         dom.court.style.transform = `scale(${scale})`;
-        dom.court.style.transformOrigin = 'center center';
         
-        // Store scale in a data attribute for JavaScript calculations
-        dom.court.dataset.scale = scale;
-        
-        // Store actual dimensions (scaled) for JavaScript
-        dom.court.dataset.scaledWidth = (600 * scale).toString();
-        dom.court.dataset.scaledHeight = (600 * scale).toString();
+        // Store scale for coordinate calculations
+        dom.court.dataset.scale = scale.toString();
     }
     
-    // Initial scale (with a small delay to ensure DOM is ready)
-    setTimeout(scaleCourt, 50);
+    // Initial scale
+    scaleCourt();
     
-    // Scale on resize (with debouncing for performance)
+    // Scale on resize (with debouncing)
     let resizeTimeout;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(scaleCourt, 100);
     });
     
-    // Also scale when drawer opens/closes (in case it affects layout)
+    // Scale when layout changes (drawer, accordions, etc.)
+    const resizeObserver = new ResizeObserver(() => {
+        scaleCourt();
+    });
+    
     if (dom.sidebar) {
-        const observer = new MutationObserver(() => {
-            setTimeout(scaleCourt, 100);
-        });
-        observer.observe(dom.sidebar, { attributes: true, attributeFilter: ['class'] });
+        resizeObserver.observe(dom.sidebar);
     }
     
-    // Scale when accordions open/close (affects available height)
-    const accordions = document.querySelectorAll('.accordion');
-    accordions.forEach(accordion => {
-        const observer = new MutationObserver(() => {
-            setTimeout(scaleCourt, 100);
-        });
-        observer.observe(accordion, { attributes: true, attributeFilter: ['class'] });
-    });
+    const courtContainer = dom.court.closest('.court-container');
+    if (courtContainer) {
+        resizeObserver.observe(courtContainer);
+    }
 }
 
 // Set up modification tracking

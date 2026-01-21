@@ -220,6 +220,9 @@ export function renderPositionsList() {
     
     dom.positionsList.innerHTML = '';
     
+    // Also update mobile positions list
+    renderMobilePositionsList();
+    
     const allPositions = getPositions();
     const savedPositions = getSavedPositions();
     
@@ -365,6 +368,9 @@ export function renderPositionsList() {
     
     // Initialize all icons in the positions list after all items are added
     initializeIcons(dom.positionsList);
+    
+    // Also update mobile positions list
+    renderMobilePositionsList();
 }
 
 // Render scenarios list
@@ -600,16 +606,23 @@ export function updateCurrentItemDisplay() {
     }
     // Update drop zones label when current item changes
     updateDropZonesLabel();
+    // Update mobile UI
+    updateMobileUI();
 }
 
 // Update scenario buttons visibility (all or nothing - show/hide entire container with fade)
 export function updateScenarioButtonsVisibility() {
     const hasScenario = state.currentLoadedItem && state.currentLoadedItem.type === 'scenario';
     const hasSequence = state.currentLoadedItem && state.currentLoadedItem.type === 'sequence';
+    const isMobile = window.innerWidth <= 768;
+    const isPositionSelectionMode = isMobile && !hasScenario && !hasSequence;
     const buttonsContainer = document.querySelector('.animation-buttons');
     
     if (buttonsContainer) {
-        if (hasScenario || hasSequence) {
+        // Hide animation-buttons in mobile position selection mode to prevent spacer issues
+        if (isPositionSelectionMode) {
+            buttonsContainer.classList.add('hidden');
+        } else if (hasScenario || hasSequence) {
             buttonsContainer.classList.remove('hidden');
         } else {
             buttonsContainer.classList.add('hidden');
@@ -662,6 +675,9 @@ export function updateModifiedIndicator(isModified) {
 export function updateDropZoneDisplay() {
     const startPos = getSelectedStartPosition();
     const endPos = getSelectedEndPosition();
+    
+    // Update mobile UI when drop zones change
+    updateMobileUI();
     
     // Update start position zone
     if (dom.startPositionContent && dom.startPositionZone && dom.clearStartPositionBtn) {
@@ -1369,6 +1385,8 @@ export function showDropZones() {
     }
     // Update label based on current loaded item type
     updateDropZonesLabel();
+    // Update mobile UI
+    updateMobileUI();
 }
 
 // Show timeline, hide drop zones
@@ -1381,6 +1399,8 @@ export function showTimeline() {
     }
     // Update label based on current loaded item type
     updateDropZonesLabel();
+    // Update mobile UI
+    updateMobileUI();
 }
 
 // Update drop zones label based on current loaded item type
@@ -1401,4 +1421,250 @@ function updateDropZonesLabel() {
         // Default to Scenario when nothing is loaded
         dom.dropZonesLabel.textContent = 'Scenario';
     }
+}
+
+// Render mobile positions bucket
+export function renderMobilePositionsList() {
+    if (!dom.mobilePositionsList) return;
+    
+    // Only render on mobile
+    if (window.innerWidth > 768) {
+        return;
+    }
+    
+    dom.mobilePositionsList.innerHTML = '';
+    
+    // Prevent body scroll when scrolling the positions list
+    if (dom.mobilePositionsList && !dom.mobilePositionsList.dataset.scrollHandlerAdded) {
+        let touchStartY = 0;
+        let isScrolling = false;
+        
+        dom.mobilePositionsList.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+            isScrolling = false;
+        }, { passive: true });
+        
+        dom.mobilePositionsList.addEventListener('touchmove', (e) => {
+            const touchY = e.touches[0].clientY;
+            const scrollTop = dom.mobilePositionsList.scrollTop;
+            const scrollHeight = dom.mobilePositionsList.scrollHeight;
+            const clientHeight = dom.mobilePositionsList.clientHeight;
+            const isAtTop = scrollTop === 0;
+            const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+            const isScrollingDown = touchY < touchStartY;
+            const isScrollingUp = touchY > touchStartY;
+            
+            // If we're at the top and trying to scroll up, or at bottom and trying to scroll down, prevent default
+            if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
+                // Allow body scroll
+                return;
+            }
+            
+            // Otherwise, prevent body scroll
+            e.stopPropagation();
+            isScrolling = true;
+        }, { passive: true });
+        
+        dom.mobilePositionsList.addEventListener('touchend', () => {
+            isScrolling = false;
+        }, { passive: true });
+        
+        dom.mobilePositionsList.dataset.scrollHandlerAdded = 'true';
+    }
+    
+    const allPositions = getPositions();
+    const savedPositions = getSavedPositions();
+    
+    // If no new format positions but legacy positions exist, show legacy positions
+    if (allPositions.length === 0 && savedPositions && Object.keys(savedPositions).length > 0) {
+        Object.keys(savedPositions).forEach(positionName => {
+            const item = document.createElement('div');
+            item.className = 'mobile-position-item';
+            item.style.opacity = '0.7'; // Indicate legacy format
+            
+            item.innerHTML = `
+                <div class="mobile-position-name">${escapeHtml(positionName)} <span class="legacy-indicator">(Legacy)</span></div>
+            `;
+            
+            // Track touch events to distinguish tap from drag
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchStartTime = 0;
+            let hasMoved = false;
+            const DRAG_THRESHOLD = 10; // pixels
+            const TAP_TIME_THRESHOLD = 300; // milliseconds
+            
+            item.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+                hasMoved = false;
+            }, { passive: true });
+            
+            item.addEventListener('touchmove', (e) => {
+                if (!hasMoved) {
+                    const deltaX = Math.abs(e.touches[0].clientX - touchStartX);
+                    const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+                    if (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD) {
+                        hasMoved = true;
+                    }
+                }
+            }, { passive: true });
+            
+            // Handle position selection - only on tap, not drag
+            const handlePositionSelect = async (e) => {
+                const touchTime = Date.now() - touchStartTime;
+                
+                // Only select if:
+                // 1. It's a click (mouse event)
+                // 2. OR it's a touch that didn't move much AND was quick (tap, not drag)
+                if (e.type === 'click' || (!hasMoved && touchTime < TAP_TIME_THRESHOLD)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const { loadPosition } = await import('./positions.js');
+                    loadPosition(positionName);
+                }
+            };
+            
+            item.addEventListener('click', handlePositionSelect);
+            item.addEventListener('touchend', handlePositionSelect);
+            
+            dom.mobilePositionsList.appendChild(item);
+        });
+        return;
+    }
+    
+    // Filter positions (use same filter as sidebar)
+    const filteredPositions = positionFilter ? positionFilter.filterItems(allPositions) : allPositions;
+    
+    // Render new format positions
+    filteredPositions.forEach(position => {
+        const item = document.createElement('div');
+        item.className = 'mobile-position-item';
+        item.dataset.positionId = position.id;
+        
+        if (getCurrentLoadedItem()?.type === 'position' && getCurrentLoadedItem()?.id === position.id) {
+            item.classList.add('active');
+        }
+        
+        const tags = position.tags || [];
+        const tagsDisplay = tags.length > 0 
+            ? tags.map(tag => {
+                const tagColor = getTagColor(tag);
+                return `<span class="mobile-position-tag" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
+            }).join('')
+            : '';
+        
+        item.innerHTML = `
+            <div class="mobile-position-name">${escapeHtml(position.name)}</div>
+            ${tagsDisplay ? `<div class="mobile-position-tags">${tagsDisplay}</div>` : ''}
+        `;
+        
+        // Track touch events to distinguish tap from drag
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+        let hasMoved = false;
+        const DRAG_THRESHOLD = 10; // pixels
+        const TAP_TIME_THRESHOLD = 300; // milliseconds
+        
+        item.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            touchStartTime = Date.now();
+            hasMoved = false;
+        }, { passive: true });
+        
+        item.addEventListener('touchmove', (e) => {
+            if (!hasMoved) {
+                const deltaX = Math.abs(e.touches[0].clientX - touchStartX);
+                const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+                if (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD) {
+                    hasMoved = true;
+                }
+            }
+        }, { passive: true });
+        
+        // Handle position selection - only on tap, not drag
+        const handlePositionSelect = async (e) => {
+            const touchTime = Date.now() - touchStartTime;
+            
+            // Only select if:
+            // 1. It's a click (mouse event)
+            // 2. OR it's a touch that didn't move much AND was quick (tap, not drag)
+            if (e.type === 'click' || (!hasMoved && touchTime < TAP_TIME_THRESHOLD)) {
+                e.preventDefault();
+                e.stopPropagation();
+                const { loadPosition } = await import('./positions.js');
+                loadPosition(position.id);
+            }
+        };
+        
+        item.addEventListener('click', handlePositionSelect);
+        item.addEventListener('touchend', handlePositionSelect);
+        
+        dom.mobilePositionsList.appendChild(item);
+    });
+}
+
+// Update mobile UI visibility based on current loaded item
+export function updateMobileUI() {
+    const currentItem = getCurrentLoadedItem();
+    const hasScenario = currentItem && currentItem.type === 'scenario';
+    const hasSequence = currentItem && currentItem.type === 'sequence';
+    const isMobile = window.innerWidth <= 768;
+    
+    // Show/hide mobile positions bucket - only on mobile
+    if (dom.mobilePositionsBucket) {
+        if (!isMobile) {
+            // Always hide on desktop
+            dom.mobilePositionsBucket.classList.add('hidden');
+        } else if (hasScenario || hasSequence) {
+            // Hide positions bucket when scenario or sequence is loaded
+            dom.mobilePositionsBucket.classList.add('hidden');
+        } else {
+            // Show positions bucket when nothing or position is selected (mobile only)
+            dom.mobilePositionsBucket.classList.remove('hidden');
+            renderMobilePositionsList();
+        }
+    }
+    
+    // Only continue with mobile-specific updates on mobile
+    if (!isMobile) {
+        return;
+    }
+    
+    // Hide scenario drop zones container when no scenario is loaded on mobile
+    if (dom.positionDropZonesContainer) {
+        const startPos = getSelectedStartPosition();
+        const endPos = getSelectedEndPosition();
+        const hasScenarioContent = startPos && endPos;
+        
+        // On mobile, hide if no scenario is loaded OR if scenario is loaded but has no content
+        if (window.innerWidth <= 768) {
+            if (hasScenario && hasScenarioContent) {
+                dom.positionDropZonesContainer.classList.remove('empty');
+            } else {
+                dom.positionDropZonesContainer.classList.add('empty');
+            }
+        } else {
+            // On desktop, always show (remove empty class)
+            dom.positionDropZonesContainer.classList.remove('empty');
+        }
+    }
+    
+    // Adjust court section padding based on bucket visibility
+    const courtSection = document.querySelector('.court-section');
+    if (courtSection) {
+        if (hasScenario || hasSequence) {
+            // No bucket, remove padding class
+            courtSection.classList.remove('has-mobile-bucket');
+        } else {
+            // Bucket visible, add padding class
+            courtSection.classList.add('has-mobile-bucket');
+        }
+    }
+    
+    // Update animation buttons visibility (hide in position selection mode on mobile)
+    updateScenarioButtonsVisibility();
 }

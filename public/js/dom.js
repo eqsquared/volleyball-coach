@@ -76,7 +76,9 @@ export const dom = {
     // Mobile
     mobileMenuBtn: null,
     drawerOverlay: null,
-    sidebar: null
+    sidebar: null,
+    mobilePositionsBucket: null,
+    mobilePositionsList: null
 };
 
 // Initialize DOM references
@@ -157,4 +159,6 @@ export function initDOM() {
     dom.mobileMenuBtn = document.getElementById('mobile-menu-btn');
     dom.drawerOverlay = document.getElementById('drawer-overlay');
     dom.sidebar = document.getElementById('sidebar');
+    dom.mobilePositionsBucket = document.getElementById('mobile-positions-bucket');
+    dom.mobilePositionsList = document.getElementById('mobile-positions-list');
 }

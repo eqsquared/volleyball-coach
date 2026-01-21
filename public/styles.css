@@ -107,10 +107,12 @@ header h1 {
     z-index: 999;
     opacity: 0;
     transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
 .drawer-overlay.active {
     opacity: 1;
+    pointer-events: auto;
 }
 
 /* ============================================
@@ -1076,7 +1078,7 @@ svg[data-lucide] {
 .court {
     position: relative;
     width: 600px;
-    height: 600px; /* Square: 30' x 30' */
+    height: 600px;
     background: #e8dcc6; /* Birch/tan color */
     border: 3px solid #8b7355;
     border-radius: 4px;
@@ -1897,6 +1899,13 @@ svg[data-lucide] {
 }
 
 /* ============================================
+   Mobile Positions Bucket - Hidden by default
+   ============================================ */
+.mobile-positions-bucket {
+    display: none;
+}
+
+/* ============================================
    Mobile Responsive Styles
    ============================================ */
 @media (max-width: 768px) {
@@ -1913,9 +1922,13 @@ svg[data-lucide] {
         display: flex;
     }
     
-    /* Show drawer overlay when active */
+    /* Show drawer overlay only when active */
     .drawer-overlay {
         display: block;
+    }
+    
+    .drawer-overlay:not(.active) {
+        pointer-events: none;
     }
     
     /* Adjust main content for mobile header */
@@ -1936,12 +1949,13 @@ svg[data-lucide] {
         transform: translateX(-100%);
         z-index: 1000;
         border-radius: 0;
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
-        transition: transform 0.3s ease;
+        box-shadow: none;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
     
     .sidebar.open {
         transform: translateX(0);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
     }
     
     /* Court section takes full width */
@@ -1957,7 +1971,7 @@ svg[data-lucide] {
     /* Court container scales to fit available space */
     .court-container {
         width: 100%;
-        padding: 10px;
+        padding: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1968,19 +1982,20 @@ svg[data-lucide] {
     }
     
     /* Court scales to fit available space while maintaining aspect ratio */
-    .court {
+    /* .court {
         width: 600px;
         height: 600px;
         transform-origin: center center;
-        transition: transform 0.2s ease;
-    }
+    } */
     
     /* Court top bar adjustments */
     .court-top-bar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 20px;
-        padding: 20px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px;
+        flex-shrink: 0;
     }
     
     .animation-buttons {
@@ -1997,11 +2012,6 @@ svg[data-lucide] {
         display: none;
     }
     
-    .state-indicator {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    
     /* Position drop zones stack vertically on mobile */
     .position-drop-zones {
         grid-template-columns: 1fr;
@@ -2010,5 +2020,177 @@ svg[data-lucide] {
     /* Accordion content adjustments */
     .accordion.active .accordion-content {
         max-height: calc(100vh - 300px);
+    }
+    
+    /* Hide scenario sections when no scenario is loaded (using class-based approach) */
+    .position-drop-zones-container.empty {
+        display: none !important;
+    }
+    
+    /* Hide animation buttons spacer when hidden on mobile */
+    .animation-buttons.hidden {
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        /* width: 0 !important; */
+        /* max-width: 0 !important; */
+        overflow: hidden !important;
+        /* flex: 0 0 0 !important; */
+    }
+    
+    /* Ensure buttons inside don't take up space when parent is hidden on mobile */
+    .animation-buttons.hidden button {
+        width: 0 !important;
+        max-width: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+    }
+    
+    /* State indicator on mobile - keep horizontal layout */
+    .state-indicator {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+    
+    .current-item {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+    
+    .item-name {
+        font-size: 13px;
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* Reduce court section padding and spacing on mobile */
+    .court-section {
+        padding: 8px;
+        gap: 0;
+        min-height: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    /* Add padding when mobile positions bucket is visible */
+    .court-section.has-mobile-bucket {
+        padding-bottom: calc(40vh + 8px);
+    }
+    
+    .court-top-bar {
+        padding: 8px;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    
+    /* .court-container {
+        flex: 1;
+        min-height: 0;
+    } */
+    
+    /* Mobile positions bucket at bottom - show on mobile when not hidden */
+    .mobile-positions-bucket {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 2px solid #e9ecef;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 200;
+        max-height: 40vh;
+        display: flex !important;
+        flex-direction: column;
+        overflow: hidden;
+        touch-action: pan-y;
+    }
+    
+    .mobile-positions-bucket.hidden {
+        display: none !important;
+    }
+    
+    .mobile-positions-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e9ecef;
+        background: #f8f9fa;
+        flex-shrink: 0;
+        touch-action: none;
+    }
+    
+    .mobile-positions-header h3 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .mobile-positions-list {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 8px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+    
+    .mobile-position-item {
+        padding: 10px 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border: 1px solid #e9ecef;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .mobile-position-item:active {
+        background: #e9ecef;
+        transform: scale(0.98);
+    }
+    
+    .mobile-position-item.active {
+        background: #d4edda;
+        border-color: #27ae60;
+    }
+    
+    .mobile-position-name {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 13px;
+        line-height: 1.2;
+    }
+    
+    .mobile-position-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .mobile-position-tag {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 500;
+        border: 1px solid;
     }
 }

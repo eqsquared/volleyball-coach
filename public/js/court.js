@@ -4,13 +4,13 @@ import { state, setDraggedPlayer, setDraggedElement, getPlayerElements } from '.
 import { dom } from './dom.js';
 import { getPlayers } from './state.js';
 
-// Get court dimensions (original 600x600, scaled dimensions, and scale factor)
+// Get court dimensions (always uses 600x600 coordinate system internally)
 function getCourtDimensions() {
     const baseSize = 600;
     const playerSize = 50;
     const netOffset = 4;
     
-    // Get scale from data attribute, default to 1 if not set
+    // Get scale from data attribute (set by setupCourtScaling)
     const scale = parseFloat(dom.court.dataset.scale || '1');
     
     return {
@@ -24,18 +24,21 @@ function getCourtDimensions() {
     };
 }
 
-// Convert mouse coordinates from rendered space to original 600x600 coordinate space
+// Convert mouse coordinates from rendered space to 600x600 coordinate space
+// The court is visually scaled via CSS transform, so we need to account for that
 function convertToCourtCoordinates(clientX, clientY) {
     const rect = dom.court.getBoundingClientRect();
     const dims = getCourtDimensions();
     
-    // Get mouse position relative to rendered court
+    // Get mouse position relative to rendered court (which may be scaled)
     const relativeX = clientX - rect.left;
     const relativeY = clientY - rect.top;
     
-    // Convert to original 600x600 coordinate system
-    const courtX = relativeX / dims.scale;
-    const courtY = relativeY / dims.scale;
+    // Convert to 600x600 coordinate system
+    // Since the court is scaled via transform, the rect dimensions are the scaled size
+    // We need to convert back to the original 600x600 coordinate system
+    const courtX = (relativeX / rect.width) * dims.baseSize;
+    const courtY = (relativeY / rect.height) * dims.baseSize;
     
     return { x: courtX, y: courtY };
 }

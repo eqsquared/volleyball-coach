@@ -296,8 +296,22 @@ export async function loadPosition(positionId, updateLoadedItem = true, skipAnim
     const hasPlayersOnCourt = getPlayerElements().size > 0;
     
     if (hasPlayersOnCourt && !state.isAnimating && !skipAnimation) {
-        // Use animation to transition from current state to new position
-        await animateToPosition(positionId, updateLoadedItem);
+        // Update UI state FIRST (before animation) so position shows as selected immediately
+        if (updateLoadedItem) {
+            setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
+            setIsModified(false);
+            
+            // Show drop zones, hide timeline (async import)
+            import('./ui.js').then(({ showDropZones, updateScenarioButtonsVisibility, renderPositionsList, updateCurrentItemDisplay }) => {
+                showDropZones();
+                updateScenarioButtonsVisibility();
+                renderPositionsList(); // This updates the active/green state
+                updateCurrentItemDisplay();
+            });
+        }
+        
+        // Then use animation to transition from current state to new position
+        await animateToPosition(positionId, false); // Don't update loaded item again, already done
         
         // Check for modifications when players move (after animation)
         setTimeout(() => {

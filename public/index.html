@@ -143,9 +143,23 @@
 
             <!-- Court Section -->
             <div class="court-section">
-                <!-- Top Bar: Animation Buttons (Left) and State Indicator (Right) -->
+                <!-- Top Bar: State Indicator (Left) and Animation Buttons (Right) -->
                 <div class="court-top-bar">
-                    <!-- Animation Buttons (Top Left) -->
+                    <!-- State Indicator (Top Left) -->
+                    <div class="state-indicator" id="state-indicator">
+                        <div class="current-item hidden" id="current-item-display">
+                            <span class="item-badge" id="current-item-badge"></span>
+                            <span class="item-name" id="current-item-name"></span>
+                        </div>
+                        <div class="modified-indicator hidden" id="modified-indicator">
+                            <span class="badge">Modified</span>
+                            <button id="save-btn" class="btn-save">Save</button>
+                            <button id="save-as-btn" class="btn-save-as">Save As</button>
+                            <button id="discard-btn" class="btn-discard">Discard</button>
+                        </div>
+                    </div>
+
+                    <!-- Animation Buttons (Top Right) -->
                     <div class="animation-buttons hidden" id="animation-buttons">
                         <!-- Scenario buttons -->
                         <button id="play-animation-btn"><i data-lucide="play"></i> <span>Play</span></button>
@@ -158,20 +172,6 @@
                         <button id="sequence-next-btn" class="hidden"><i data-lucide="skip-forward"></i> <span>Next</span></button>
                         <div class="sequence-progress hidden" id="sequence-progress">
                             <span id="sequence-progress-text">Position 1 of 3</span>
-                        </div>
-                    </div>
-
-                    <!-- State Indicator (Top Right) -->
-                    <div class="state-indicator" id="state-indicator">
-                        <div class="current-item hidden" id="current-item-display">
-                            <span class="item-badge" id="current-item-badge"></span>
-                            <span class="item-name" id="current-item-name"></span>
-                        </div>
-                        <div class="modified-indicator hidden" id="modified-indicator">
-                            <span class="badge">Modified</span>
-                            <button id="save-btn" class="btn-save">Save</button>
-                            <button id="save-as-btn" class="btn-save-as">Save As</button>
-                            <button id="discard-btn" class="btn-discard">Discard</button>
                         </div>
                     </div>
                 </div>
@@ -218,6 +218,16 @@
                     <div class="timeline-container" id="timeline-container">
                         <div class="timeline-placeholder">Drag positions or scenarios here to build your sequence</div>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Mobile Positions Bucket (Bottom of Screen) -->
+            <div class="mobile-positions-bucket hidden" id="mobile-positions-bucket">
+                <div class="mobile-positions-header">
+                    <h3>Positions</h3>
+                </div>
+                <div class="mobile-positions-list" id="mobile-positions-list">
+                    <!-- Positions will be added here -->
                 </div>
             </div>
         </div>
