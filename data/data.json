@@ -1,0 +1,1373 @@
+{
+  "players": [
+    {
+      "id": "1768780851551",
+      "jersey": "14",
+      "name": "Cecily"
+    },
+    {
+      "id": "1768780856106",
+      "jersey": "22",
+      "name": "Marley"
+    },
+    {
+      "id": "1768785149048",
+      "jersey": "17",
+      "name": "Anahi"
+    },
+    {
+      "id": "1768785165038",
+      "jersey": "24",
+      "name": "Araceli"
+    },
+    {
+      "id": "1768785173130",
+      "jersey": "21",
+      "name": "Ari"
+    },
+    {
+      "id": "1768785183653",
+      "jersey": "4",
+      "name": "Adley"
+    },
+    {
+      "id": "1768785193172",
+      "jersey": "10",
+      "name": "Tempe"
+    },
+    {
+      "id": "1768785199992",
+      "jersey": "64",
+      "name": "Aubrey"
+    }
+  ],
+  "savedPositions": {
+    "Rotation 1": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 468,
+        "y": 412
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 471,
+        "y": 122
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 286,
+        "y": 127
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 101,
+        "y": 405
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 92,
+        "y": 118
+      },
+      {
+        "playerId": "1768785173130",
+        "jersey": "21",
+        "name": "Ari",
+        "x": 286,
+        "y": 414
+      }
+    ],
+    "Rotation 1 Cecily Serving": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 444,
+        "y": 523
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 366,
+        "y": 47
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 279,
+        "y": 37
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 101,
+        "y": 405
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 194,
+        "y": 51
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 297,
+        "y": 425
+      }
+    ],
+    "Rotation 1 Defense: Middle Hit": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 260,
+        "y": 10
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 184,
+        "y": 70
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 496,
+        "y": 244
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 139,
+        "y": 419
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 112,
+        "y": 234
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 397,
+        "y": 438
+      }
+    ],
+    "Rotation 1 Defense: Outside Hit": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 491,
+        "y": 116
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 120,
+        "y": 187
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 504,
+        "y": 296
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 64,
+        "y": 379
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 286,
+        "y": 133
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 283,
+        "y": 460
+      }
+    ],
+    "Rotation 1 Defense: Right Side Hit": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 393,
+        "y": 66
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 58,
+        "y": 19
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 469,
+        "y": 244
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 135,
+        "y": 433
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 144,
+        "y": 172
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 389,
+        "y": 433
+      }
+    ],
+    "Rotation 1 Served": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 388,
+        "y": 43
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 78,
+        "y": 83
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 497,
+        "y": 97
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 142,
+        "y": 395
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 277,
+        "y": 93
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 406,
+        "y": 410
+      }
+    ],
+    "Rotation 1: Serve Receive": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 481,
+        "y": 441
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 464,
+        "y": 216
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 243,
+        "y": 178
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 177,
+        "y": 475
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 67,
+        "y": 317
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 318,
+        "y": 382
+      }
+    ],
+    "Rotation 2": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 292,
+        "y": 403
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 466,
+        "y": 396
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 454,
+        "y": 82
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 96,
+        "y": 85
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 260,
+        "y": 86
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 107,
+        "y": 399
+      }
+    ],
+    "Rotation 2 Defense: Outside Hit": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 496,
+        "y": 20
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 417,
+        "y": 425
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 466,
+        "y": 221
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 72,
+        "y": 252
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 242,
+        "y": 94
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 184,
+        "y": 449
+      }
+    ],
+    "Rotation 2 Defense: Right Side Hit": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 197,
+        "y": 71
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 417,
+        "y": 425
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 443,
+        "y": 235
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 46,
+        "y": 10
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 95,
+        "y": 249
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 212,
+        "y": 441
+      }
+    ],
+    "Rotation 2: Araceli Served": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 388,
+        "y": 51
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 417,
+        "y": 425
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 481,
+        "y": 109
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 79,
+        "y": 105
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 288,
+        "y": 112
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 197,
+        "y": 417
+      }
+    ],
+    "Rotation 2: Araceli Serving": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 354,
+        "y": 221
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 483,
+        "y": 516
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 481,
+        "y": 109
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 86,
+        "y": 103
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 288,
+        "y": 112
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 182,
+        "y": 418
+      }
+    ],
+    "Rotation 2: Middle Hit": [
+      {
+        "playerId": "1768780851551",
+        "jersey": "14",
+        "name": "Cecily",
+        "x": 356,
+        "y": 123
+      },
+      {
+        "playerId": "1768785165038",
+        "jersey": "24",
+        "name": "Araceli",
+        "x": 380,
+        "y": 422
+      },
+      {
+        "playerId": "1768785149048",
+        "jersey": "17",
+        "name": "Anahi",
+        "x": 479,
+        "y": 256
+      },
+      {
+        "playerId": "1768780856106",
+        "jersey": "22",
+        "name": "Marley",
+        "x": 276,
+        "y": 16
+      },
+      {
+        "playerId": "1768785183653",
+        "jersey": "4",
+        "name": "Adley",
+        "x": 117,
+        "y": 231
+      },
+      {
+        "playerId": "1768785199992",
+        "jersey": "64",
+        "name": "Aubrey",
+        "x": 147,
+        "y": 429
+      }
+    ]
+  },
+  "version": "4.0",
+  "database": "file-based",
+  "importDate": "2026-01-19T17:32:06.606Z",
+  "positions": [
+    {
+      "id": "pos_1768843988881_0_vmfvn1389",
+      "name": "R1 Base",
+      "rotationIds": [
+        "rot_1768843988881_0_x7pm68fld"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 468,
+          "y": 412
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 471,
+          "y": 122
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 286,
+          "y": 127
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 101,
+          "y": 405
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 92,
+          "y": 118
+        },
+        {
+          "playerId": "1768785173130",
+          "jersey": "21",
+          "name": "Ari",
+          "x": 286,
+          "y": 414
+        }
+      ],
+      "tags": [
+        "Rotation 1"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_1_hebgsgis7",
+      "name": "Cecily Serving",
+      "rotationIds": [
+        "rot_1768843988881_0_x7pm68fld"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 444,
+          "y": 523
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 366,
+          "y": 47
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 279,
+          "y": 37
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 101,
+          "y": 405
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 194,
+          "y": 51
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 297,
+          "y": 425
+        }
+      ],
+      "tags": [
+        "Rotation 1"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_2_bcaxl6lv2",
+      "name": "Defense: Middle Hit",
+      "rotationIds": [
+        "rot_1768843988881_0_x7pm68fld"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 260,
+          "y": 10
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 184,
+          "y": 70
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 496,
+          "y": 244
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 139,
+          "y": 419
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 112,
+          "y": 234
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 397,
+          "y": 438
+        }
+      ],
+      "tags": [
+        "Rotation 1"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_3_itvc769ti",
+      "name": "Defense: Outside Hit",
+      "rotationIds": [
+        "rot_1768843988881_0_x7pm68fld"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 491,
+          "y": 116
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 120,
+          "y": 187
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 504,
+          "y": 296
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 64,
+          "y": 379
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 286,
+          "y": 133
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 283,
+          "y": 460
+        }
+      ],
+      "tags": [
+        "Rotation 1"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_4_d5rn863ap",
+      "name": "Defense: Right Side Hit",
+      "rotationIds": [
+        "rot_1768843988881_0_x7pm68fld"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 393,
+          "y": 66
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 58,
+          "y": 19
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 469,
+          "y": 244
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 135,
+          "y": 433
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 144,
+          "y": 172
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 389,
+          "y": 433
+        }
+      ],
+      "tags": [
+        "Rotation 1"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_5_wd5t74wfe",
+      "name": "Ball Served",
+      "rotationIds": [
+        "rot_1768843988881_0_x7pm68fld"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 388,
+          "y": 43
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 78,
+          "y": 83
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 497,
+          "y": 97
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 142,
+          "y": 395
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 277,
+          "y": 93
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 406,
+          "y": 410
+        }
+      ],
+      "tags": [
+        "Rotation 1"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_6_nhwgwg0ra",
+      "name": "Serve Receive",
+      "rotationIds": [
+        "rot_1768843988881_0_x7pm68fld"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 481,
+          "y": 441
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 464,
+          "y": 216
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 243,
+          "y": 178
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 177,
+          "y": 475
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 67,
+          "y": 317
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 318,
+          "y": 382
+        }
+      ],
+      "tags": [
+        "Rotation 1"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_7_4lg7pwvpf",
+      "name": "Rotation 2",
+      "rotationIds": [
+        "rot_1768843988881_1_ohlqbl4qu"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 292,
+          "y": 403
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 466,
+          "y": 396
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 454,
+          "y": 82
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 96,
+          "y": 85
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 260,
+          "y": 86
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 107,
+          "y": 399
+        }
+      ],
+      "tags": [
+        "Rotation 2"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_8_4x23c8n5b",
+      "name": "Defense: Outside Hit",
+      "rotationIds": [
+        "rot_1768843988881_1_ohlqbl4qu"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 496,
+          "y": 20
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 417,
+          "y": 425
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 466,
+          "y": 221
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 72,
+          "y": 252
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 242,
+          "y": 94
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 184,
+          "y": 449
+        }
+      ],
+      "tags": [
+        "Rotation 2"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_9_h9ceqc8a9",
+      "name": "Defense: Right Side Hit",
+      "rotationIds": [
+        "rot_1768843988881_1_ohlqbl4qu"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 197,
+          "y": 71
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 417,
+          "y": 425
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 443,
+          "y": 235
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 46,
+          "y": 10
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 95,
+          "y": 249
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 212,
+          "y": 441
+        }
+      ],
+      "tags": [
+        "Rotation 2"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_10_vjna5fjao",
+      "name": "Araceli Served",
+      "rotationIds": [
+        "rot_1768843988881_1_ohlqbl4qu"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 388,
+          "y": 51
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 417,
+          "y": 425
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 481,
+          "y": 109
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 79,
+          "y": 105
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 288,
+          "y": 112
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 197,
+          "y": 417
+        }
+      ],
+      "tags": [
+        "Rotation 2"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_11_6rmbftvwa",
+      "name": "Araceli Serving",
+      "rotationIds": [
+        "rot_1768843988881_1_ohlqbl4qu"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 354,
+          "y": 221
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 483,
+          "y": 516
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 481,
+          "y": 109
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 86,
+          "y": 103
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 288,
+          "y": 112
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 182,
+          "y": 418
+        }
+      ],
+      "tags": [
+        "Rotation 2"
+      ]
+    },
+    {
+      "id": "pos_1768843988881_12_1ib55na41",
+      "name": "Middle Hit",
+      "rotationIds": [
+        "rot_1768843988881_1_ohlqbl4qu"
+      ],
+      "playerPositions": [
+        {
+          "playerId": "1768780851551",
+          "jersey": "14",
+          "name": "Cecily",
+          "x": 356,
+          "y": 123
+        },
+        {
+          "playerId": "1768785165038",
+          "jersey": "24",
+          "name": "Araceli",
+          "x": 380,
+          "y": 422
+        },
+        {
+          "playerId": "1768785149048",
+          "jersey": "17",
+          "name": "Anahi",
+          "x": 479,
+          "y": 256
+        },
+        {
+          "playerId": "1768780856106",
+          "jersey": "22",
+          "name": "Marley",
+          "x": 276,
+          "y": 16
+        },
+        {
+          "playerId": "1768785183653",
+          "jersey": "4",
+          "name": "Adley",
+          "x": 117,
+          "y": 231
+        },
+        {
+          "playerId": "1768785199992",
+          "jersey": "64",
+          "name": "Aubrey",
+          "x": 147,
+          "y": 429
+        }
+      ],
+      "tags": [
+        "Rotation 2"
+      ]
+    }
+  ],
+  "rotations": [
+    {
+      "id": "rot_1768843988881_0_x7pm68fld",
+      "name": "Rotation 1",
+      "positionIds": [
+        "pos_1768843988881_0_vmfvn1389",
+        "pos_1768843988881_1_hebgsgis7",
+        "pos_1768843988881_2_bcaxl6lv2",
+        "pos_1768843988881_3_itvc769ti",
+        "pos_1768843988881_4_d5rn863ap",
+        "pos_1768843988881_5_wd5t74wfe",
+        "pos_1768843988881_6_nhwgwg0ra"
+      ]
+    },
+    {
+      "id": "rot_1768843988881_1_ohlqbl4qu",
+      "name": "Rotation 2",
+      "positionIds": [
+        "pos_1768843988881_7_4lg7pwvpf",
+        "pos_1768843988881_8_4x23c8n5b",
+        "pos_1768843988881_9_h9ceqc8a9",
+        "pos_1768843988881_10_vjna5fjao",
+        "pos_1768843988881_11_6rmbftvwa",
+        "pos_1768843988881_12_1ib55na41"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "scen_1768940434761_sowih2n1o",
+      "name": "R1 Return Outside Hit",
+      "startPositionId": "pos_1768843988881_5_wd5t74wfe",
+      "endPositionId": "pos_1768843988881_3_itvc769ti",
+      "tags": [
+        "Rotation 1"
+      ]
+    },
+    {
+      "id": "scen_1768957447441_h58axl2uf",
+      "name": "R1 Return Right Side Hit",
+      "startPositionId": "pos_1768843988881_5_wd5t74wfe",
+      "endPositionId": "pos_1768843988881_4_d5rn863ap",
+      "tags": [
+        "Rotation 1"
+      ]
+    }
+  ],
+  "sequences": []
+}
