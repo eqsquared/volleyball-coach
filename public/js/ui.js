@@ -66,15 +66,33 @@ function initializeIcons(container) {
     });
 }
 
+// Helper function to reorder items in an array
+async function reorderItems(items, fromIndex, toIndex, saveCallback) {
+    if (fromIndex === toIndex) return;
+    
+    const newItems = [...items];
+    const [moved] = newItems.splice(fromIndex, 1);
+    newItems.splice(toIndex, 0, moved);
+    
+    // Update state
+    if (saveCallback) {
+        await saveCallback(newItems);
+    }
+    
+    return newItems;
+}
+
 // Render lineup
 export function renderLineup() {
     dom.lineupList.innerHTML = '';
     
-    getPlayers().forEach(player => {
+    const players = getPlayers();
+    players.forEach((player, index) => {
         const item = document.createElement('div');
         item.className = 'player-lineup-item';
         item.draggable = true;
         item.dataset.playerId = player.id;
+        item.dataset.playerIndex = index;
         
         item.innerHTML = `
             <div class="player-jersey">${player.jersey}</div>
@@ -96,10 +114,118 @@ export function renderLineup() {
         const deleteBtn = item.querySelector('.delete-player-btn');
         deleteBtn.addEventListener('click', () => deletePlayer(player.id));
         
+        // Track if we're reordering (dragging within list) vs dragging to court
+        let isReordering = false;
+        let dragStartY = 0;
+        
         // Drag start
         item.addEventListener('dragstart', (e) => {
             setDraggedPlayer(player);
-            e.dataTransfer.effectAllowed = 'copy';
+            dragStartY = e.clientY;
+            isReordering = false; // Will be set to true if we detect reordering
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move'; // Allow both move (reorder) and copy (to court)
+            e.dataTransfer.setData('text/plain', `reorder-player-${index}`);
+        });
+        
+        // Detect if this is a reorder drag (vertical movement within list)
+        item.addEventListener('drag', (e) => {
+            const dragY = e.clientY;
+            const dragDelta = Math.abs(dragY - dragStartY);
+            // If moved more than 10px vertically, likely reordering
+            if (dragDelta > 10) {
+                isReordering = true;
+            }
+        });
+        
+        // Drag end
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging', 'drag-over');
+            setDraggedPlayer(null);
+            isReordering = false;
+        });
+        
+        // Reordering handlers
+        item.addEventListener('dragover', (e) => {
+            const draggedItem = dom.lineupList.querySelector('.player-lineup-item.dragging');
+            if (draggedItem && draggedItem !== item) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const draggedIndex = parseInt(draggedItem.dataset.playerIndex);
+                const targetIndex = parseInt(item.dataset.playerIndex);
+                
+                // Show visual feedback
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                // Clear all drag-over classes
+                dom.lineupList.querySelectorAll('.player-lineup-item').forEach(i => {
+                    i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                });
+                
+                if (e.clientY < midpoint) {
+                    item.classList.add('drag-insert-before');
+                } else {
+                    item.classList.add('drag-insert-after');
+                }
+                
+                e.dataTransfer.dropEffect = 'move';
+            }
+        });
+        
+        item.addEventListener('dragleave', (e) => {
+            if (!item.contains(e.relatedTarget)) {
+                item.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+            }
+        });
+        
+        item.addEventListener('drop', async (e) => {
+            const draggedItem = dom.lineupList.querySelector('.player-lineup-item.dragging');
+            if (draggedItem && draggedItem !== item) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const draggedIndex = parseInt(draggedItem.dataset.playerIndex);
+                const targetIndex = parseInt(item.dataset.playerIndex);
+                
+                // Calculate target index based on drop position
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                let newIndex = targetIndex;
+                if (e.clientY >= midpoint) {
+                    newIndex = targetIndex + 1;
+                }
+                
+                // Clear visual feedback
+                dom.lineupList.querySelectorAll('.player-lineup-item').forEach(i => {
+                    i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                });
+                
+                // Reorder players
+                const currentPlayers = getPlayers();
+                const reordered = await reorderItems(currentPlayers, draggedIndex, newIndex, async (newPlayers) => {
+                    // Save each player in new order
+                    const { setPlayers } = await import('./state.js');
+                    setPlayers(newPlayers);
+                    
+                    // Save to database
+                    if (state.dbInitialized) {
+                        const db = await import('../db.js');
+                        // Save all players (backend should handle order)
+                        for (const player of newPlayers) {
+                            try {
+                                await db.savePlayer(player);
+                            } catch (error) {
+                                console.error('Error saving player order:', error);
+                            }
+                        }
+                    }
+                });
+                
+                // Re-render to update indices
+                renderLineup();
+            }
         });
         
         dom.lineupList.appendChild(item);
@@ -258,12 +384,20 @@ export function renderPositionsList() {
     // Filter positions
     const filteredPositions = positionFilter ? positionFilter.filterItems(allPositions) : allPositions;
     
+    // Create a map of filtered positions to their original indices in allPositions
+    const positionIndexMap = new Map();
+    filteredPositions.forEach((pos, filteredIndex) => {
+        const originalIndex = allPositions.findIndex(p => p.id === pos.id);
+        positionIndexMap.set(pos.id, { filteredIndex, originalIndex });
+    });
+    
     // Render new format positions
-    filteredPositions.forEach(position => {
+    filteredPositions.forEach((position, filteredIndex) => {
         const item = document.createElement('div');
         item.className = 'item-card draggable';
         item.draggable = true;
         item.dataset.positionId = position.id;
+        item.dataset.positionIndex = positionIndexMap.get(position.id).originalIndex;
         if (getCurrentLoadedItem()?.type === 'position' && getCurrentLoadedItem()?.id === position.id) {
             item.classList.add('active');
         }
@@ -350,17 +484,102 @@ export function renderPositionsList() {
             isDragging = true;
             setDraggedPosition(position);
             item.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.effectAllowed = 'move'; // Allow both move (reorder) and copy (to drop zones)
             e.dataTransfer.setData('text/plain', position.id);
+            e.dataTransfer.setData('application/reorder', `position-${positionIndexMap.get(position.id).originalIndex}`);
         });
         
         item.addEventListener('dragend', () => {
             item.classList.remove('dragging');
             setDraggedPosition(null);
+            // Clear all drag-over classes
+            dom.positionsList.querySelectorAll('.item-card').forEach(i => {
+                i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+            });
             // Reset dragging flag after a short delay to prevent click from firing
             setTimeout(() => {
                 isDragging = false;
             }, 100);
+        });
+        
+        // Reordering handlers (only when dragging within the list)
+        item.addEventListener('dragover', (e) => {
+            const draggedItem = dom.positionsList.querySelector('.item-card.dragging');
+            if (draggedItem && draggedItem !== item && draggedItem.dataset.positionId) {
+                // This is a reorder operation within the list
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                // Clear all drag-over classes
+                dom.positionsList.querySelectorAll('.item-card').forEach(i => {
+                    i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                });
+                
+                if (e.clientY < midpoint) {
+                    item.classList.add('drag-insert-before');
+                } else {
+                    item.classList.add('drag-insert-after');
+                }
+                
+                e.dataTransfer.dropEffect = 'move';
+            }
+        });
+        
+        item.addEventListener('dragleave', (e) => {
+            if (!item.contains(e.relatedTarget)) {
+                item.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+            }
+        });
+        
+        item.addEventListener('drop', async (e) => {
+            const draggedItem = dom.positionsList.querySelector('.item-card.dragging');
+            if (draggedItem && draggedItem !== item && draggedItem.dataset.positionId) {
+                // This is a reorder operation
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const draggedIndex = parseInt(draggedItem.dataset.positionIndex);
+                const targetIndex = parseInt(item.dataset.positionIndex);
+                
+                // Calculate target index based on drop position
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                let newIndex = targetIndex;
+                if (e.clientY >= midpoint) {
+                    newIndex = targetIndex + 1;
+                }
+                
+                // Clear visual feedback
+                dom.positionsList.querySelectorAll('.item-card').forEach(i => {
+                    i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                });
+                
+                // Reorder positions
+                const currentPositions = getPositions();
+                await reorderItems(currentPositions, draggedIndex, newIndex, async (newPositions) => {
+                    const { setPositions } = await import('./state.js');
+                    setPositions(newPositions);
+                    
+                    // Save to database
+                    if (state.dbInitialized) {
+                        const db = await import('../db.js');
+                        // Save all positions in new order
+                        for (const pos of newPositions) {
+                            try {
+                                await db.savePositionNew(pos);
+                            } catch (error) {
+                                console.error('Error saving position order:', error);
+                            }
+                        }
+                    }
+                });
+                
+                // Re-render to update indices
+                renderPositionsList();
+            }
         });
         
         dom.positionsList.appendChild(item);
@@ -382,11 +601,19 @@ export function renderScenariosList() {
     const allScenarios = getScenarios();
     const filteredScenarios = scenarioFilter ? scenarioFilter.filterItems(allScenarios) : allScenarios;
     
+    // Create a map of filtered scenarios to their original indices in allScenarios
+    const scenarioIndexMap = new Map();
+    filteredScenarios.forEach((scen) => {
+        const originalIndex = allScenarios.findIndex(s => s.id === scen.id);
+        scenarioIndexMap.set(scen.id, originalIndex);
+    });
+    
     filteredScenarios.forEach(scenario => {
         const item = document.createElement('div');
         item.className = 'item-card draggable';
         item.draggable = true;
         item.dataset.scenarioId = scenario.id;
+        item.dataset.scenarioIndex = scenarioIndexMap.get(scenario.id);
         if (getCurrentLoadedItem()?.type === 'scenario' && getCurrentLoadedItem()?.id === scenario.id) {
             item.classList.add('active');
         }
@@ -460,17 +687,102 @@ export function renderScenariosList() {
             isDragging = true;
             setDraggedScenario(scenario);
             item.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.effectAllowed = 'move'; // Allow both move (reorder) and copy (to sequences)
             e.dataTransfer.setData('text/plain', scenario.id);
+            e.dataTransfer.setData('application/reorder', `scenario-${scenarioIndexMap.get(scenario.id)}`);
         });
         
         item.addEventListener('dragend', () => {
             item.classList.remove('dragging');
             setDraggedScenario(null);
+            // Clear all drag-over classes
+            dom.scenariosList.querySelectorAll('.item-card').forEach(i => {
+                i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+            });
             // Reset dragging flag after a short delay to prevent click from firing
             setTimeout(() => {
                 isDragging = false;
             }, 100);
+        });
+        
+        // Reordering handlers (only when dragging within the list)
+        item.addEventListener('dragover', (e) => {
+            const draggedItem = dom.scenariosList.querySelector('.item-card.dragging');
+            if (draggedItem && draggedItem !== item && draggedItem.dataset.scenarioId) {
+                // This is a reorder operation within the list
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                // Clear all drag-over classes
+                dom.scenariosList.querySelectorAll('.item-card').forEach(i => {
+                    i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                });
+                
+                if (e.clientY < midpoint) {
+                    item.classList.add('drag-insert-before');
+                } else {
+                    item.classList.add('drag-insert-after');
+                }
+                
+                e.dataTransfer.dropEffect = 'move';
+            }
+        });
+        
+        item.addEventListener('dragleave', (e) => {
+            if (!item.contains(e.relatedTarget)) {
+                item.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+            }
+        });
+        
+        item.addEventListener('drop', async (e) => {
+            const draggedItem = dom.scenariosList.querySelector('.item-card.dragging');
+            if (draggedItem && draggedItem !== item && draggedItem.dataset.scenarioId) {
+                // This is a reorder operation
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const draggedIndex = parseInt(draggedItem.dataset.scenarioIndex);
+                const targetIndex = parseInt(item.dataset.scenarioIndex);
+                
+                // Calculate target index based on drop position
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                let newIndex = targetIndex;
+                if (e.clientY >= midpoint) {
+                    newIndex = targetIndex + 1;
+                }
+                
+                // Clear visual feedback
+                dom.scenariosList.querySelectorAll('.item-card').forEach(i => {
+                    i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                });
+                
+                // Reorder scenarios
+                const currentScenarios = getScenarios();
+                await reorderItems(currentScenarios, draggedIndex, newIndex, async (newScenarios) => {
+                    const { setScenarios } = await import('./state.js');
+                    setScenarios(newScenarios);
+                    
+                    // Save to database
+                    if (state.dbInitialized) {
+                        const db = await import('../db.js');
+                        // Save all scenarios in new order
+                        for (const scen of newScenarios) {
+                            try {
+                                await db.saveScenario(scen);
+                            } catch (error) {
+                                console.error('Error saving scenario order:', error);
+                            }
+                        }
+                    }
+                });
+                
+                // Re-render to update indices
+                renderScenariosList();
+            }
         });
         
         // Prevent drag when clicking buttons
@@ -510,11 +822,16 @@ export function renderSequencesList() {
     
     dom.sequencesList.innerHTML = '';
     
-    getSequences().forEach(sequence => {
+    const allSequences = getSequences();
+    
+    allSequences.forEach((sequence, index) => {
         const item = document.createElement('div');
-        item.className = 'item-card';
+        item.className = 'item-card draggable';
+        item.draggable = true;
+        item.dataset.sequenceId = sequence.id;
+        item.dataset.sequenceIndex = index;
         
-        const scenarioCount = sequence.scenarioIds?.length || 0;
+        const scenarioCount = sequence.items?.length || sequence.scenarioIds?.length || 0;
         
         item.innerHTML = `
             <div class="item-card-name">${sequence.name}</div>
@@ -532,10 +849,51 @@ export function renderSequencesList() {
         const editBtn = item.querySelector('.btn-edit');
         const deleteBtn = item.querySelector('.btn-delete');
         
-        // Make item clickable to load (but not when clicking on buttons)
+        // Track if we're dragging to distinguish from clicks
+        let isDragging = false;
+        let mouseDownTime = 0;
+        
+        // Track mouse down for click detection
+        item.addEventListener('mousedown', (e) => {
+            if (!e.target.closest('.item-card-actions')) {
+                mouseDownTime = Date.now();
+            }
+        });
+        
+        // Drag handlers
+        item.addEventListener('dragstart', (e) => {
+            isDragging = true;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', sequence.id);
+            e.dataTransfer.setData('application/reorder', `sequence-${index}`);
+        });
+        
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            // Clear all drag-over classes
+            dom.sequencesList.querySelectorAll('.item-card').forEach(i => {
+                i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+            });
+            // Reset dragging flag after a short delay to prevent click from firing
+            setTimeout(() => {
+                isDragging = false;
+            }, 100);
+        });
+        
+        // Make item clickable to load (but not when clicking on buttons or after dragging)
         item.addEventListener('click', (e) => {
             // Don't load if clicking on buttons
             if (e.target.closest('.item-card-actions')) {
+                return;
+            }
+            // Don't load if we just dragged
+            if (isDragging) {
+                return;
+            }
+            // Check if mouse moved significantly - if so, it was a drag
+            const timeDiff = Date.now() - mouseDownTime;
+            if (timeDiff > 200) {
                 return;
             }
             loadSequence(sequence.id);
@@ -564,6 +922,86 @@ export function renderSequencesList() {
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             deleteSequence(sequence.id);
+        });
+        
+        // Reordering handlers
+        item.addEventListener('dragover', (e) => {
+            const draggedItem = dom.sequencesList.querySelector('.item-card.dragging');
+            if (draggedItem && draggedItem !== item && draggedItem.dataset.sequenceId) {
+                // This is a reorder operation within the list
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                // Clear all drag-over classes
+                dom.sequencesList.querySelectorAll('.item-card').forEach(i => {
+                    i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                });
+                
+                if (e.clientY < midpoint) {
+                    item.classList.add('drag-insert-before');
+                } else {
+                    item.classList.add('drag-insert-after');
+                }
+                
+                e.dataTransfer.dropEffect = 'move';
+            }
+        });
+        
+        item.addEventListener('dragleave', (e) => {
+            if (!item.contains(e.relatedTarget)) {
+                item.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+            }
+        });
+        
+        item.addEventListener('drop', async (e) => {
+            const draggedItem = dom.sequencesList.querySelector('.item-card.dragging');
+            if (draggedItem && draggedItem !== item && draggedItem.dataset.sequenceId) {
+                // This is a reorder operation
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const draggedIndex = parseInt(draggedItem.dataset.sequenceIndex);
+                const targetIndex = parseInt(item.dataset.sequenceIndex);
+                
+                // Calculate target index based on drop position
+                const rect = item.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                let newIndex = targetIndex;
+                if (e.clientY >= midpoint) {
+                    newIndex = targetIndex + 1;
+                }
+                
+                // Clear visual feedback
+                dom.sequencesList.querySelectorAll('.item-card').forEach(i => {
+                    i.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                });
+                
+                // Reorder sequences
+                const currentSequences = getSequences();
+                await reorderItems(currentSequences, draggedIndex, newIndex, async (newSequences) => {
+                    const { setSequences } = await import('./state.js');
+                    setSequences(newSequences);
+                    
+                    // Save to database
+                    if (state.dbInitialized) {
+                        const db = await import('../db.js');
+                        // Save all sequences in new order
+                        for (const seq of newSequences) {
+                            try {
+                                await db.saveSequence(seq);
+                            } catch (error) {
+                                console.error('Error saving sequence order:', error);
+                            }
+                        }
+                    }
+                });
+                
+                // Re-render to update indices
+                renderSequencesList();
+            }
         });
         
         dom.sequencesList.appendChild(item);

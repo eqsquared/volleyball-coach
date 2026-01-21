@@ -1721,6 +1721,66 @@ svg[data-lucide] {
     opacity: 0.5;
 }
 
+/* Reordering visual feedback for item cards */
+.item-card.drag-insert-before::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #3498db;
+    border-radius: 2px;
+    z-index: 10;
+}
+
+.item-card.drag-insert-after::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #3498db;
+    border-radius: 2px;
+    z-index: 10;
+}
+
+.item-card.drag-insert-before,
+.item-card.drag-insert-after {
+    border-color: #3498db;
+}
+
+/* Reordering visual feedback for player lineup items */
+.player-lineup-item.drag-insert-before::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #3498db;
+    border-radius: 2px;
+    z-index: 10;
+}
+
+.player-lineup-item.drag-insert-after::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #3498db;
+    border-radius: 2px;
+    z-index: 10;
+}
+
+.player-lineup-item.drag-insert-before,
+.player-lineup-item.drag-insert-after {
+    border-color: #3498db;
+}
+
 /* ============================================
    Clear Scenario Button
    ============================================ */
