@@ -6,6 +6,8 @@ import { state, getPlayers, getSavedPositions, getPlayerElements, getPositions, 
 let selectedTags = new Set();
 // Tag color assignment - tracks which color each tag gets
 let tagColorMap = new Map();
+// Track which timeline item is being dragged for reordering
+let draggingTimelineIndex = null;
 // Color palette for tags (cycling through these colors)
 const TAG_COLORS = [
     { bg: '#e3f2fd', text: '#1976d2', border: '#bbdefb' }, // Blue
@@ -596,6 +598,8 @@ export function updateCurrentItemDisplay() {
             dom.currentItemDisplay.classList.add('hidden');
         }
     }
+    // Update drop zones label when current item changes
+    updateDropZonesLabel();
 }
 
 // Update scenario buttons visibility (all or nothing - show/hide entire container with fade)
@@ -946,9 +950,15 @@ export function renderSequenceTimeline(sequence) {
         const removeBtn = timelineItem.querySelector('.timeline-item-remove');
         if (removeBtn) {
             removeBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 const { removeItemFromSequence } = await import('./sequences.js');
                 await removeItemFromSequence(sequence.id, index);
+            });
+            
+            // Also prevent drag when clicking remove button
+            removeBtn.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
             });
         }
         
@@ -956,44 +966,216 @@ export function renderSequenceTimeline(sequence) {
         timelineItem.addEventListener('dragstart', (e) => {
             timelineItem.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', index.toString());
+            // Store item identifier instead of index
+            e.dataTransfer.setData('text/plain', JSON.stringify({ type: item.type, id: item.id }));
+            draggingTimelineIndex = index; // Store for use during dragover (will be recalculated on drop)
+            
+            // Clear all insert indicators
+            dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                item.classList.remove('drag-insert-before', 'drag-insert-after');
+            });
         });
         
         timelineItem.addEventListener('dragend', () => {
             timelineItem.classList.remove('dragging');
+            draggingTimelineIndex = null; // Clear when drag ends
+            // Clear all insert indicators
+            dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                item.classList.remove('drag-insert-before', 'drag-insert-after');
+            });
         });
         
         // Drop handlers for reordering (only when dragging timeline items)
         timelineItem.addEventListener('dragover', (e) => {
-            // Only handle if we're reordering (have a numeric index in dataTransfer)
-            const dragData = e.dataTransfer.getData('text/plain');
-            const draggingIndex = parseInt(dragData);
+            // Check if we're reordering (draggingTimelineIndex is set) vs adding new items
+            const isDraggingFromOutside = state.draggedPosition || state.draggedScenario;
             
-            // Only handle reordering, not when dragging positions/scenarios from lists
-            if (!isNaN(draggingIndex) && draggingIndex !== index) {
+            if (draggingTimelineIndex !== null && !isDraggingFromOutside) {
+                // This is a reorder operation (allow even when hovering over same item)
                 e.preventDefault();
                 e.stopPropagation();
-                timelineItem.classList.add('drag-over');
+                
+                // Determine if we should show insert before or after based on mouse position
+                const rect = timelineItem.getBoundingClientRect();
+                const midpoint = rect.left + rect.width / 2;
+                const mouseX = e.clientX;
+                
+                // Clear all insert indicators first
+                dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                    item.classList.remove('drag-insert-before', 'drag-insert-after');
+                });
+                
+                if (mouseX < midpoint) {
+                    timelineItem.classList.add('drag-insert-before');
+                } else {
+                    timelineItem.classList.add('drag-insert-after');
+                }
+                
                 e.dataTransfer.dropEffect = 'move';
+            } else if (isDraggingFromOutside) {
+                // Dragging a new item from outside - show insert indicator
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Determine if we should show insert before or after based on mouse position
+                const rect = timelineItem.getBoundingClientRect();
+                const midpoint = rect.left + rect.width / 2;
+                const mouseX = e.clientX;
+                
+                // Clear all insert indicators first
+                dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                    item.classList.remove('drag-insert-before', 'drag-insert-after');
+                });
+                
+                if (mouseX < midpoint) {
+                    timelineItem.classList.add('drag-insert-before');
+                } else {
+                    timelineItem.classList.add('drag-insert-after');
+                }
+                
+                e.dataTransfer.dropEffect = 'copy';
             }
         });
         
-        timelineItem.addEventListener('dragleave', () => {
-            timelineItem.classList.remove('drag-over');
+        timelineItem.addEventListener('dragleave', (e) => {
+            // Only remove if we're actually leaving the item
+            if (!timelineItem.contains(e.relatedTarget)) {
+                timelineItem.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+            }
         });
         
+        // Combined drop handler for both reordering and adding new items
         timelineItem.addEventListener('drop', async (e) => {
-            const dragData = e.dataTransfer.getData('text/plain');
-            const draggingIndex = parseInt(dragData);
+            const isDraggingFromOutside = state.draggedPosition || state.draggedScenario;
             
-            // Only handle reordering
-            if (!isNaN(draggingIndex) && draggingIndex !== index) {
+            // Get fresh sequence data to ensure we're working with current state
+            const { getSequences } = await import('./state.js');
+            const currentSequence = getSequences().find(s => s.id === sequence.id);
+            if (!currentSequence) {
+                draggingTimelineIndex = null;
+                return;
+            }
+            
+            const items = currentSequence.items || [];
+            
+            // Find the actual current index of the target item using its identifier
+            const targetItemType = timelineItem.dataset.itemType;
+            const targetItemId = timelineItem.dataset.itemId;
+            const targetItemCurrentIndex = items.findIndex(i => i.type === targetItemType && i.id === targetItemId);
+            
+            if (targetItemCurrentIndex === -1) {
+                // Item not found in current sequence, abort
+                draggingTimelineIndex = null;
+                return;
+            }
+            
+            // Calculate insertion index based on drop position
+            const rect = timelineItem.getBoundingClientRect();
+            const midpoint = rect.left + rect.width / 2;
+            const mouseX = e.clientX;
+            let targetIndex = targetItemCurrentIndex;
+            
+            // If mouse is on right half, insert after; left half, insert before
+            if (mouseX >= midpoint) {
+                targetIndex = targetItemCurrentIndex + 1;
+            } else {
+                targetIndex = targetItemCurrentIndex;
+            }
+            
+            // Clamp to valid range
+            targetIndex = Math.max(0, Math.min(targetIndex, items.length));
+            
+            // Handle reordering (dragging existing timeline items)
+            if (draggingTimelineIndex !== null) {
+                // Find the actual current index of the dragged item
+                let dragData;
+                if (e.dataTransfer) {
+                    try {
+                        const dragDataStr = e.dataTransfer.getData('text/plain');
+                        if (dragDataStr) {
+                            dragData = JSON.parse(dragDataStr);
+                        }
+                    } catch (err) {
+                        // Fallback: try to parse as number (old format)
+                        try {
+                            const dragDataStr = e.dataTransfer.getData('text/plain');
+                            if (dragDataStr) {
+                                const numIndex = parseInt(dragDataStr);
+                                if (!isNaN(numIndex)) {
+                                    // Use the stored draggingTimelineIndex but find current position
+                                    const draggedItem = items[draggingTimelineIndex];
+                                    if (draggedItem) {
+                                        dragData = { type: draggedItem.type, id: draggedItem.id };
+                                    }
+                                }
+                            }
+                        } catch (err2) {
+                            // If we can't parse at all, use the stored index to find the item
+                            const draggedItem = items[draggingTimelineIndex];
+                            if (draggedItem) {
+                                dragData = { type: draggedItem.type, id: draggedItem.id };
+                            }
+                        }
+                    }
+                } else {
+                    // No dataTransfer, use the stored index to find the item
+                    const draggedItem = items[draggingTimelineIndex];
+                    if (draggedItem) {
+                        dragData = { type: draggedItem.type, id: draggedItem.id };
+                    }
+                }
+                
+                if (dragData && dragData.type && dragData.id) {
+                    const fromIndex = items.findIndex(i => i.type === dragData.type && i.id === dragData.id);
+                    
+                    if (fromIndex !== -1 && fromIndex !== targetIndex) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        timelineItem.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                        
+                        // Adjust targetIndex: when moving forward, we need to account for the removed item
+                        let adjustedTargetIndex = targetIndex;
+                        if (fromIndex < targetIndex) {
+                            adjustedTargetIndex = targetIndex - 1;
+                        }
+                        
+                        const { reorderItemsInSequence } = await import('./sequences.js');
+                        await reorderItemsInSequence(sequence.id, fromIndex, adjustedTargetIndex);
+                    }
+                } else {
+                    // Fallback to old method if we can't parse the drag data
+                    if (targetIndex !== draggingTimelineIndex) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        timelineItem.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
+                        
+                        let adjustedTargetIndex = targetIndex;
+                        if (draggingTimelineIndex < targetIndex) {
+                            adjustedTargetIndex = targetIndex - 1;
+                        }
+                        
+                        const { reorderItemsInSequence } = await import('./sequences.js');
+                        await reorderItemsInSequence(sequence.id, draggingTimelineIndex, adjustedTargetIndex);
+                    }
+                }
+                
+                draggingTimelineIndex = null; // Clear after drop
+            }
+            // Handle dropping new items on timeline items
+            else if (isDraggingFromOutside) {
                 e.preventDefault();
                 e.stopPropagation();
-                timelineItem.classList.remove('drag-over');
+                timelineItem.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
                 
-                const { reorderItemsInSequence } = await import('./sequences.js');
-                await reorderItemsInSequence(sequence.id, draggingIndex, index);
+                if (state.draggedPosition) {
+                    const { addItemToSequence } = await import('./sequences.js');
+                    await addItemToSequence(sequence.id, 'position', state.draggedPosition.id, targetIndex);
+                    setDraggedPosition(null);
+                } else if (state.draggedScenario) {
+                    const { addItemToSequence } = await import('./sequences.js');
+                    await addItemToSequence(sequence.id, 'scenario', state.draggedScenario.id, targetIndex);
+                    setDraggedScenario(null);
+                }
             }
         });
         
@@ -1011,30 +1193,36 @@ export function renderSequenceTimeline(sequence) {
 function setupTimelineDropZone(sequence) {
     if (!dom.timelineContainer) return;
     
-    // Remove existing listeners by cloning (but preserve the structure)
-    const newContainer = dom.timelineContainer.cloneNode(true);
-    dom.timelineContainer.parentNode.replaceChild(newContainer, dom.timelineContainer);
-    dom.timelineContainer = newContainer;
-    
     // Make sure placeholder doesn't block drops
     const placeholder = dom.timelineContainer.querySelector('.timeline-placeholder');
     if (placeholder) {
         placeholder.style.pointerEvents = 'none';
     }
     
-    // Add drop zone handlers - these should work even when dragging over items
-    dom.timelineContainer.addEventListener('dragover', (e) => {
-        // Only handle if we're dragging a position or scenario (not reordering timeline items)
-        // Check if we're dragging from outside (position/scenario) vs inside (reordering)
-        const isDraggingFromOutside = state.draggedPosition || state.draggedScenario;
-        
-        if (isDraggingFromOutside) {
-            e.preventDefault();
-            e.stopPropagation();
-            dom.timelineContainer.classList.add('drag-over');
-            e.dataTransfer.dropEffect = 'copy';
-        }
-    }, true); // Use capture phase to catch before item handlers
+    // Remove existing container-level listeners if they exist (by checking a data attribute)
+    // We'll use a single listener that checks the state
+    if (!dom.timelineContainer.dataset.dropZoneInitialized) {
+        // Add drop zone handlers - these should work even when dragging over items
+        dom.timelineContainer.addEventListener('dragover', (e) => {
+            // Only handle if we're dragging a position or scenario (not reordering timeline items)
+            // Check if we're dragging from outside (position/scenario) vs inside (reordering)
+            const isDraggingFromOutside = state.draggedPosition || state.draggedScenario;
+            
+            if (isDraggingFromOutside) {
+                e.preventDefault();
+                e.stopPropagation();
+                dom.timelineContainer.classList.add('drag-over');
+                e.dataTransfer.dropEffect = 'copy';
+                
+                // If not over a specific item, clear all insert indicators
+                const target = e.target.closest('.timeline-item');
+                if (!target) {
+                    dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                        item.classList.remove('drag-insert-before', 'drag-insert-after');
+                    });
+                }
+            }
+        }, true); // Use capture phase to catch before item handlers
     
     dom.timelineContainer.addEventListener('dragleave', (e) => {
         // Only handle if we're actually leaving the container
@@ -1045,27 +1233,41 @@ function setupTimelineDropZone(sequence) {
     
     dom.timelineContainer.addEventListener('drop', async (e) => {
         // Only handle if we're dropping a position or scenario (not reordering)
-        // Check the dataTransfer to see if it's a reorder (numeric) or new item
-        const dragData = e.dataTransfer.getData('text/plain');
-        const isReordering = dragData && !isNaN(parseInt(dragData));
+        // Check the dataTransfer to see if it's a reorder (JSON with type/id) or new item
+        const dragDataStr = e.dataTransfer.getData('text/plain');
+        let isReordering = false;
+        try {
+            const dragData = JSON.parse(dragDataStr);
+            isReordering = dragData && dragData.type && dragData.id;
+        } catch (e) {
+            // Not JSON, check if it's numeric (old format)
+            isReordering = dragDataStr && !isNaN(parseInt(dragDataStr));
+        }
         
         // Only process if we have a dragged position/scenario and it's not a reorder
-        if (!isReordering && (state.draggedPosition || state.draggedScenario)) {
+        // AND we're not dropping on a specific timeline item (that's handled by the item's drop handler)
+        const target = e.target.closest('.timeline-item');
+        if (!isReordering && !target && (state.draggedPosition || state.draggedScenario)) {
             e.preventDefault();
             e.stopPropagation();
             dom.timelineContainer.classList.remove('drag-over');
             
+            // Dropping on empty space - append to end
             if (state.draggedPosition) {
                 const { addItemToSequence } = await import('./sequences.js');
-                await addItemToSequence(sequence.id, 'position', state.draggedPosition.id);
+                await addItemToSequence(sequence.id, 'position', state.draggedPosition.id, null);
                 setDraggedPosition(null);
             } else if (state.draggedScenario) {
                 const { addItemToSequence } = await import('./sequences.js');
-                await addItemToSequence(sequence.id, 'scenario', state.draggedScenario.id);
+                await addItemToSequence(sequence.id, 'scenario', state.draggedScenario.id, null);
                 setDraggedScenario(null);
             }
         }
     }, true); // Use capture phase
+        
+        // Mark as initialized to prevent duplicate listeners
+        dom.timelineContainer.dataset.dropZoneInitialized = 'true';
+    }
 }
 
 // Update sequence timeline to show active position during playback
@@ -1159,20 +1361,44 @@ export function updateSequenceButtons(mode) {
 
 // Show drop zones, hide timeline
 export function showDropZones() {
-    if (dom.positionDropZones) {
-        dom.positionDropZones.classList.remove('hidden');
+    if (dom.positionDropZonesContainer) {
+        dom.positionDropZonesContainer.classList.remove('hidden');
     }
     if (dom.sequenceTimeline) {
         dom.sequenceTimeline.classList.add('hidden');
     }
+    // Update label based on current loaded item type
+    updateDropZonesLabel();
 }
 
 // Show timeline, hide drop zones
 export function showTimeline() {
-    if (dom.positionDropZones) {
-        dom.positionDropZones.classList.add('hidden');
+    if (dom.positionDropZonesContainer) {
+        dom.positionDropZonesContainer.classList.add('hidden');
     }
     if (dom.sequenceTimeline) {
         dom.sequenceTimeline.classList.remove('hidden');
+    }
+    // Update label based on current loaded item type
+    updateDropZonesLabel();
+}
+
+// Update drop zones label based on current loaded item type
+function updateDropZonesLabel() {
+    if (!dom.dropZonesLabel) return;
+    
+    const currentItem = getCurrentLoadedItem();
+    if (currentItem) {
+        if (currentItem.type === 'sequence') {
+            dom.dropZonesLabel.textContent = 'Sequence';
+        } else if (currentItem.type === 'scenario') {
+            dom.dropZonesLabel.textContent = 'Scenario';
+        } else {
+            // Default to Scenario for positions or unknown types
+            dom.dropZonesLabel.textContent = 'Scenario';
+        }
+    } else {
+        // Default to Scenario when nothing is loaded
+        dom.dropZonesLabel.textContent = 'Scenario';
     }
 }

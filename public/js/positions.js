@@ -15,6 +15,7 @@ import { dom } from './dom.js';
 import { placePlayerOnCourt } from './court.js';
 import { renderPositionsList, updateCurrentItemDisplay } from './ui.js';
 import { alert, confirm, prompt } from './modal.js';
+import { animateToPosition } from './animation.js';
 
 // Generate unique ID
 function generateId() {
@@ -278,7 +279,7 @@ export async function savePosition() {
 }
 
 // Load position by ID
-export function loadPosition(positionId, updateLoadedItem = true) {
+export async function loadPosition(positionId, updateLoadedItem = true, skipAnimation = false) {
     const position = getPositions().find(p => p.id === positionId);
     if (!position) {
         // Try legacy format
@@ -290,6 +291,22 @@ export function loadPosition(positionId, updateLoadedItem = true) {
         return;
     }
     
+    // Check if there are players on the court - if so, animate instead of instant placement
+    // Skip animation if explicitly requested (e.g., when loading start position before scenario animation)
+    const hasPlayersOnCourt = getPlayerElements().size > 0;
+    
+    if (hasPlayersOnCourt && !state.isAnimating && !skipAnimation) {
+        // Use animation to transition from current state to new position
+        await animateToPosition(positionId, updateLoadedItem);
+        
+        // Check for modifications when players move (after animation)
+        setTimeout(() => {
+            checkForModifications();
+        }, 1100); // Wait for animation to complete
+        return;
+    }
+    
+    // No players on court or animation in progress - instant placement
     // Clear current positions
     getPlayerElements().forEach((element) => {
         element.remove();

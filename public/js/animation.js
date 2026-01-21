@@ -232,3 +232,172 @@ export async function resetToStartPosition() {
         }
     });
 }
+
+// Animate from current court state to target position (for sequences)
+export async function animateToPosition(targetPositionId, updateLoadedItem = false) {
+    if (state.isAnimating) {
+        return; // Animation already in progress
+    }
+    
+    // Get target position
+    const targetPosition = getPositions().find(p => p.id === targetPositionId);
+    if (!targetPosition) {
+        // Try legacy format
+        const legacyPos = getSavedPositions()[targetPositionId];
+        if (legacyPos) {
+            // For legacy positions, just load without animation
+            loadPosition(targetPositionId, updateLoadedItem);
+            return;
+        }
+        return;
+    }
+    
+    const targetPositions = targetPosition.playerPositions || [];
+    
+    // Get current positions of players on court
+    const currentPositions = [];
+    getPlayerElements().forEach((element, playerId) => {
+        const player = getPlayers().find(p => p.id === playerId);
+        if (player) {
+            currentPositions.push({
+                playerId: playerId,
+                x: parseInt(element.style.left) || 0,
+                y: parseInt(element.style.top) || 0
+            });
+        }
+    });
+    
+    // Create a map of playerId to target position
+    const targetPosMap = new Map();
+    targetPositions.forEach(pos => {
+        targetPosMap.set(pos.playerId, { x: pos.x, y: pos.y });
+    });
+    
+    setIsAnimating(true);
+    
+    // Track operations that need to complete
+    let operationsComplete = 0;
+    let totalOperations = 0;
+    
+    // Count total operations needed
+    const playersToAnimate = new Set();
+    const playersToRemove = new Set();
+    const playersToAdd = new Set();
+    
+    // Identify players that need to move
+    currentPositions.forEach(currentPos => {
+        const targetPos = targetPosMap.get(currentPos.playerId);
+        
+        if (!targetPos) {
+            // Player not in target position, remove them
+            playersToRemove.add(currentPos.playerId);
+            totalOperations++;
+        } else if (currentPos.x !== targetPos.x || currentPos.y !== targetPos.y) {
+            // Player needs to move
+            playersToAnimate.add(currentPos.playerId);
+            totalOperations++;
+        }
+        // If player is already in correct position, no operation needed
+    });
+    
+    // Identify players that need to be added
+    targetPositions.forEach(targetPos => {
+        if (!getPlayerElements().has(targetPos.playerId)) {
+            playersToAdd.add(targetPos.playerId);
+            totalOperations++;
+        }
+    });
+    
+    // If no operations needed, finish immediately
+    if (totalOperations === 0) {
+        finishSequenceAnimation(updateLoadedItem, targetPosition);
+        return;
+    }
+    
+    // Remove players not in target position
+    playersToRemove.forEach(playerId => {
+        const playerElement = getPlayerElements().get(playerId);
+        if (playerElement) {
+            playerElement.remove();
+            getPlayerElements().delete(playerId);
+        }
+        operationsComplete++;
+        if (operationsComplete === totalOperations) {
+            finishSequenceAnimation(updateLoadedItem, targetPosition);
+        }
+    });
+    
+    // Add players that are in target position but not on court
+    playersToAdd.forEach(playerId => {
+        const targetPos = targetPosMap.get(playerId);
+        if (targetPos) {
+            const player = getPlayers().find(p => p.id === playerId);
+            if (player) {
+                placePlayerOnCourt(player, targetPos.x, targetPos.y);
+            }
+        }
+        operationsComplete++;
+        if (operationsComplete === totalOperations) {
+            finishSequenceAnimation(updateLoadedItem, targetPosition);
+        }
+    });
+    
+    // Animate players that need to move
+    playersToAnimate.forEach(playerId => {
+        const currentPos = currentPositions.find(p => p.playerId === playerId);
+        const targetPos = targetPosMap.get(playerId);
+        
+        if (!currentPos || !targetPos) {
+            operationsComplete++;
+            if (operationsComplete === totalOperations) {
+                finishSequenceAnimation(updateLoadedItem, targetPosition);
+            }
+            return;
+        }
+        
+        const playerElement = getPlayerElements().get(playerId);
+        if (!playerElement) {
+            operationsComplete++;
+            if (operationsComplete === totalOperations) {
+                finishSequenceAnimation(updateLoadedItem, targetPosition);
+            }
+            return;
+        }
+        
+        playerElement.classList.add('animating');
+        
+        // Set target position
+        setTimeout(() => {
+            playerElement.style.left = targetPos.x + 'px';
+            playerElement.style.top = targetPos.y + 'px';
+        }, 10);
+        
+        // Remove animating class after animation completes
+        setTimeout(() => {
+            playerElement.classList.remove('animating');
+            operationsComplete++;
+            
+            if (operationsComplete === totalOperations) {
+                finishSequenceAnimation(updateLoadedItem, targetPosition);
+            }
+        }, 1010); // 1s animation + 10ms buffer
+    });
+}
+
+async function finishSequenceAnimation(updateLoadedItem, targetPosition) {
+    setIsAnimating(false);
+    
+    // Update state only if requested
+    if (updateLoadedItem) {
+        const { setCurrentLoadedItem, setIsModified } = await import('./state.js');
+        setCurrentLoadedItem({ type: 'position', id: targetPosition.id, name: targetPosition.name });
+        setIsModified(false);
+        
+        // Show drop zones, hide timeline (async import)
+        const { showDropZones, updateScenarioButtonsVisibility, renderPositionsList, updateCurrentItemDisplay } = await import('./ui.js');
+        showDropZones();
+        updateScenarioButtonsVisibility();
+        renderPositionsList();
+        updateCurrentItemDisplay();
+    }
+}

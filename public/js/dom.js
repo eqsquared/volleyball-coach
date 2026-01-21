@@ -43,8 +43,10 @@ export const dom = {
     clearEndPositionBtn: null,
     clearScenarioBtn: null,
     positionDropZones: null,
+    positionDropZonesContainer: null,
     sequenceTimeline: null,
     timelineContainer: null,
+    dropZonesLabel: null,
     sequencePlayBtn: null,
     sequencePrevBtn: null,
     sequenceNextBtn: null,
@@ -121,8 +123,10 @@ export function initDOM() {
     dom.clearEndPositionBtn = document.getElementById('clear-end-position');
     dom.clearScenarioBtn = document.getElementById('clear-scenario-btn');
     dom.positionDropZones = document.getElementById('position-drop-zones');
+    dom.positionDropZonesContainer = document.getElementById('position-drop-zones-container');
     dom.sequenceTimeline = document.getElementById('sequence-timeline');
     dom.timelineContainer = document.getElementById('timeline-container');
+    dom.dropZonesLabel = document.getElementById('drop-zones-label');
     dom.sequencePlayBtn = document.getElementById('sequence-play-btn');
     dom.sequencePrevBtn = document.getElementById('sequence-prev-btn');
     dom.sequenceNextBtn = document.getElementById('sequence-next-btn');

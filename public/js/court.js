@@ -4,6 +4,42 @@ import { state, setDraggedPlayer, setDraggedElement, getPlayerElements } from '.
 import { dom } from './dom.js';
 import { getPlayers } from './state.js';
 
+// Get court dimensions (original 600x600, scaled dimensions, and scale factor)
+function getCourtDimensions() {
+    const baseSize = 600;
+    const playerSize = 50;
+    const netOffset = 4;
+    
+    // Get scale from data attribute, default to 1 if not set
+    const scale = parseFloat(dom.court.dataset.scale || '1');
+    
+    return {
+        baseSize,
+        playerSize,
+        netOffset,
+        scale,
+        maxX: baseSize - playerSize,
+        maxY: baseSize - playerSize,
+        minY: netOffset
+    };
+}
+
+// Convert mouse coordinates from rendered space to original 600x600 coordinate space
+function convertToCourtCoordinates(clientX, clientY) {
+    const rect = dom.court.getBoundingClientRect();
+    const dims = getCourtDimensions();
+    
+    // Get mouse position relative to rendered court
+    const relativeX = clientX - rect.left;
+    const relativeY = clientY - rect.top;
+    
+    // Convert to original 600x600 coordinate system
+    const courtX = relativeX / dims.scale;
+    const courtY = relativeY / dims.scale;
+    
+    return { x: courtX, y: courtY };
+}
+
 // Place player on court
 export function placePlayerOnCourt(player, x, y) {
     // Remove existing player element if present
@@ -12,9 +48,11 @@ export function placePlayerOnCourt(player, x, y) {
         existingElement.remove();
     }
     
+    const dims = getCourtDimensions();
+    
     // Constrain position to court bounds (accounting for player size)
-    x = Math.max(0, Math.min(x, 550)); // 600px - 50px (player width)
-    y = Math.max(4, Math.min(y, 550)); // Below net (4px) to above bottom (550px accounting for 50px player height)
+    x = Math.max(0, Math.min(x, dims.maxX));
+    y = Math.max(dims.minY, Math.min(y, dims.maxY));
     
     // Create container for player circle and label
     const playerContainer = document.createElement('div');
@@ -68,12 +106,11 @@ export function handleCourtDragOver(e) {
     if (state.draggedElement) {
         e.preventDefault();
         
-        const rect = dom.court.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const { x, y } = convertToCourtCoordinates(e.clientX, e.clientY);
+        const dims = getCourtDimensions();
         
-        // Check if within court bounds
-        const isWithinBounds = x >= 0 && x <= 600 && y >= 4 && y <= 600;
+        // Check if within court bounds (in original 600x600 coordinate system)
+        const isWithinBounds = x >= 0 && x <= dims.baseSize && y >= dims.minY && y <= dims.baseSize;
         
         if (isWithinBounds) {
             e.dataTransfer.dropEffect = 'move';
@@ -91,21 +128,21 @@ export function handleCourtDrop(e) {
     
     e.preventDefault();
     
-    const rect = dom.court.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = convertToCourtCoordinates(e.clientX, e.clientY);
+    const dims = getCourtDimensions();
     
-    // Check if drop is outside court bounds
-    const isOutsideBounds = x < 0 || x > 600 || y < 4 || y > 600;
+    // Check if drop is outside court bounds (in original 600x600 coordinate system)
+    const isOutsideBounds = x < 0 || x > dims.baseSize || y < dims.minY || y > dims.baseSize;
     
     if (isOutsideBounds) {
         // Remove player from court
         const playerId = state.draggedElement.dataset.playerId;
         removePlayerFromCourt(playerId);
     } else {
-        // Move within court bounds
-        const constrainedY = Math.max(4, Math.min(y - 25, 550)); // Below net (4px) to above bottom (550px)
-        const constrainedX = Math.max(0, Math.min(x - 25, 550));
+        // Move within court bounds (positions are in original 600x600 coordinate system)
+        // Center the player on the drop point
+        const constrainedX = Math.max(0, Math.min(x - dims.playerSize / 2, dims.maxX));
+        const constrainedY = Math.max(dims.minY, Math.min(y - dims.playerSize / 2, dims.maxY));
         
         state.draggedElement.style.left = constrainedX + 'px';
         state.draggedElement.style.top = constrainedY + 'px';
@@ -128,14 +165,14 @@ export function initCourtListeners() {
         
         if (!state.draggedPlayer) return;
         
-        const rect = dom.court.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const { x, y } = convertToCourtCoordinates(e.clientX, e.clientY);
+        const dims = getCourtDimensions();
         
-        // Constrain to court bounds
-        const constrainedY = Math.max(4, Math.min(y, 550));
+        // Constrain to court bounds and center player on drop point
+        const constrainedX = Math.max(0, Math.min(x - dims.playerSize / 2, dims.maxX));
+        const constrainedY = Math.max(dims.minY, Math.min(y - dims.playerSize / 2, dims.maxY));
         
-        placePlayerOnCourt(state.draggedPlayer, x - 25, constrainedY - 25);
+        placePlayerOnCourt(state.draggedPlayer, constrainedX, constrainedY);
         setDraggedPlayer(null);
     });
     

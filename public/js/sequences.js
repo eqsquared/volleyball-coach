@@ -6,6 +6,7 @@ import { dom } from './dom.js';
 import { renderSequencesList } from './ui.js';
 import { playScenario } from './scenarios.js';
 import { alert, confirm } from './modal.js';
+import { animateToPosition } from './animation.js';
 
 // Generate unique ID
 function generateId() {
@@ -235,13 +236,13 @@ export async function playNextPosition() {
     }
     
     const nextPosition = flattened[nextIndex];
-    const { loadPosition } = await import('./positions.js');
     const { getPositions } = await import('./state.js');
     const positionsList = getPositions();
     
     const position = positionsList.find(p => p.id === nextPosition.id);
     if (position) {
-        loadPosition(position.id, false);
+        // Animate to next position
+        await animateToPosition(position.id, false);
         
         // Update current sequence
         setCurrentSequence({
@@ -280,13 +281,13 @@ export async function playPreviousPosition() {
     
     const prevIndex = currentIndex - 1;
     const prevPosition = flattened[prevIndex];
-    const { loadPosition } = await import('./positions.js');
     const { getPositions } = await import('./state.js');
     const positionsList = getPositions();
     
     const position = positionsList.find(p => p.id === prevPosition.id);
     if (position) {
-        loadPosition(position.id, false);
+        // Animate to previous position
+        await animateToPosition(position.id, false);
         
         // Update current sequence
         setCurrentSequence({
@@ -332,11 +333,12 @@ export async function startSequencePlayback() {
     
     // Load first position
     const firstPosition = flattened[0];
-    const { loadPosition } = await import('./positions.js');
     const { getPositions } = await import('./state.js');
     const positionsList = getPositions();
     const position = positionsList.find(p => p.id === firstPosition.id);
     if (position) {
+        // For the first position, just load it (no animation from nothing)
+        const { loadPosition } = await import('./positions.js');
         loadPosition(position.id, false);
         updateSequenceProgress();
         const { updateSequenceTimelineActive } = await import('./ui.js');
@@ -369,7 +371,7 @@ export function updateSequenceProgress() {
 }
 
 // Add item (position or scenario) to sequence
-export async function addItemToSequence(sequenceId, itemType, itemId) {
+export async function addItemToSequence(sequenceId, itemType, itemId, insertIndex = null) {
     const sequence = getSequences().find(s => s.id === sequenceId);
     if (!sequence) return;
     
@@ -392,13 +394,25 @@ export async function addItemToSequence(sequenceId, itemType, itemId) {
         return;
     }
     
-    sequence.items.push({ type: itemType, id: itemId });
+    const newItem = { type: itemType, id: itemId };
+    
+    // Insert at specific index if provided, otherwise append
+    if (insertIndex !== null && insertIndex >= 0 && insertIndex <= sequence.items.length) {
+        sequence.items.splice(insertIndex, 0, newItem);
+    } else {
+        sequence.items.push(newItem);
+    }
+    
     await updateSequence(sequenceId, null, sequence.items);
     
-    // Update timeline if sequence is loaded
+    // Update timeline if sequence is loaded - get fresh sequence from state after update
     if (state.currentLoadedItem && state.currentLoadedItem.id === sequenceId) {
         const { renderSequenceTimeline } = await import('./ui.js');
-        renderSequenceTimeline(sequence);
+        // Get the updated sequence from state after updateSequence has modified it
+        const updatedSequence = getSequences().find(s => s.id === sequenceId);
+        if (updatedSequence) {
+            renderSequenceTimeline(updatedSequence);
+        }
     }
 }
 
@@ -420,10 +434,14 @@ export async function removeItemFromSequence(sequenceId, itemIndex) {
     sequence.items.splice(itemIndex, 1);
     await updateSequence(sequenceId, null, sequence.items);
     
-    // Update timeline if sequence is loaded
+    // Update timeline if sequence is loaded - get fresh sequence from state after update
     if (state.currentLoadedItem && state.currentLoadedItem.id === sequenceId) {
         const { renderSequenceTimeline } = await import('./ui.js');
-        renderSequenceTimeline(sequence);
+        // Get the updated sequence from state after updateSequence has modified it
+        const updatedSequence = getSequences().find(s => s.id === sequenceId);
+        if (updatedSequence) {
+            renderSequenceTimeline(updatedSequence);
+        }
     }
 }
 
@@ -448,10 +466,14 @@ export async function reorderItemsInSequence(sequenceId, fromIndex, toIndex) {
     
     await updateSequence(sequenceId, null, items);
     
-    // Update timeline if sequence is loaded
+    // Update timeline if sequence is loaded - get fresh sequence from state after update
     if (state.currentLoadedItem && state.currentLoadedItem.id === sequenceId) {
         const { renderSequenceTimeline } = await import('./ui.js');
-        renderSequenceTimeline(sequence);
+        // Get the updated sequence from state after updateSequence has modified it
+        const updatedSequence = getSequences().find(s => s.id === sequenceId);
+        if (updatedSequence) {
+            renderSequenceTimeline(updatedSequence);
+        }
     }
 }
 

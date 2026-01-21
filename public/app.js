@@ -321,33 +321,35 @@ function setupMobileDrawer() {
     });
 }
 
-// Set up court scaling for mobile
+// Set up court scaling - responsive to both width and height
 function setupCourtScaling() {
     if (!dom.court) return;
     
     function scaleCourt() {
-        if (window.innerWidth <= 768) {
-            const container = dom.court.closest('.court-container');
-            if (!container) return;
-            
-            // Get available width (accounting for padding: 10px on each side = 20px total)
-            const containerWidth = container.clientWidth - 20;
-            const scale = Math.min(containerWidth / 600, 1);
-            
-            dom.court.style.transform = `scale(${scale})`;
-            dom.court.style.transformOrigin = 'center center';
-            
-            // Adjust container height to match scaled court height
-            const scaledHeight = 600 * scale;
-            container.style.height = `${scaledHeight}px`;
-        } else {
-            dom.court.style.transform = '';
-            dom.court.style.transformOrigin = '';
-            const container = dom.court.closest('.court-container');
-            if (container) {
-                container.style.height = '';
-            }
-        }
+        const container = dom.court.closest('.court-container');
+        if (!container) return;
+        
+        // Get available space (accounting for padding)
+        const padding = 20; // 10px on each side
+        const availableWidth = container.clientWidth - padding;
+        const availableHeight = container.clientHeight - padding;
+        
+        // Calculate scale based on both width and height constraints
+        // Use the smaller scale to ensure court fits in both dimensions
+        const scaleX = availableWidth / 600;
+        const scaleY = availableHeight / 600;
+        const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+        
+        // Apply scaling
+        dom.court.style.transform = `scale(${scale})`;
+        dom.court.style.transformOrigin = 'center center';
+        
+        // Store scale in a data attribute for JavaScript calculations
+        dom.court.dataset.scale = scale;
+        
+        // Store actual dimensions (scaled) for JavaScript
+        dom.court.dataset.scaledWidth = (600 * scale).toString();
+        dom.court.dataset.scaledHeight = (600 * scale).toString();
     }
     
     // Initial scale (with a small delay to ensure DOM is ready)
@@ -367,6 +369,15 @@ function setupCourtScaling() {
         });
         observer.observe(dom.sidebar, { attributes: true, attributeFilter: ['class'] });
     }
+    
+    // Scale when accordions open/close (affects available height)
+    const accordions = document.querySelectorAll('.accordion');
+    accordions.forEach(accordion => {
+        const observer = new MutationObserver(() => {
+            setTimeout(scaleCourt, 100);
+        });
+        observer.observe(accordion, { attributes: true, attributeFilter: ['class'] });
+    });
 }
 
 // Set up modification tracking
