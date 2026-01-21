@@ -35,6 +35,13 @@ export const dom = {
     refreshPositionBtn: null,
     sequenceProgress: null,
     sequenceProgressText: null,
+    startPositionZone: null,
+    endPositionZone: null,
+    startPositionContent: null,
+    endPositionContent: null,
+    clearStartPositionBtn: null,
+    clearEndPositionBtn: null,
+    clearScenarioBtn: null,
     
     // State
     currentItemDisplay: null,
@@ -94,6 +101,13 @@ export function initDOM() {
     dom.refreshPositionBtn = document.getElementById('refresh-position-btn');
     dom.sequenceProgress = document.getElementById('sequence-progress');
     dom.sequenceProgressText = document.getElementById('sequence-progress-text');
+    dom.startPositionZone = document.getElementById('start-position-zone');
+    dom.endPositionZone = document.getElementById('end-position-zone');
+    dom.startPositionContent = document.getElementById('start-position-content');
+    dom.endPositionContent = document.getElementById('end-position-content');
+    dom.clearStartPositionBtn = document.getElementById('clear-start-position');
+    dom.clearEndPositionBtn = document.getElementById('clear-end-position');
+    dom.clearScenarioBtn = document.getElementById('clear-scenario-btn');
     
     // State
     dom.currentItemDisplay = document.getElementById('current-item-display');

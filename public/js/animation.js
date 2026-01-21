@@ -1,6 +1,6 @@
 // Animation module
 
-import { state, setIsAnimating, setLastStartPosition, getPlayerElements, getSavedPositions, getPlayers } from './state.js';
+import { state, setIsAnimating, setLastStartPosition, getPlayerElements, getSavedPositions, getPlayers, getSelectedStartPosition, getSelectedEndPosition, getPositions } from './state.js';
 import { dom } from './dom.js';
 import { loadPosition } from './positions.js';
 import { placePlayerOnCourt } from './court.js';
@@ -8,11 +8,11 @@ import { alert } from './modal.js';
 
 // Play animation
 export async function playAnimation() {
-    const startPos = dom.startPositionSelect?.value;
-    const endPos = dom.endPositionSelect?.value;
+    const startPosObj = getSelectedStartPosition();
+    const endPosObj = getSelectedEndPosition();
     
-    if (!startPos || !endPos) {
-        await alert('Please select both start and end positions');
+    if (!startPosObj || !endPosObj) {
+        await alert('Please select both start and end positions by dragging them to the drop zones');
         return;
     }
     
@@ -21,19 +21,28 @@ export async function playAnimation() {
         return;
     }
     
-    const startPositions = getSavedPositions()[startPos];
-    const endPositions = getSavedPositions()[endPos];
+    // Get position data
+    const startPos = getPositions().find(p => p.id === startPosObj.id);
+    const endPos = getPositions().find(p => p.id === endPosObj.id);
+    
+    if (!startPos || !endPos) {
+        await alert('Position not found');
+        return;
+    }
+    
+    const startPositions = startPos.playerPositions || [];
+    const endPositions = endPos.playerPositions || [];
     
     if (!startPositions || !endPositions) {
         await alert('Invalid positions');
         return;
     }
     
-    // Store the start position for refresh
-    setLastStartPosition(startPos);
+    // Store the start position ID for refresh
+    setLastStartPosition(startPos.id);
     
     // Load start position first
-    loadPosition(startPos);
+    loadPosition(startPos.id);
     
     // Wait a bit then animate
     setTimeout(() => {
@@ -124,7 +133,17 @@ export async function resetToStartPosition() {
         return;
     }
     
-    const startPositions = getSavedPositions()[state.lastStartPosition];
+    // Try to get from new format first
+    const startPos = getPositions().find(p => p.id === state.lastStartPosition);
+    let startPositions = null;
+    
+    if (startPos) {
+        startPositions = startPos.playerPositions || [];
+    } else {
+        // Fall back to legacy format
+        startPositions = getSavedPositions()[state.lastStartPosition];
+    }
+    
     if (!startPositions) return;
     
     // Get current positions of players on court

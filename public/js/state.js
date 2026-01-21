@@ -47,6 +47,9 @@ export const state = {
     isModified: false, // Tracks if current item has been edited
     editMode: 'none', // 'none'|'position'|'scenario'|'sequence'
     currentSequence: null, // { sequenceId: string, currentScenarioIndex: number }
+    selectedStartPosition: null, // { id: string, name: string, ... }
+    selectedEndPosition: null, // { id: string, name: string, ... }
+    draggedPosition: null, // Position being dragged
 };
 
 // State getters
@@ -155,6 +158,26 @@ export function setIsAnimating(value) {
 
 export function setLastStartPosition(position) {
     state.lastStartPosition = position;
+}
+
+export function setSelectedStartPosition(position) {
+    state.selectedStartPosition = position;
+}
+
+export function setSelectedEndPosition(position) {
+    state.selectedEndPosition = position;
+}
+
+export function setDraggedPosition(position) {
+    state.draggedPosition = position;
+}
+
+export function getSelectedStartPosition() {
+    return state.selectedStartPosition;
+}
+
+export function getSelectedEndPosition() {
+    return state.selectedEndPosition;
 }
 
 // Helper to detect if court positions have changed

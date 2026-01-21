@@ -28,7 +28,9 @@ import {
     renderScenariosList, 
     renderSequencesList,
     updateCurrentItemDisplay,
-    updateModifiedIndicator
+    updateModifiedIndicator,
+    initDropZones,
+    updateDropZoneDisplay
 } from './js/ui.js';
 import { initAccordions, openAccordion, getSavedActiveAccordion } from './js/accordion.js';
 import { createScenario, updateScenarioSelects } from './js/scenarios.js';
@@ -130,6 +132,9 @@ async function init() {
         // Initialize court drag and drop
         initCourtListeners();
         
+        // Initialize drop zones
+        initDropZones();
+        
         // Initial render
         renderLineup();
         renderPositionsList();
@@ -137,6 +142,7 @@ async function init() {
         renderSequencesList();
         updateScenarioSelects();
         updateCurrentItemDisplay();
+        updateDropZoneDisplay();
         
         // Restore last loaded item if it exists
         const savedItem = getSavedLoadedItem();
@@ -295,6 +301,9 @@ function setupModificationTracking() {
             }
         });
     }
+    
+    // Track scenario modifications when drop zones change
+    // This is handled in checkAndUpdateScenarioState in ui.js
 }
 
 // Switch edit mode (kept for internal state management, but UI removed)
@@ -312,6 +321,9 @@ async function handleSave() {
         setIsModified(false);
         updateModifiedIndicator(false);
         updateCurrentItemDisplay();
+    } else if (state.currentLoadedItem.type === 'scenario') {
+        const { saveScenario } = await import('./js/scenarios.js');
+        await saveScenario();
     }
 }
 
@@ -324,6 +336,9 @@ async function handleSaveAs() {
         setIsModified(false);
         updateModifiedIndicator(false);
         updateCurrentItemDisplay();
+    } else if (state.currentLoadedItem.type === 'scenario') {
+        const { saveScenarioAs } = await import('./js/scenarios.js');
+        await saveScenarioAs();
     }
 }
 
@@ -337,6 +352,16 @@ async function handleDiscard() {
         loadPosition(state.currentLoadedItem.id);
         setIsModified(false);
         updateModifiedIndicator(false);
+    } else if (state.currentLoadedItem.type === 'scenario') {
+        // Reload the scenario
+        const { loadScenario } = await import('./js/scenarios.js');
+        if (state.currentLoadedItem.id) {
+            loadScenario(state.currentLoadedItem.id);
+        } else {
+            // New unsaved scenario - just clear it
+            const { clearScenario } = await import('./js/scenarios.js');
+            clearScenario();
+        }
     }
 }
 

@@ -494,6 +494,15 @@ svg[data-lucide] {
     background: #2980b9;
 }
 
+.btn-play {
+    background: #9b59b6;
+    color: white;
+}
+
+.btn-play:hover {
+    background: #8e44ad;
+}
+
 .btn-edit {
     background: #f39c12;
     color: white;
@@ -1085,4 +1094,148 @@ svg[data-lucide] {
     font-weight: 600;
     color: #2e7d32;
     font-size: 13px;
+}
+
+/* Position Drop Zones */
+.position-drop-zones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.drop-zone {
+    position: relative;
+    border: 2px dashed #bdc3c7;
+    border-radius: 6px;
+    padding: 12px;
+    background: #f8f9fa;
+    transition: all 0.2s;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+}
+
+.drop-zone.drag-over {
+    border-color: #9b59b6;
+    background: #f4ecf7;
+    border-style: solid;
+}
+
+.drop-zone.has-content {
+    border-color: #27ae60;
+    border-style: solid;
+    background: #e8f5e9;
+}
+
+.drop-zone-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.drop-zone-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+}
+
+.drop-zone-placeholder {
+    color: #95a5a6;
+    font-size: 12px;
+    font-style: italic;
+}
+
+.drop-zone-position {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+}
+
+.drop-zone-position-name {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 13px;
+}
+
+.drop-zone-position-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+}
+
+.drop-zone-clear {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.2s;
+}
+
+.drop-zone-clear:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.drop-zone-clear svg {
+    width: 12px !important;
+    height: 12px !important;
+}
+
+/* Make position cards draggable */
+.item-card.draggable {
+    cursor: grab;
+}
+
+.item-card.draggable:active {
+    cursor: grabbing;
+}
+
+.item-card.dragging {
+    opacity: 0.5;
+}
+
+/* Clear Scenario Button */
+.clear-scenario-btn {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #dc3545;
+    background: white;
+    color: #dc3545;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.clear-scenario-btn:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.clear-scenario-btn svg {
+    width: 14px !important;
+    height: 14px !important;
 }

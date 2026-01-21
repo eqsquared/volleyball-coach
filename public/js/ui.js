@@ -1,6 +1,6 @@
 // UI rendering and updates
 
-import { state, getPlayers, getSavedPositions, getPlayerElements, getPositions, getScenarios, getSequences, getCurrentLoadedItem, setDraggedPlayer } from './state.js';
+import { state, getPlayers, getSavedPositions, getPlayerElements, getPositions, getScenarios, getSequences, getCurrentLoadedItem, setDraggedPlayer, setDraggedPosition, setSelectedStartPosition, setSelectedEndPosition, getSelectedStartPosition, getSelectedEndPosition, setCurrentLoadedItem, setIsModified } from './state.js';
 
 // Tag filter state
 let selectedTags = new Set();
@@ -367,7 +367,9 @@ export function renderPositionsList() {
     // Render new format positions
     filteredPositions.forEach(position => {
         const item = document.createElement('div');
-        item.className = 'item-card';
+        item.className = 'item-card draggable';
+        item.draggable = true;
+        item.dataset.positionId = position.id;
         if (getCurrentLoadedItem()?.type === 'position' && getCurrentLoadedItem()?.id === position.id) {
             item.classList.add('active');
         }
@@ -399,12 +401,35 @@ export function renderPositionsList() {
         const editBtn = item.querySelector('.btn-edit');
         const deleteBtn = item.querySelector('.btn-delete');
         
+        // Prevent drag when clicking buttons
+        [loadBtn, editBtn, deleteBtn].forEach(btn => {
+            btn.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        });
+        
         loadBtn.addEventListener('click', () => loadPosition(position.id));
         editBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             await editPosition(position.id);
         });
         deleteBtn.addEventListener('click', () => deletePositionNew(position.id));
+        
+        // Drag handlers
+        item.addEventListener('dragstart', (e) => {
+            setDraggedPosition(position);
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('text/plain', position.id);
+        });
+        
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            setDraggedPosition(null);
+        });
         
         dom.positionsList.appendChild(item);
     });
@@ -429,6 +454,10 @@ export function renderScenariosList() {
         const startPos = getPositions().find(p => p.id === scenario.startPositionId);
         const endPos = getPositions().find(p => p.id === scenario.endPositionId);
         
+        const isActive = getCurrentLoadedItem()?.type === 'scenario' && getCurrentLoadedItem()?.id === scenario.id;
+        const playBtnClass = isActive ? 'btn-load' : 'btn-play';
+        const playBtnStyle = isActive ? 'background: #27ae60;' : 'background: #9b59b6;';
+        
         item.innerHTML = `
             <div style="flex: 1;">
                 <div class="item-card-name">${scenario.name}</div>
@@ -438,13 +467,13 @@ export function renderScenariosList() {
             </div>
             <div class="item-card-actions">
                 <button class="btn-load" title="Load scenario"><i data-lucide="folder-open"></i></button>
-                <button class="btn-load" title="Play scenario" style="background: #9b59b6;"><i data-lucide="play"></i></button>
+                <button class="${playBtnClass}" title="Play scenario" style="${playBtnStyle}"><i data-lucide="play"></i></button>
                 <button class="btn-delete" title="Delete scenario"><i data-lucide="trash-2"></i></button>
             </div>
         `;
         
         const loadBtn = item.querySelectorAll('.btn-load')[0];
-        const playBtn = item.querySelectorAll('.btn-load')[1];
+        const playBtn = item.querySelectorAll('button[title="Play scenario"]')[0];
         const deleteBtn = item.querySelector('.btn-delete');
         
         loadBtn.addEventListener('click', () => loadScenario(scenario.id));
@@ -515,5 +544,208 @@ export function updateCurrentItemDisplay() {
 export function updateModifiedIndicator(isModified) {
     if (dom.modifiedIndicator) {
         dom.modifiedIndicator.style.display = isModified ? 'flex' : 'none';
+    }
+}
+
+// Update drop zone display
+export function updateDropZoneDisplay() {
+    const startPos = getSelectedStartPosition();
+    const endPos = getSelectedEndPosition();
+    
+    // Update start position zone
+    if (dom.startPositionContent && dom.startPositionZone && dom.clearStartPositionBtn) {
+        if (startPos) {
+            const tags = startPos.tags || [];
+            const tagsDisplay = tags.length > 0 
+                ? tags.map(tag => {
+                    const tagColor = getTagColor(tag);
+                    return `<span class="tag-badge" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border}; font-size: 10px; padding: 2px 6px;">${escapeHtml(tag)}</span>`;
+                }).join('')
+                : '';
+            
+            dom.startPositionContent.innerHTML = `
+                <div class="drop-zone-position">
+                    <div class="drop-zone-position-name">${escapeHtml(startPos.name)}</div>
+                    ${tagsDisplay ? `<div class="drop-zone-position-tags">${tagsDisplay}</div>` : ''}
+                </div>
+            `;
+            dom.startPositionZone.classList.add('has-content');
+            dom.clearStartPositionBtn.style.display = 'flex';
+        } else {
+            dom.startPositionContent.innerHTML = '<span class="drop-zone-placeholder">Drag position here</span>';
+            dom.startPositionZone.classList.remove('has-content');
+            dom.clearStartPositionBtn.style.display = 'none';
+        }
+    }
+    
+    // Update end position zone
+    if (dom.endPositionContent && dom.endPositionZone && dom.clearEndPositionBtn) {
+        if (endPos) {
+            const tags = endPos.tags || [];
+            const tagsDisplay = tags.length > 0 
+                ? tags.map(tag => {
+                    const tagColor = getTagColor(tag);
+                    return `<span class="tag-badge" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border}; font-size: 10px; padding: 2px 6px;">${escapeHtml(tag)}</span>`;
+                }).join('')
+                : '';
+            
+            dom.endPositionContent.innerHTML = `
+                <div class="drop-zone-position">
+                    <div class="drop-zone-position-name">${escapeHtml(endPos.name)}</div>
+                    ${tagsDisplay ? `<div class="drop-zone-position-tags">${tagsDisplay}</div>` : ''}
+                </div>
+            `;
+            dom.endPositionZone.classList.add('has-content');
+            dom.clearEndPositionBtn.style.display = 'flex';
+        } else {
+            dom.endPositionContent.innerHTML = '<span class="drop-zone-placeholder">Drag position here</span>';
+            dom.endPositionZone.classList.remove('has-content');
+            dom.clearEndPositionBtn.style.display = 'none';
+        }
+    }
+    
+    // Show/hide clear scenario button
+    if (dom.clearScenarioBtn) {
+        if (startPos && endPos && getCurrentLoadedItem()?.type === 'scenario') {
+            dom.clearScenarioBtn.style.display = 'inline-flex';
+        } else {
+            dom.clearScenarioBtn.style.display = 'none';
+        }
+    }
+    
+    // Initialize icons for clear buttons
+    if (window.lucide && (startPos || endPos)) {
+        initializeIcons(dom.startPositionZone);
+        initializeIcons(dom.endPositionZone);
+        if (dom.clearScenarioBtn) {
+            initializeIcons(dom.clearScenarioBtn);
+        }
+    }
+}
+
+// Initialize drop zone handlers
+export function initDropZones() {
+    if (!dom.startPositionZone || !dom.endPositionZone) return;
+    
+    // Start position zone handlers
+    dom.startPositionZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (state.draggedPosition) {
+            dom.startPositionZone.classList.add('drag-over');
+            e.dataTransfer.dropEffect = 'copy';
+        }
+    });
+    
+    dom.startPositionZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only remove if we're actually leaving the zone
+        if (!dom.startPositionZone.contains(e.relatedTarget)) {
+            dom.startPositionZone.classList.remove('drag-over');
+        }
+    });
+    
+    dom.startPositionZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dom.startPositionZone.classList.remove('drag-over');
+        
+        if (state.draggedPosition) {
+            setSelectedStartPosition(state.draggedPosition);
+            updateDropZoneDisplay();
+            checkAndUpdateScenarioState();
+        }
+    });
+    
+    // End position zone handlers
+    dom.endPositionZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (state.draggedPosition) {
+            dom.endPositionZone.classList.add('drag-over');
+            e.dataTransfer.dropEffect = 'copy';
+        }
+    });
+    
+    dom.endPositionZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only remove if we're actually leaving the zone
+        if (!dom.endPositionZone.contains(e.relatedTarget)) {
+            dom.endPositionZone.classList.remove('drag-over');
+        }
+    });
+    
+    dom.endPositionZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dom.endPositionZone.classList.remove('drag-over');
+        
+        if (state.draggedPosition) {
+            setSelectedEndPosition(state.draggedPosition);
+            updateDropZoneDisplay();
+            checkAndUpdateScenarioState();
+        }
+    });
+    
+    // Clear buttons
+    if (dom.clearStartPositionBtn) {
+        dom.clearStartPositionBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setSelectedStartPosition(null);
+            updateDropZoneDisplay();
+            checkAndUpdateScenarioState();
+        });
+    }
+    
+    if (dom.clearEndPositionBtn) {
+        dom.clearEndPositionBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setSelectedEndPosition(null);
+            updateDropZoneDisplay();
+            checkAndUpdateScenarioState();
+        });
+    }
+    
+    // Clear scenario button
+    if (dom.clearScenarioBtn) {
+        dom.clearScenarioBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { clearScenario } = await import('./scenarios.js');
+            clearScenario();
+        });
+    }
+}
+
+// Check and update scenario state when drop zones change
+async function checkAndUpdateScenarioState() {
+    const startPos = getSelectedStartPosition();
+    const endPos = getSelectedEndPosition();
+    
+    // If both positions are selected, create/update scenario state
+    if (startPos && endPos && startPos.id !== endPos.id) {
+        // Check if we have a loaded scenario
+        if (state.currentLoadedItem && state.currentLoadedItem.type === 'scenario') {
+            // Update existing scenario - check for modifications
+            const { checkScenarioModifications } = await import('./scenarios.js');
+            checkScenarioModifications();
+            updateModifiedIndicator(state.isModified);
+        } else {
+            // Create new scenario state (not saved yet)
+            const scenarioName = `New Scenario (${startPos.name} → ${endPos.name})`;
+            setCurrentLoadedItem({ type: 'scenario', id: null, name: scenarioName });
+            setIsModified(true);
+            updateCurrentItemDisplay();
+            updateModifiedIndicator(true);
+        }
+    } else if (!startPos || !endPos) {
+        // If either position is missing, clear scenario state if it was scenario-related
+        if (state.currentLoadedItem && state.currentLoadedItem.type === 'scenario') {
+            setCurrentLoadedItem(null);
+            setIsModified(false);
+            updateCurrentItemDisplay();
+            updateModifiedIndicator(false);
+        }
     }
 }
