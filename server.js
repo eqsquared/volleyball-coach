@@ -19,22 +19,32 @@ app.use(express.static(PUBLIC_DIR)); // Serve static files from public directory
 // Initialize data.json if it doesn't exist
 async function ensureDataFile() {
     try {
-        await fs.access(DATA_FILE);
-        // Check if migration is needed
-        await migrateDataIfNeeded();
+        // Ensure data directory exists
+        const dataDir = path.dirname(DATA_FILE);
+        await fs.mkdir(dataDir, { recursive: true });
+        
+        // Check if file exists
+        try {
+            await fs.access(DATA_FILE);
+            // File exists, check if migration is needed
+            await migrateDataIfNeeded();
+        } catch (error) {
+            // File doesn't exist, create it with empty data
+            const initialData = {
+                players: [],
+                positions: [],
+                rotations: [],
+                scenarios: [],
+                sequences: [],
+                version: '4.0',
+                database: 'file-based'
+            };
+            await fs.writeFile(DATA_FILE, JSON.stringify(initialData, null, 2));
+            console.log('Created initial data.json file');
+        }
     } catch (error) {
-        // File doesn't exist, create it with empty data
-        const initialData = {
-            players: [],
-            positions: [],
-            rotations: [],
-            scenarios: [],
-            sequences: [],
-            version: '4.0',
-            database: 'file-based'
-        };
-        await fs.writeFile(DATA_FILE, JSON.stringify(initialData, null, 2));
-        console.log('Created initial data.json file');
+        console.error('Error ensuring data file:', error);
+        throw error;
     }
 }
 
