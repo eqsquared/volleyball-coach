@@ -1147,6 +1147,12 @@ svg[data-lucide] {
 .player-container.animating {
     transition: left 1s ease, top 1s ease;
     z-index: 30;
+    /* Force hardware acceleration to prevent shadow streaks in Safari */
+    will-change: left, top;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 .player-container.dragging {
@@ -1190,6 +1196,19 @@ svg[data-lucide] {
     touch-action: none; /* Enable touch dragging */
     -webkit-user-select: none;
     user-select: none;
+    /* Force hardware acceleration to prevent shadow streaks in Safari */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* When animating, optimize shadow rendering */
+.player-container.animating .player-on-court {
+    will-change: filter;
+    /* Ensure hardware acceleration is maintained during animation */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
 }
 
 /* When dragging, increase shadow to make it more visible */
