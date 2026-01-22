@@ -1,6 +1,9 @@
 // Express server for Volleyball Coach app
 // Provides API endpoints to read/write data to MongoDB database
 
+// Load environment variables from .env file
+require('dotenv').config();
+
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
