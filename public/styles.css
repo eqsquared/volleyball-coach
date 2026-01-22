@@ -1968,7 +1968,7 @@ svg[data-lucide] {
 /* ============================================
    Mobile Responsive Styles
    ============================================ */
-@media (max-width: 768px) {
+@media (max-width: 1024px) and (orientation: portrait) {
     body {
         padding-top: 60px; /* Space for fixed mobile header */
     }
@@ -2252,5 +2252,64 @@ svg[data-lucide] {
         font-size: 10px;
         font-weight: 500;
         border: 1px solid;
+    }
+}
+
+/* ============================================
+   iPad-Specific Optimizations (768px - 1024px portrait)
+   ============================================ */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+    /* Increase court section padding and ensure it takes up more vertical space */
+    .court-section {
+        padding: 15px;
+        gap: 12px;
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto; /* Allow it to grow */
+    }
+    
+    /* Reduce bucket height to give more room to court */
+    .mobile-positions-bucket {
+        max-height: 28vh;
+    }
+    
+    /* Adjust padding when mobile positions bucket is visible */
+    .court-section.has-mobile-bucket {
+        padding-bottom: calc(28vh + 15px);
+    }
+    
+    /* Increase grid columns for positions bucket - 4 columns on iPad */
+    .mobile-positions-list {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 12px;
+    }
+    
+    /* Slightly larger items for iPad */
+    .mobile-position-item {
+        padding: 12px;
+    }
+    
+    .mobile-position-name {
+        font-size: 14px;
+    }
+    
+    /* Increase court container padding and ensure adequate space */
+    .court-container {
+        padding: 10px;
+        min-height: 600px; /* Ensure court gets adequate space */
+        flex: 1 1 auto; /* Take up available space */
+    }
+    
+    /* Increase base court size for iPad - larger than standard 600px */
+    .court {
+        width: 800px;
+        height: 800px;
+    }
+    
+    /* Court top bar can have more padding on iPad */
+    .court-top-bar {
+        padding: 12px;
+        gap: 12px;
     }
 }

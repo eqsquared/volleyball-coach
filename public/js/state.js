@@ -190,7 +190,7 @@ export function getSelectedEndPosition() {
 }
 
 // Helper to detect if court positions have changed
-export function checkForModifications() {
+export async function checkForModifications() {
     if (!state.currentLoadedItem || state.currentLoadedItem.type !== 'position') {
         return;
     }
@@ -200,15 +200,21 @@ export function checkForModifications() {
     
     // Get current player positions on court
     const currentCourtPositions = [];
+    // Import conversion function - use dynamic import to avoid circular dependency
+    const courtModule = await import('./court.js');
     state.playerElements.forEach((element, playerId) => {
         const player = state.players.find(p => p.id === playerId);
         if (player) {
+            // Convert from actual court coordinates to 600x600 coordinate system
+            const actualX = parseInt(element.style.left) || 0;
+            const actualY = parseInt(element.style.top) || 0;
+            const { x, y } = courtModule.convertFromCourtCoordinates(actualX, actualY);
             currentCourtPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,
                 name: player.name,
-                x: parseInt(element.style.left) || 0,
-                y: parseInt(element.style.top) || 0
+                x: x,
+                y: y
             });
         }
     });

@@ -37,6 +37,11 @@ import { loadScenario, playScenario, deleteScenario, editScenario } from './scen
 import { loadSequence, deleteSequence } from './sequences.js';
 import { createSearchAndTagsFilter } from './searchAndTags.js';
 
+// Helper function to check if we're in mobile mode (matches CSS media query: max-width: 1024px and orientation: portrait)
+function isMobileView() {
+    return window.innerWidth <= 1024 && window.innerHeight > window.innerWidth;
+}
+
 // Helper function to initialize Lucide icons for a container
 // This ensures icons are always initialized after DOM updates
 function initializeIcons(container) {
@@ -1052,7 +1057,7 @@ export function updateCurrentItemDisplay() {
 export function updateScenarioButtonsVisibility() {
     const hasScenario = state.currentLoadedItem && state.currentLoadedItem.type === 'scenario';
     const hasSequence = state.currentLoadedItem && state.currentLoadedItem.type === 'sequence';
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = isMobileView();
     const isPositionSelectionMode = isMobile && !hasScenario && !hasSequence;
     const buttonsContainer = document.querySelector('.animation-buttons');
     
@@ -1866,7 +1871,7 @@ export function renderMobilePositionsList() {
     if (!dom.mobilePositionsList) return;
     
     // Only render on mobile
-    if (window.innerWidth > 768) {
+    if (!isMobileView()) {
         return;
     }
     
@@ -2050,7 +2055,7 @@ export function updateMobileUI() {
     const currentItem = getCurrentLoadedItem();
     const hasScenario = currentItem && currentItem.type === 'scenario';
     const hasSequence = currentItem && currentItem.type === 'sequence';
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = isMobileView();
     
     // Show/hide mobile positions bucket - only on mobile
     if (dom.mobilePositionsBucket) {
@@ -2079,7 +2084,7 @@ export function updateMobileUI() {
         const hasScenarioContent = startPos && endPos;
         
         // On mobile, hide if no scenario is loaded OR if scenario is loaded but has no content
-        if (window.innerWidth <= 768) {
+        if (isMobileView()) {
             if (hasScenario && hasScenarioContent) {
                 dom.positionDropZonesContainer.classList.remove('empty');
             } else {

@@ -12,7 +12,7 @@ import {
     checkForModifications
 } from './state.js';
 import { dom } from './dom.js';
-import { placePlayerOnCourt } from './court.js';
+import { placePlayerOnCourt, convertFromCourtCoordinates } from './court.js';
 import { renderPositionsList, updateCurrentItemDisplay } from './ui.js';
 import { alert, confirm, prompt } from './modal.js';
 import { animateToPosition } from './animation.js';
@@ -29,12 +29,16 @@ export async function createNewPosition() {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
+            // Convert from actual court coordinates to 600x600 coordinate system
+            const actualX = parseInt(element.style.left) || 0;
+            const actualY = parseInt(element.style.top) || 0;
+            const { x, y } = convertFromCourtCoordinates(actualX, actualY);
             playerPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,
                 name: player.name,
-                x: parseInt(element.style.left) || 0,
-                y: parseInt(element.style.top) || 0
+                x: x,
+                y: y
             });
         }
     });
@@ -245,12 +249,16 @@ export async function savePosition() {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
+            // Convert from actual court coordinates to 600x600 coordinate system
+            const actualX = parseInt(element.style.left) || 0;
+            const actualY = parseInt(element.style.top) || 0;
+            const { x, y } = convertFromCourtCoordinates(actualX, actualY);
             playerPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,
                 name: player.name,
-                x: parseInt(element.style.left) || 0,
-                y: parseInt(element.style.top) || 0
+                x: x,
+                y: y
             });
         }
     });
@@ -314,8 +322,8 @@ export async function loadPosition(positionId, updateLoadedItem = true, skipAnim
         await animateToPosition(positionId, false); // Don't update loaded item again, already done
         
         // Check for modifications when players move (after animation)
-        setTimeout(() => {
-            checkForModifications();
+        setTimeout(async () => {
+            await checkForModifications();
         }, 1100); // Wait for animation to complete
         return;
     }
@@ -354,8 +362,8 @@ export async function loadPosition(positionId, updateLoadedItem = true, skipAnim
     }
     
     // Check for modifications when players move
-    setTimeout(() => {
-        checkForModifications();
+    setTimeout(async () => {
+        await checkForModifications();
     }, 100);
 }
 
@@ -638,12 +646,16 @@ export async function createPositionFromModal(isSaveAs = false) {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
+            // Convert from actual court coordinates to 600x600 coordinate system
+            const actualX = parseInt(element.style.left) || 0;
+            const actualY = parseInt(element.style.top) || 0;
+            const { x, y } = convertFromCourtCoordinates(actualX, actualY);
             playerPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,
                 name: player.name,
-                x: parseInt(element.style.left) || 0,
-                y: parseInt(element.style.top) || 0
+                x: x,
+                y: y
             });
         }
     });

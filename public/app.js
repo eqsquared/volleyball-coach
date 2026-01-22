@@ -331,25 +331,45 @@ function setupMobileDrawer() {
 function setupCourtScaling() {
     if (!dom.court) return;
     
+    // Helper to detect if we're on iPad (768px - 1024px portrait)
+    function isiPadPortrait() {
+        return window.innerWidth >= 768 && 
+               window.innerWidth <= 1024 && 
+               window.innerHeight > window.innerWidth;
+    }
+    
     function scaleCourt() {
         const container = dom.court.closest('.court-container');
         if (!container) return;
         
         // Get available space (accounting for padding)
-        const padding = 20; // 10px on each side
+        // iPad has more padding (10px in CSS = 20px total), phone has less (6px in CSS = 12px total)
+        const isiPad = isiPadPortrait();
+        const padding = isiPad ? 20 : 12; // Match CSS padding values
         const availableWidth = container.clientWidth - padding;
         const availableHeight = container.clientHeight - padding;
         
+        // Base court size: 800px on iPad, 600px on phone
+        // Note: Coordinate system is always 600x600 internally, but visual size differs
+        const baseCourtSize = isiPad ? 800 : 600;
+        
         // Calculate scale based on both width and height constraints
         // Use the smaller scale to ensure court fits in both dimensions
-        const scaleX = availableWidth / 600;
-        const scaleY = availableHeight / 600;
-        const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+        const scaleX = availableWidth / baseCourtSize;
+        const scaleY = availableHeight / baseCourtSize;
+        
+        // On iPad, allow scaling up beyond 100% to use more space
+        // On phone, cap at 100% to prevent it from being too large
+        const maxScale = isiPad ? 1.2 : 1; // Allow up to 120% on iPad (800px * 1.2 = 960px max)
+        const scale = Math.min(scaleX, scaleY, maxScale);
         
         // Apply scaling via CSS transform
         dom.court.style.transform = `scale(${scale})`;
         
         // Store scale for coordinate calculations
+        // Note: Coordinate conversion uses getBoundingClientRect() which gives actual rendered size,
+        // so the stored scale is just the transform scale. The base size difference (800 vs 600)
+        // is handled automatically by the rect dimensions.
         dom.court.dataset.scale = scale.toString();
     }
     
