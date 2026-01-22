@@ -2387,11 +2387,11 @@ svg[data-lucide] {
     } */
     
     /* Court scales responsively using CSS */
-    /* .court {
-        width: min(500px, calc(100vh - 220px), calc(100% - 20px));
-        height: min(500px, calc(100vh - 220px), calc(100% - 20px));
+    .court {
+        width: min(600px, calc(100vh - 220px), calc(100% - 20px));
+        height: min(600px, calc(100vh - 220px), calc(100% - 20px));
         aspect-ratio: 1;
-    } */
+    }
     
     /* Court top bar can have more padding on iPad */
     .court-top-bar {
