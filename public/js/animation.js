@@ -3,7 +3,7 @@
 import { state, setIsAnimating, setLastStartPosition, getPlayerElements, getSavedPositions, getPlayers, getSelectedStartPosition, getSelectedEndPosition, getPositions } from './state.js';
 import { dom } from './dom.js';
 import { loadPosition } from './positions.js';
-import { placePlayerOnCourt, convertFromCourtCoordinates, convertToCourtCoordinatesForRendering } from './court.js';
+import { placePlayerOnCourt } from './court.js';
 import { alert } from './modal.js';
 
 // Play animation
@@ -81,11 +81,10 @@ export async function playAnimation() {
             
             playerElement.classList.add('animating');
             
-            // Set end position (scale coordinates for rendering)
+            // Set end position (coordinates are in 600x600 system)
             setTimeout(() => {
-                const scaledPos = convertToCourtCoordinatesForRendering(endPos.x, endPos.y);
-                playerElement.style.left = scaledPos.x + 'px';
-                playerElement.style.top = scaledPos.y + 'px';
+                playerElement.style.left = endPos.x + 'px';
+                playerElement.style.top = endPos.y + 'px';
             }, 10);
             
             // Remove animating class after animation completes
@@ -140,10 +139,9 @@ export async function resetToStartPosition() {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Convert from actual court coordinates to 600x600 coordinate system
-            const actualX = parseInt(element.style.left) || 0;
-            const actualY = parseInt(element.style.top) || 0;
-            const { x, y } = convertFromCourtCoordinates(actualX, actualY);
+            // Coordinates are already in 600x600 system
+            const x = parseInt(element.style.left) || 0;
+            const y = parseInt(element.style.top) || 0;
             currentPositions.push({
                 playerId: playerId,
                 x: x,
@@ -210,11 +208,10 @@ export async function resetToStartPosition() {
         
         playerElement.classList.add('animating');
         
-        // Set start position (scale coordinates for rendering)
+        // Set start position (coordinates are in 600x600 system)
         setTimeout(() => {
-            const scaledPos = convertToCourtCoordinatesForRendering(startPos.x, startPos.y);
-            playerElement.style.left = scaledPos.x + 'px';
-            playerElement.style.top = scaledPos.y + 'px';
+            playerElement.style.left = startPos.x + 'px';
+            playerElement.style.top = startPos.y + 'px';
         }, 10);
         
         // Remove animating class after animation completes
@@ -265,10 +262,9 @@ export async function animateToPosition(targetPositionId, updateLoadedItem = fal
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Convert from actual court coordinates to 600x600 coordinate system
-            const actualX = parseInt(element.style.left) || 0;
-            const actualY = parseInt(element.style.top) || 0;
-            const { x, y } = convertFromCourtCoordinates(actualX, actualY);
+            // Coordinates are already in 600x600 system
+            const x = parseInt(element.style.left) || 0;
+            const y = parseInt(element.style.top) || 0;
             currentPositions.push({
                 playerId: playerId,
                 x: x,
@@ -376,11 +372,10 @@ export async function animateToPosition(targetPositionId, updateLoadedItem = fal
         
         playerElement.classList.add('animating');
         
-        // Set target position (scale coordinates for rendering)
+        // Set target position (coordinates are in 600x600 system)
         setTimeout(() => {
-            const scaledPos = convertToCourtCoordinatesForRendering(targetPos.x, targetPos.y);
-            playerElement.style.left = scaledPos.x + 'px';
-            playerElement.style.top = scaledPos.y + 'px';
+            playerElement.style.left = targetPos.x + 'px';
+            playerElement.style.top = targetPos.y + 'px';
         }, 10);
         
         // Remove animating class after animation completes

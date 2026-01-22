@@ -349,9 +349,8 @@ function setupCourtScaling() {
         const availableWidth = container.clientWidth - padding;
         const availableHeight = container.clientHeight - padding;
         
-        // Base court size: 800px on iPad, 600px on phone
-        // Note: Coordinate system is always 600x600 internally, but visual size differs
-        const baseCourtSize = isiPad ? 800 : 600;
+        // Base court size is always 600px - CSS handles the visual scaling
+        const baseCourtSize = 600;
         
         // Calculate scale based on both width and height constraints
         // Use the smaller scale to ensure court fits in both dimensions
@@ -360,7 +359,7 @@ function setupCourtScaling() {
         
         // On iPad, allow scaling up beyond 100% to use more space
         // On phone, cap at 100% to prevent it from being too large
-        const maxScale = isiPad ? 1.2 : 1; // Allow up to 120% on iPad (800px * 1.2 = 960px max)
+        const maxScale = isiPad ? 1.5 : 1; // Allow up to 150% on iPad (600px * 1.5 = 900px max)
         const scale = Math.min(scaleX, scaleY, maxScale);
         
         // Apply scaling via CSS transform
@@ -383,6 +382,9 @@ function setupCourtScaling() {
         resizeTimeout = setTimeout(scaleCourt, 100);
     });
     
+    // No need to recalculate positions - court is always 600x600 base size
+    // CSS transform handles all scaling, so coordinates don't need conversion
+    
     // Scale when layout changes (drawer, accordions, etc.)
     const resizeObserver = new ResizeObserver(() => {
         scaleCourt();
@@ -396,6 +398,22 @@ function setupCourtScaling() {
     if (courtContainer) {
         resizeObserver.observe(courtContainer);
     }
+    
+    // Also observe the court element itself to detect CSS size changes (600px vs 800px)
+    resizeObserver.observe(dom.court);
+    
+    // Listen for orientation changes
+    window.addEventListener('orientationchange', () => {
+        // Wait for layout to settle after orientation change
+        setTimeout(scaleCourt, 200);
+    });
+    
+    // Listen for media query changes to detect iPad/phone transitions
+    const mediaQuery = window.matchMedia('(min-width: 768px) and (max-width: 1024px) and (orientation: portrait)');
+    mediaQuery.addEventListener('change', () => {
+        // Wait a bit for CSS to apply
+        setTimeout(scaleCourt, 100);
+    });
 }
 
 // Set up modification tracking

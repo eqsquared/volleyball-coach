@@ -205,10 +205,9 @@ export async function checkForModifications() {
     state.playerElements.forEach((element, playerId) => {
         const player = state.players.find(p => p.id === playerId);
         if (player) {
-            // Convert from actual court coordinates to 600x600 coordinate system
-            const actualX = parseInt(element.style.left) || 0;
-            const actualY = parseInt(element.style.top) || 0;
-            const { x, y } = courtModule.convertFromCourtCoordinates(actualX, actualY);
+            // Coordinates are already in 600x600 system
+            const x = parseInt(element.style.left) || 0;
+            const y = parseInt(element.style.top) || 0;
             currentCourtPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,

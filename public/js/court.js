@@ -4,58 +4,25 @@ import { state, setDraggedPlayer, setDraggedElement, getPlayerElements } from '.
 import { dom } from './dom.js';
 import { getPlayers } from './state.js';
 
-// Get the actual base court size (600px for phone, 800px for iPad)
-function getCourtBaseSize() {
-    if (!dom.court) return 600;
-    // Check computed style to see if court is 800px (iPad) or 600px (phone)
-    const computedStyle = window.getComputedStyle(dom.court);
-    const width = parseInt(computedStyle.width);
-    // If width is 800px, we're on iPad; otherwise it's 600px
-    return width === 800 ? 800 : 600;
-}
+// Court is always 600x600 base size - CSS transform handles scaling
+// No coordinate conversion needed since base size matches coordinate system
 
-// Convert from actual court coordinates (600 or 800) back to 600x600 coordinate system
-export function convertFromCourtCoordinates(actualX, actualY) {
-    const dims = getCourtDimensions();
-    // Convert back from actual court size to 600x600 coordinate system
-    return {
-        x: actualX / dims.sizeScale,
-        y: actualY / dims.sizeScale
-    };
-}
-
-// Convert from 600x600 coordinate system to actual court coordinates (600 or 800)
-export function convertToCourtCoordinatesForRendering(x, y) {
-    const dims = getCourtDimensions();
-    // Scale coordinates from 600x600 system to actual court size
-    return {
-        x: x * dims.sizeScale,
-        y: y * dims.sizeScale
-    };
-}
-
-// Get court dimensions (always uses 600x600 coordinate system internally)
+// Get court dimensions (always uses 600x600 coordinate system)
 function getCourtDimensions() {
-    const coordinateBaseSize = 600; // Internal coordinate system is always 600x600
-    const actualBaseSize = getCourtBaseSize(); // Actual rendered base size (600 or 800)
+    const baseSize = 600; // Court is always 600x600 base size
     const playerSize = 50;
     const netOffset = 4;
     
     // Get scale from data attribute (set by setupCourtScaling)
     const scale = parseFloat(dom.court.dataset.scale || '1');
     
-    // Scale factor to convert from coordinate system to actual court size
-    const sizeScale = actualBaseSize / coordinateBaseSize;
-    
     return {
-        baseSize: coordinateBaseSize, // Always 600 for coordinate calculations
-        actualBaseSize, // 600 or 800 for rendering
+        baseSize, // Always 600
         playerSize,
         netOffset,
-        scale,
-        sizeScale, // Factor to scale coordinates (1.0 for phone, 1.333... for iPad)
-        maxX: coordinateBaseSize - playerSize,
-        maxY: coordinateBaseSize - playerSize,
+        scale, // CSS transform scale
+        maxX: baseSize - playerSize,
+        maxY: baseSize - playerSize,
         minY: netOffset
     };
 }
@@ -90,20 +57,16 @@ export function placePlayerOnCourt(player, x, y) {
     const dims = getCourtDimensions();
     
     // Constrain position to court bounds (accounting for player size)
-    // Coordinates are in 600x600 system, constrain to that
     x = Math.max(0, Math.min(x, dims.maxX));
     y = Math.max(dims.minY, Math.min(y, dims.maxY));
     
-    // Scale coordinates from 600x600 system to actual court size (600 or 800)
-    const scaledX = x * dims.sizeScale;
-    const scaledY = y * dims.sizeScale;
-    
     // Create container for player circle and label
+    // Coordinates are in 600x600 system, which matches the base court size
     const playerContainer = document.createElement('div');
     playerContainer.className = 'player-container';
     playerContainer.dataset.playerId = player.id;
-    playerContainer.style.left = scaledX + 'px';
-    playerContainer.style.top = scaledY + 'px';
+    playerContainer.style.left = x + 'px';
+    playerContainer.style.top = y + 'px';
     
     // Create player circle
     const playerElement = document.createElement('div');
@@ -183,17 +146,13 @@ export function handleCourtDrop(e) {
         const playerId = state.draggedElement.dataset.playerId;
         removePlayerFromCourt(playerId);
     } else {
-        // Move within court bounds (positions are in original 600x600 coordinate system)
+        // Move within court bounds - coordinates are in 600x600 system
         // Center the player on the drop point
         const constrainedX = Math.max(0, Math.min(x - dims.playerSize / 2, dims.maxX));
         const constrainedY = Math.max(dims.minY, Math.min(y - dims.playerSize / 2, dims.maxY));
         
-        // Scale coordinates from 600x600 system to actual court size
-        const scaledX = constrainedX * dims.sizeScale;
-        const scaledY = constrainedY * dims.sizeScale;
-        
-        state.draggedElement.style.left = scaledX + 'px';
-        state.draggedElement.style.top = scaledY + 'px';
+        state.draggedElement.style.left = constrainedX + 'px';
+        state.draggedElement.style.top = constrainedY + 'px';
     }
     
     state.draggedElement.classList.remove('removing');

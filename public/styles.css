@@ -2297,19 +2297,29 @@ svg[data-lucide] {
     /* Increase court container padding and ensure adequate space */
     .court-container {
         padding: 10px;
-        min-height: 600px; /* Ensure court gets adequate space */
+        min-height: 580px; /* Standard iPad (768px) */
         flex: 1 1 auto; /* Take up available space */
     }
     
-    /* Increase base court size for iPad - larger than standard 600px */
-    .court {
-        width: 800px;
-        height: 800px;
-    }
+    /* Keep court at 600px base - CSS transform will scale it up */
+    /* .court {
+        width: 600px;
+        height: 600px;
+    } */
     
     /* Court top bar can have more padding on iPad */
     .court-top-bar {
         padding: 12px;
         gap: 12px;
+    }
+}
+
+/* ============================================
+   iPad Pro Specific (1024px and above portrait)
+   ============================================ */
+@media (min-width: 1024px) and (max-width: 1024px) and (orientation: portrait) {
+    /* Larger min-height for iPad Pro (1024px) */
+    .court-container {
+        min-height: 800px;
     }
 }
