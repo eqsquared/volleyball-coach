@@ -289,6 +289,8 @@ function updateTouchDrag(touch) {
         
         // Check if we're over a reorder target (including timeline items)
         const reorderTarget = elementBelow.closest('.item-card, .player-lineup-item, .timeline-item');
+        const timelineContainer = elementBelow.closest('.timeline-container');
+        
         if (reorderTarget && reorderTarget !== touchDragState.dragElement) {
             // Handle reordering visual feedback
             handleReorderFeedback(reorderTarget, touch);
@@ -309,6 +311,23 @@ function updateTouchDrag(touch) {
                 Object.defineProperty(dragOverEvent, 'dataTransfer', { value: mockDataTransfer, writable: false });
                 reorderTarget.dispatchEvent(dragOverEvent);
             }
+        } else if (timelineContainer && !reorderTarget) {
+            // Not over a timeline item, but over the timeline container
+            // Check if we're past the last item and trigger container dragover
+            const dragOverEvent = new CustomEvent('dragover', { 
+                bubbles: true, 
+                cancelable: true,
+                detail: { touch: true }
+            });
+            Object.defineProperty(dragOverEvent, 'clientX', { value: touch.clientX, writable: false });
+            Object.defineProperty(dragOverEvent, 'clientY', { value: touch.clientY, writable: false });
+            const mockDataTransfer = {
+                effectAllowed: touchDragState.dragType === 'timeline-item' ? 'move' : 'copy',
+                dropEffect: touchDragState.dragType === 'timeline-item' ? 'move' : 'copy'
+            };
+            Object.defineProperty(dragOverEvent, 'dataTransfer', { value: mockDataTransfer, writable: false });
+            Object.defineProperty(dragOverEvent, 'target', { value: timelineContainer, writable: false });
+            timelineContainer.dispatchEvent(dragOverEvent);
         }
         
         // Check if dragging player element on court

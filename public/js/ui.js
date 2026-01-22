@@ -1492,7 +1492,8 @@ export function renderSequenceTimeline(sequence) {
             timelineItem.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
             // Store item identifier instead of index
-            e.dataTransfer.setData('text/plain', JSON.stringify({ type: item.type, id: item.id }));
+            const dragData = { type: item.type, id: item.id };
+            e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
             draggingTimelineIndex = index; // Store for use during dragover (will be recalculated on drop)
             
             // Clear all insert indicators
@@ -1536,204 +1537,8 @@ export function renderSequenceTimeline(sequence) {
             });
         }, 0);
         
-        // Drop handlers for reordering (only when dragging timeline items)
-        timelineItem.addEventListener('dragover', (e) => {
-            // Check if we're reordering (draggingTimelineIndex is set) vs adding new items
-            const isDraggingFromOutside = state.draggedPosition || state.draggedScenario;
-            
-            if (draggingTimelineIndex !== null && !isDraggingFromOutside) {
-                // This is a reorder operation (allow even when hovering over same item)
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Determine if we should show insert before or after based on mouse position
-                const rect = timelineItem.getBoundingClientRect();
-                const midpoint = rect.left + rect.width / 2;
-                const mouseX = e.clientX;
-                
-                // Clear all insert indicators first
-                dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
-                    item.classList.remove('drag-insert-before', 'drag-insert-after');
-                });
-                
-                if (mouseX < midpoint) {
-                    timelineItem.classList.add('drag-insert-before');
-                } else {
-                    timelineItem.classList.add('drag-insert-after');
-                }
-                
-                e.dataTransfer.dropEffect = 'move';
-            } else if (isDraggingFromOutside) {
-                // Dragging a new item from outside - show insert indicator
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // Determine if we should show insert before or after based on mouse position
-                const rect = timelineItem.getBoundingClientRect();
-                const midpoint = rect.left + rect.width / 2;
-                const mouseX = e.clientX;
-                
-                // Clear all insert indicators first
-                dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
-                    item.classList.remove('drag-insert-before', 'drag-insert-after');
-                });
-                
-                if (mouseX < midpoint) {
-                    timelineItem.classList.add('drag-insert-before');
-                } else {
-                    timelineItem.classList.add('drag-insert-after');
-                }
-                
-                e.dataTransfer.dropEffect = 'copy';
-            }
-        });
-        
-        timelineItem.addEventListener('dragleave', (e) => {
-            // Only remove if we're actually leaving the item
-            if (!timelineItem.contains(e.relatedTarget)) {
-                timelineItem.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
-            }
-        });
-        
-        // Combined drop handler for both reordering and adding new items
-        timelineItem.addEventListener('drop', async (e) => {
-            const isDraggingFromOutside = state.draggedPosition || state.draggedScenario;
-            
-            // Get fresh sequence data to ensure we're working with current state
-            const { getSequences } = await import('./state.js');
-            const currentSequence = getSequences().find(s => s.id === sequence.id);
-            if (!currentSequence) {
-                draggingTimelineIndex = null;
-                return;
-            }
-            
-            const items = currentSequence.items || [];
-            
-            // Find the actual current index of the target item using its identifier
-            const targetItemType = timelineItem.dataset.itemType;
-            const targetItemId = timelineItem.dataset.itemId;
-            const targetItemCurrentIndex = items.findIndex(i => i.type === targetItemType && i.id === targetItemId);
-            
-            if (targetItemCurrentIndex === -1) {
-                // Item not found in current sequence, abort
-                draggingTimelineIndex = null;
-                return;
-            }
-            
-            // Calculate insertion index based on drop position
-            const rect = timelineItem.getBoundingClientRect();
-            const midpoint = rect.left + rect.width / 2;
-            const mouseX = e.clientX;
-            let targetIndex = targetItemCurrentIndex;
-            
-            // If mouse is on right half, insert after; left half, insert before
-            if (mouseX >= midpoint) {
-                targetIndex = targetItemCurrentIndex + 1;
-            } else {
-                targetIndex = targetItemCurrentIndex;
-            }
-            
-            // Clamp to valid range
-            targetIndex = Math.max(0, Math.min(targetIndex, items.length));
-            
-            // Check if this is a reorder by examining dataTransfer first
-            let isReorder = false;
-            let dragData = null;
-            if (e.dataTransfer) {
-                try {
-                    const dragDataStr = e.dataTransfer.getData('text/plain');
-                    if (dragDataStr) {
-                        dragData = JSON.parse(dragDataStr);
-                        // If it has both type and id, it's a reorder
-                        isReorder = dragData && dragData.type && dragData.id;
-                    }
-                } catch (err) {
-                    // Not JSON, might be old format or not a reorder
-                }
-            }
-            
-            // Handle reordering (dragging existing timeline items)
-            // Check both draggingTimelineIndex and dataTransfer to determine if it's a reorder
-            if (draggingTimelineIndex !== null || isReorder) {
-                // Find the actual current index of the dragged item
-                // If we already parsed dragData from dataTransfer, use it
-                if (!dragData && e.dataTransfer) {
-                    try {
-                        const dragDataStr = e.dataTransfer.getData('text/plain');
-                        if (dragDataStr) {
-                            dragData = JSON.parse(dragDataStr);
-                        }
-                    } catch (err) {
-                        // Not JSON, try other methods
-                    }
-                }
-                
-                // If we still don't have dragData, try to get it from draggingTimelineIndex
-                if (!dragData && draggingTimelineIndex !== null) {
-                    const draggedItem = items[draggingTimelineIndex];
-                    if (draggedItem) {
-                        dragData = { type: draggedItem.type, id: draggedItem.id };
-                    }
-                }
-                
-                if (dragData && dragData.type && dragData.id) {
-                    const fromIndex = items.findIndex(i => i.type === dragData.type && i.id === dragData.id);
-                    
-                    if (fromIndex !== -1 && fromIndex !== targetIndex) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        timelineItem.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
-                        
-                        // Adjust targetIndex: when moving forward, we need to account for the removed item
-                        let adjustedTargetIndex = targetIndex;
-                        if (fromIndex < targetIndex) {
-                            adjustedTargetIndex = targetIndex - 1;
-                        }
-                        
-                        const { reorderItemsInSequence } = await import('./sequences.js');
-                        await reorderItemsInSequence(sequence.id, fromIndex, adjustedTargetIndex);
-                    }
-                } else if (draggingTimelineIndex !== null) {
-                    // Fallback to old method if we can't parse the drag data but have draggingTimelineIndex
-                    if (targetIndex !== draggingTimelineIndex) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        timelineItem.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
-                        
-                        let adjustedTargetIndex = targetIndex;
-                        if (draggingTimelineIndex < targetIndex) {
-                            adjustedTargetIndex = targetIndex - 1;
-                        }
-                        
-                        const { reorderItemsInSequence } = await import('./sequences.js');
-                        await reorderItemsInSequence(sequence.id, draggingTimelineIndex, adjustedTargetIndex);
-                    }
-                } else {
-                    // If we determined it's a reorder (isReorder is true) but can't get the data, abort
-                    // Don't let it fall through to "dropping new items"
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                
-                draggingTimelineIndex = null; // Clear after drop
-            }
-            // Handle dropping new items on timeline items
-            else if (isDraggingFromOutside) {
-                e.preventDefault();
-                e.stopPropagation();
-                timelineItem.classList.remove('drag-over', 'drag-insert-before', 'drag-insert-after');
-                
-                if (state.draggedPosition) {
-                    const { addItemToSequence } = await import('./sequences.js');
-                    await addItemToSequence(sequence.id, 'position', state.draggedPosition.id, targetIndex);
-                    setDraggedPosition(null);
-                } else if (state.draggedScenario) {
-                    const { addItemToSequence } = await import('./sequences.js');
-                    await addItemToSequence(sequence.id, 'scenario', state.draggedScenario.id, targetIndex);
-                    setDraggedScenario(null);
-                }
-            }
-        });
+        // Individual item handlers removed - all drag/drop handled by unified container handler
+        // This prevents conflicts and ensures consistent behavior
         
         dom.timelineContainer.appendChild(timelineItem);
     });
@@ -1755,30 +1560,82 @@ function setupTimelineDropZone(sequence) {
         placeholder.style.pointerEvents = 'none';
     }
     
-    // Remove existing container-level listeners if they exist (by checking a data attribute)
-    // We'll use a single listener that checks the state
+    // Unified drag and drop handler - handles ALL cases (over items, gaps, empty space)
     if (!dom.timelineContainer.dataset.dropZoneInitialized) {
-        // Add drop zone handlers - these should work even when dragging over items
+        // Single unified dragover handler for everything
         dom.timelineContainer.addEventListener('dragover', (e) => {
-            // Only handle if we're dragging a position or scenario (not reordering timeline items)
-            // Check if we're dragging from outside (position/scenario) vs inside (reordering)
             const isDraggingFromOutside = state.draggedPosition || state.draggedScenario;
+            const isReordering = draggingTimelineIndex !== null && !isDraggingFromOutside;
+            
+            if (!isDraggingFromOutside && !isReordering) {
+                return; // Not a drag we care about
+            }
+            
+            e.preventDefault();
+            e.stopPropagation();
             
             if (isDraggingFromOutside) {
-                e.preventDefault();
-                e.stopPropagation();
                 dom.timelineContainer.classList.add('drag-over');
                 e.dataTransfer.dropEffect = 'copy';
-                
-                // If not over a specific item, clear all insert indicators
-                const target = e.target.closest('.timeline-item');
-                if (!target) {
-                    dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
-                        item.classList.remove('drag-insert-before', 'drag-insert-after');
-                    });
+            } else if (isReordering) {
+                e.dataTransfer.dropEffect = 'move';
+            }
+            
+            // Get all timeline items and mouse position
+            const timelineItems = Array.from(dom.timelineContainer.querySelectorAll('.timeline-item'));
+            const mouseX = e.clientX;
+            
+            // Clear all indicators first
+            timelineItems.forEach(item => {
+                item.classList.remove('drag-insert-before', 'drag-insert-after');
+            });
+            
+            // Find which item we're over (if any)
+            let targetItem = null;
+            for (const item of timelineItems) {
+                const rect = item.getBoundingClientRect();
+                if (mouseX >= rect.left && mouseX <= rect.right) {
+                    targetItem = item;
+                    break;
                 }
             }
-        }, true); // Use capture phase to catch before item handlers
+            
+            if (targetItem) {
+                // Over an item - show indicator based on which side of the item
+                const rect = targetItem.getBoundingClientRect();
+                const midpoint = rect.left + rect.width / 2;
+                
+                if (mouseX < midpoint) {
+                    targetItem.classList.add('drag-insert-before');
+                } else {
+                    targetItem.classList.add('drag-insert-after');
+                }
+            } else {
+                // Not over any item - check if we're past the last item or in a gap
+                const lastItem = timelineItems[timelineItems.length - 1];
+                
+                if (lastItem) {
+                    const lastItemRect = lastItem.getBoundingClientRect();
+                    
+                    // Past the last item
+                    if (mouseX > lastItemRect.right) {
+                        lastItem.classList.add('drag-insert-after');
+                    } else {
+                        // In a gap between items
+                        for (let i = 0; i < timelineItems.length; i++) {
+                            const item = timelineItems[i];
+                            const rect = item.getBoundingClientRect();
+                            const nextItem = timelineItems[i + 1];
+                            
+                            if (mouseX > rect.right && (!nextItem || mouseX < nextItem.getBoundingClientRect().left)) {
+                                item.classList.add('drag-insert-after');
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     
     dom.timelineContainer.addEventListener('dragleave', (e) => {
         // Only handle if we're actually leaving the container
@@ -1787,72 +1644,135 @@ function setupTimelineDropZone(sequence) {
         }
     });
     
-    dom.timelineContainer.addEventListener('drop', async (e) => {
-        // Only handle if we're dropping a position or scenario (not reordering)
-        // Check the dataTransfer to see if it's a reorder (JSON with type/id) or new item
-        const dragDataStr = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
-        let isReordering = false;
-        try {
-            if (dragDataStr) {
-                const dragData = JSON.parse(dragDataStr);
-                isReordering = dragData && dragData.type && dragData.id;
-            }
-        } catch (e) {
-            // Not JSON, check if it's numeric (old format)
-            isReordering = dragDataStr && !isNaN(parseInt(dragDataStr));
-        }
-        
-        // Only process if we have a dragged position/scenario and it's not a reorder
-        // AND we're not dropping on a specific timeline item (that's handled by the item's drop handler)
-        const target = e.target.closest('.timeline-item');
-        if (!isReordering && !target) {
-            // Get the item ID from dataTransfer or state
-            let positionId = null;
-            let scenarioId = null;
+        // Unified drop handler - handles ALL cases
+        dom.timelineContainer.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             
-            if (dragDataStr && !isReordering) {
-                // Try to get ID from dataTransfer (for touch drag)
-                // If it's not JSON, it might be a plain ID
-                try {
-                    const parsed = JSON.parse(dragDataStr);
-                    // If it parsed but doesn't have type/id, it's not a reorder, might be an ID
-                } catch (e) {
-                    // Not JSON - could be a plain ID
-                    if (state.draggedPosition && state.draggedPosition.id === dragDataStr) {
-                        positionId = dragDataStr;
-                    } else if (state.draggedScenario && state.draggedScenario.id === dragDataStr) {
-                        scenarioId = dragDataStr;
+            const { getSequences } = await import('./state.js');
+            const currentSequence = getSequences().find(s => s.id === sequence.id);
+            if (!currentSequence) return;
+            
+            const items = currentSequence.items || [];
+            const timelineItems = Array.from(dom.timelineContainer.querySelectorAll('.timeline-item'));
+            
+            // Find item with indicator (this tells us where to insert)
+            const itemWithIndicator = timelineItems.find(item => 
+                item.classList.contains('drag-insert-before') || 
+                item.classList.contains('drag-insert-after')
+            );
+            
+            // Determine insert index from indicator
+            let insertIndex = null;
+            if (itemWithIndicator) {
+                const targetItemType = itemWithIndicator.dataset.itemType;
+                const targetItemId = itemWithIndicator.dataset.itemId;
+                const targetItemCurrentIndex = items.findIndex(i => i.type === targetItemType && i.id === targetItemId);
+                
+                if (targetItemCurrentIndex !== -1) {
+                    const hasInsertAfter = itemWithIndicator.classList.contains('drag-insert-after');
+                    const isLastItem = targetItemCurrentIndex === items.length - 1;
+                    
+                    if (hasInsertAfter) {
+                        insertIndex = isLastItem ? null : targetItemCurrentIndex + 1;
+                    } else {
+                        insertIndex = targetItemCurrentIndex;
                     }
                 }
             }
             
-            // Fallback to state if dataTransfer didn't have it
-            if (!positionId && !scenarioId) {
-                if (state.draggedPosition) {
-                    positionId = state.draggedPosition.id;
-                } else if (state.draggedScenario) {
-                    scenarioId = state.draggedScenario.id;
+            // Clear all indicators
+            timelineItems.forEach(item => {
+                item.classList.remove('drag-insert-before', 'drag-insert-after');
+            });
+            dom.timelineContainer.classList.remove('drag-over');
+            
+            // Check if this is a reorder
+            const dragDataStr = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+            let isReorder = false;
+            let dragData = null;
+            
+            try {
+                if (dragDataStr) {
+                    dragData = JSON.parse(dragDataStr);
+                    isReorder = dragData && dragData.type && dragData.id;
+                }
+            } catch (e) {
+                // Not JSON
+            }
+            
+            // Also try to get dragData from draggingTimelineIndex if we don't have it
+            if (!dragData && draggingTimelineIndex !== null && draggingTimelineIndex >= 0 && draggingTimelineIndex < items.length) {
+                const draggedItem = items[draggingTimelineIndex];
+                if (draggedItem) {
+                    dragData = { type: draggedItem.type, id: draggedItem.id };
                 }
             }
             
-            if (positionId || scenarioId) {
-                e.preventDefault();
-                e.stopPropagation();
-                dom.timelineContainer.classList.remove('drag-over');
+            const isReordering = draggingTimelineIndex !== null || isReorder;
+            const isDraggingFromOutside = state.draggedPosition || state.draggedScenario;
+            
+            if (isReordering && dragData && dragData.type && dragData.id) {
+                // Handle reordering
+                const fromIndex = items.findIndex(i => i.type === dragData.type && i.id === dragData.id);
                 
-                // Dropping on empty space - append to end
-                if (positionId) {
-                    const { addItemToSequence } = await import('./sequences.js');
-                    await addItemToSequence(sequence.id, 'position', positionId, null);
-                    setDraggedPosition(null);
-                } else if (scenarioId) {
-                    const { addItemToSequence } = await import('./sequences.js');
-                    await addItemToSequence(sequence.id, 'scenario', scenarioId, null);
-                    setDraggedScenario(null);
+                if (fromIndex !== -1 && insertIndex !== null) {
+                    // Adjust insertIndex if moving forward (account for removed item)
+                    let adjustedIndex = insertIndex;
+                    if (fromIndex < insertIndex) {
+                        adjustedIndex = insertIndex - 1;
+                    }
+                    
+                    if (fromIndex !== adjustedIndex) {
+                        const { reorderItemsInSequence } = await import('./sequences.js');
+                        await reorderItemsInSequence(sequence.id, fromIndex, adjustedIndex);
+                    }
+                } else if (fromIndex !== -1 && insertIndex === null) {
+                    // Moving to end
+                    const { reorderItemsInSequence } = await import('./sequences.js');
+                    await reorderItemsInSequence(sequence.id, fromIndex, items.length);
+                }
+                
+                draggingTimelineIndex = null;
+            } else if (isDraggingFromOutside) {
+                // Handle adding new item
+                let positionId = null;
+                let scenarioId = null;
+                
+                // Get ID from dataTransfer or state
+                if (dragDataStr && !isReorder) {
+                    try {
+                        const parsed = JSON.parse(dragDataStr);
+                    } catch (e) {
+                        if (state.draggedPosition && state.draggedPosition.id === dragDataStr) {
+                            positionId = dragDataStr;
+                        } else if (state.draggedScenario && state.draggedScenario.id === dragDataStr) {
+                            scenarioId = dragDataStr;
+                        }
+                    }
+                }
+                
+                if (!positionId && !scenarioId) {
+                    if (state.draggedPosition) {
+                        positionId = state.draggedPosition.id;
+                    } else if (state.draggedScenario) {
+                        scenarioId = state.draggedScenario.id;
+                    }
+                }
+                
+                if (positionId || scenarioId) {
+                    if (positionId) {
+                        const { addItemToSequence } = await import('./sequences.js');
+                        await addItemToSequence(sequence.id, 'position', positionId, insertIndex);
+                        setDraggedPosition(null);
+                    } else if (scenarioId) {
+                        const { addItemToSequence } = await import('./sequences.js');
+                        await addItemToSequence(sequence.id, 'scenario', scenarioId, insertIndex);
+                        setDraggedScenario(null);
+                    }
                 }
             }
-        }
-    }, true); // Use capture phase
+        });
         
         // Mark as initialized to prevent duplicate listeners
         dom.timelineContainer.dataset.dropZoneInitialized = 'true';
