@@ -21,10 +21,23 @@ async function connect() {
     }
 
     try {
-        client = new MongoClient(MONGODB_URI);
+        // Connection options for better reliability
+        const options = {
+            serverSelectionTimeoutMS: 10000, // 10 seconds
+            socketTimeoutMS: 45000, // 45 seconds
+            connectTimeoutMS: 10000, // 10 seconds
+            retryWrites: true,
+            retryReads: true,
+        };
+
+        client = new MongoClient(MONGODB_URI, options);
         await client.connect();
+        
+        // Test the connection
+        await client.db('admin').command({ ping: 1 });
+        
         db = client.db(DB_NAME);
-        console.log('Connected to MongoDB');
+        console.log(`Connected to MongoDB: ${DB_NAME}`);
         
         // Ensure indexes exist
         const collection = db.collection(COLLECTION_NAME);
@@ -32,7 +45,20 @@ async function connect() {
         
         return db;
     } catch (error) {
-        console.error('Error connecting to MongoDB:', error);
+        // Provide helpful error messages
+        if (error.message && error.message.includes('ECONNRESET')) {
+            console.error('❌ MongoDB Connection Error: Network access denied');
+            console.error('   This usually means your server IP is not whitelisted in MongoDB Atlas.');
+            console.error('   Solution: Go to MongoDB Atlas → Network Access → Add IP Address');
+            console.error('   For production, you can allow all IPs: 0.0.0.0/0');
+        } else if (error.message && error.message.includes('authentication failed')) {
+            console.error('❌ MongoDB Authentication Error: Invalid username or password');
+            console.error('   Check your MONGODB_URI connection string credentials.');
+        } else if (error.message && error.message.includes('ENOTFOUND')) {
+            console.error('❌ MongoDB Connection Error: Cannot resolve hostname');
+            console.error('   Check your MONGODB_URI connection string is correct.');
+        }
+        console.error('Full error:', error.message);
         throw error;
     }
 }
