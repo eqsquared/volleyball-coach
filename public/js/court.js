@@ -1,8 +1,7 @@
 // Court and drag & drop functionality
 
-import { state, setDraggedPlayer, setDraggedElement, getPlayerElements } from './state.js';
+import { state, setDraggedPlayer, setDraggedElement, getPlayerElements, checkForModifications } from './state.js';
 import { dom } from './dom.js';
-import { getPlayers } from './state.js';
 
 // Court is always 600x600 base size - CSS transform handles scaling
 // No coordinate conversion needed since base size matches coordinate system
@@ -191,6 +190,17 @@ export function handleCourtDrop(e) {
     
     state.draggedElement.classList.remove('removing');
     setDraggedElement(null);
+    
+    // Check for modifications after player is moved (for both mouse and touch drag)
+    // Use setTimeout to ensure DOM has updated
+    setTimeout(async () => {
+        if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
+            await checkForModifications();
+            // Import updateModifiedIndicator dynamically to avoid circular dependency
+            const { updateModifiedIndicator } = await import('./ui.js');
+            updateModifiedIndicator(state.isModified);
+        }
+    }, 50);
 }
 
 // Initialize court event listeners

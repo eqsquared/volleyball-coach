@@ -420,6 +420,7 @@ function setupCourtScaling() {
 function setupModificationTracking() {
     // Track player movements on court
     if (dom.court) {
+        // Mouse events for desktop
         dom.court.addEventListener('mousemove', () => {
             if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
                 checkForModifications();
@@ -436,6 +437,32 @@ function setupModificationTracking() {
                 }, 100);
             }
         });
+        
+        // Touch events for mobile devices
+        // Check after touch drag ends
+        dom.court.addEventListener('touchend', async (e) => {
+            if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
+                // Use setTimeout to ensure DOM has updated after touch drag
+                setTimeout(async () => {
+                    await checkForModifications();
+                    updateModifiedIndicator(state.isModified);
+                }, 100);
+            }
+        }, { passive: true });
+        
+        // Also check on touchmove to catch movements during drag
+        // This helps detect modifications even if touchend doesn't fire
+        let touchMoveTimeout;
+        dom.court.addEventListener('touchmove', () => {
+            if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
+                // Debounce to avoid excessive checks
+                clearTimeout(touchMoveTimeout);
+                touchMoveTimeout = setTimeout(async () => {
+                    await checkForModifications();
+                    updateModifiedIndicator(state.isModified);
+                }, 200);
+            }
+        }, { passive: true });
     }
     
     // Track scenario modifications when drop zones change

@@ -1158,9 +1158,9 @@ svg[data-lucide] {
 .player-container.dragging {
     opacity: 0.7;
     z-index: 100;
-    /* Use transparent border to create space for shadow without affecting position */
-    border: 12px solid transparent;
-    margin: -12px;
+    /* Force hardware acceleration during drag to fix Safari shadow rendering */
+    /* Use will-change without transform to avoid clipping issues */
+    will-change: transform, filter;
 }
 
 .player-container.removing {
@@ -1196,11 +1196,11 @@ svg[data-lucide] {
     touch-action: none; /* Enable touch dragging */
     -webkit-user-select: none;
     user-select: none;
-    /* Force hardware acceleration to prevent shadow streaks in Safari */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
+    /* Prevent shadow rendering artifacts in Safari */
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    /* Create stacking context without transform to avoid Safari shadow issues */
+    isolation: isolate;
 }
 
 /* When animating, optimize shadow rendering */
@@ -1214,6 +1214,11 @@ svg[data-lucide] {
 /* When dragging, increase shadow to make it more visible */
 .player-container.dragging .player-on-court {
     filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+    /* Optimize shadow rendering without transform to avoid clipping */
+    will-change: filter;
+    /* Ensure proper compositing layer for shadow */
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 .player-container:hover .player-on-court {
