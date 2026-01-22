@@ -584,68 +584,37 @@ function handleTouchDrop(target, touch) {
     
     // Check if dragging player element on court (moving within court or removing)
     if (dragType === 'element' && state.draggedElement) {
-        // Import court functions dynamically
-        import('./court.js').then((courtMod) => {
-            // Get court dimensions and convert coordinates
-            const court = document.querySelector('#court');
-            if (!court) return;
-            
-            const rect = court.getBoundingClientRect();
-            const scale = parseFloat(court.dataset.scale || '1');
-            const baseSize = 600;
-            
-            // Convert touch coordinates to court coordinates
-            const relativeX = touch.clientX - rect.left;
-            const relativeY = touch.clientY - rect.top;
-            const courtX = (relativeX / rect.width) * baseSize;
-            const courtY = (relativeY / rect.height) * baseSize;
-            
-            const playerSize = 50;
-            const netOffset = 4;
-            const maxX = baseSize - playerSize;
-            const maxY = baseSize - playerSize;
-            const minY = netOffset;
-            
-            // Check if drop is outside court bounds
-            const isOutsideBounds = courtX < 0 || courtX > baseSize || courtY < minY || courtY > baseSize;
-            
-            if (isOutsideBounds) {
-                // Remove player from court - trigger document drop handler
-                const dropEvent = new CustomEvent('drop', { 
-                    bubbles: true, 
-                    cancelable: true,
-                    detail: { touch: true }
-                });
-                Object.defineProperty(dropEvent, 'clientX', { value: touch.clientX, writable: false });
-                Object.defineProperty(dropEvent, 'clientY', { value: touch.clientY, writable: false });
-                Object.defineProperty(dropEvent, 'target', { value: document.body, writable: false });
-                document.dispatchEvent(dropEvent);
-            } else {
-                // Move within court - trigger court drop handler directly
-                // Import the handler function and call it directly
-                import('./court.js').then(({ handleCourtDrop, convertToCourtCoordinates }) => {
-                    // Create a mock event object with the required properties
-                    // The handler uses e.clientX, e.clientY, and e.preventDefault
-                    const mockEvent = {
-                        preventDefault: () => {},
-                        stopPropagation: () => {},
-                        clientX: touch.clientX,
-                        clientY: touch.clientY,
-                        target: court,
-                        currentTarget: court,
-                        dataTransfer: {
-                            effectAllowed: 'move',
-                            dropEffect: 'move'
-                        }
-                    };
-                    // Make sure state.draggedElement is still set
-                    if (state.draggedElement) {
-                        handleCourtDrop(mockEvent);
-                    }
-                });
-            }
-        });
-        return;
+        const court = target.closest('#court');
+        
+        if (court) {
+            // Dropping on court - dispatch drop event to trigger handleCourtDrop
+            const dropEvent = new CustomEvent('drop', { 
+                bubbles: true, 
+                cancelable: true,
+                detail: { touch: true }
+            });
+            Object.defineProperty(dropEvent, 'clientX', { value: touch.clientX, writable: false });
+            Object.defineProperty(dropEvent, 'clientY', { value: touch.clientY, writable: false });
+            const mockDataTransfer = {
+                effectAllowed: 'move',
+                dropEffect: 'move'
+            };
+            Object.defineProperty(dropEvent, 'dataTransfer', { value: mockDataTransfer, writable: false });
+            court.dispatchEvent(dropEvent);
+            return;
+        } else {
+            // Dropping outside court - remove player
+            const dropEvent = new CustomEvent('drop', { 
+                bubbles: true, 
+                cancelable: true,
+                detail: { touch: true }
+            });
+            Object.defineProperty(dropEvent, 'clientX', { value: touch.clientX, writable: false });
+            Object.defineProperty(dropEvent, 'clientY', { value: touch.clientY, writable: false });
+            Object.defineProperty(dropEvent, 'target', { value: document.body, writable: false });
+            document.dispatchEvent(dropEvent);
+            return;
+        }
     }
 }
 

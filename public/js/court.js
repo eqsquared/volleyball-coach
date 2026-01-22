@@ -29,7 +29,7 @@ function getCourtDimensions() {
 
 // Convert mouse coordinates from rendered space to 600x600 coordinate space
 // The court is visually scaled via CSS transform, so we need to account for that
-function convertToCourtCoordinates(clientX, clientY) {
+export function convertToCourtCoordinates(clientX, clientY) {
     const rect = dom.court.getBoundingClientRect();
     const dims = getCourtDimensions();
     

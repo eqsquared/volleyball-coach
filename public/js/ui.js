@@ -1636,40 +1636,40 @@ export function renderSequenceTimeline(sequence) {
             // Clamp to valid range
             targetIndex = Math.max(0, Math.min(targetIndex, items.length));
             
+            // Check if this is a reorder by examining dataTransfer first
+            let isReorder = false;
+            let dragData = null;
+            if (e.dataTransfer) {
+                try {
+                    const dragDataStr = e.dataTransfer.getData('text/plain');
+                    if (dragDataStr) {
+                        dragData = JSON.parse(dragDataStr);
+                        // If it has both type and id, it's a reorder
+                        isReorder = dragData && dragData.type && dragData.id;
+                    }
+                } catch (err) {
+                    // Not JSON, might be old format or not a reorder
+                }
+            }
+            
             // Handle reordering (dragging existing timeline items)
-            if (draggingTimelineIndex !== null) {
+            // Check both draggingTimelineIndex and dataTransfer to determine if it's a reorder
+            if (draggingTimelineIndex !== null || isReorder) {
                 // Find the actual current index of the dragged item
-                let dragData;
-                if (e.dataTransfer) {
+                // If we already parsed dragData from dataTransfer, use it
+                if (!dragData && e.dataTransfer) {
                     try {
                         const dragDataStr = e.dataTransfer.getData('text/plain');
                         if (dragDataStr) {
                             dragData = JSON.parse(dragDataStr);
                         }
                     } catch (err) {
-                        // Fallback: try to parse as number (old format)
-                        try {
-                            const dragDataStr = e.dataTransfer.getData('text/plain');
-                            if (dragDataStr) {
-                                const numIndex = parseInt(dragDataStr);
-                                if (!isNaN(numIndex)) {
-                                    // Use the stored draggingTimelineIndex but find current position
-                                    const draggedItem = items[draggingTimelineIndex];
-                                    if (draggedItem) {
-                                        dragData = { type: draggedItem.type, id: draggedItem.id };
-                                    }
-                                }
-                            }
-                        } catch (err2) {
-                            // If we can't parse at all, use the stored index to find the item
-                            const draggedItem = items[draggingTimelineIndex];
-                            if (draggedItem) {
-                                dragData = { type: draggedItem.type, id: draggedItem.id };
-                            }
-                        }
+                        // Not JSON, try other methods
                     }
-                } else {
-                    // No dataTransfer, use the stored index to find the item
+                }
+                
+                // If we still don't have dragData, try to get it from draggingTimelineIndex
+                if (!dragData && draggingTimelineIndex !== null) {
                     const draggedItem = items[draggingTimelineIndex];
                     if (draggedItem) {
                         dragData = { type: draggedItem.type, id: draggedItem.id };
@@ -1693,8 +1693,8 @@ export function renderSequenceTimeline(sequence) {
                         const { reorderItemsInSequence } = await import('./sequences.js');
                         await reorderItemsInSequence(sequence.id, fromIndex, adjustedTargetIndex);
                     }
-                } else {
-                    // Fallback to old method if we can't parse the drag data
+                } else if (draggingTimelineIndex !== null) {
+                    // Fallback to old method if we can't parse the drag data but have draggingTimelineIndex
                     if (targetIndex !== draggingTimelineIndex) {
                         e.preventDefault();
                         e.stopPropagation();
@@ -1708,6 +1708,11 @@ export function renderSequenceTimeline(sequence) {
                         const { reorderItemsInSequence } = await import('./sequences.js');
                         await reorderItemsInSequence(sequence.id, draggingTimelineIndex, adjustedTargetIndex);
                     }
+                } else {
+                    // If we determined it's a reorder (isReorder is true) but can't get the data, abort
+                    // Don't let it fall through to "dropping new items"
+                    e.preventDefault();
+                    e.stopPropagation();
                 }
                 
                 draggingTimelineIndex = null; // Clear after drop
@@ -1785,11 +1790,13 @@ function setupTimelineDropZone(sequence) {
     dom.timelineContainer.addEventListener('drop', async (e) => {
         // Only handle if we're dropping a position or scenario (not reordering)
         // Check the dataTransfer to see if it's a reorder (JSON with type/id) or new item
-        const dragDataStr = e.dataTransfer.getData('text/plain');
+        const dragDataStr = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
         let isReordering = false;
         try {
-            const dragData = JSON.parse(dragDataStr);
-            isReordering = dragData && dragData.type && dragData.id;
+            if (dragDataStr) {
+                const dragData = JSON.parse(dragDataStr);
+                isReordering = dragData && dragData.type && dragData.id;
+            }
         } catch (e) {
             // Not JSON, check if it's numeric (old format)
             isReordering = dragDataStr && !isNaN(parseInt(dragDataStr));
@@ -1798,20 +1805,51 @@ function setupTimelineDropZone(sequence) {
         // Only process if we have a dragged position/scenario and it's not a reorder
         // AND we're not dropping on a specific timeline item (that's handled by the item's drop handler)
         const target = e.target.closest('.timeline-item');
-        if (!isReordering && !target && (state.draggedPosition || state.draggedScenario)) {
-            e.preventDefault();
-            e.stopPropagation();
-            dom.timelineContainer.classList.remove('drag-over');
+        if (!isReordering && !target) {
+            // Get the item ID from dataTransfer or state
+            let positionId = null;
+            let scenarioId = null;
             
-            // Dropping on empty space - append to end
-            if (state.draggedPosition) {
-                const { addItemToSequence } = await import('./sequences.js');
-                await addItemToSequence(sequence.id, 'position', state.draggedPosition.id, null);
-                setDraggedPosition(null);
-            } else if (state.draggedScenario) {
-                const { addItemToSequence } = await import('./sequences.js');
-                await addItemToSequence(sequence.id, 'scenario', state.draggedScenario.id, null);
-                setDraggedScenario(null);
+            if (dragDataStr && !isReordering) {
+                // Try to get ID from dataTransfer (for touch drag)
+                // If it's not JSON, it might be a plain ID
+                try {
+                    const parsed = JSON.parse(dragDataStr);
+                    // If it parsed but doesn't have type/id, it's not a reorder, might be an ID
+                } catch (e) {
+                    // Not JSON - could be a plain ID
+                    if (state.draggedPosition && state.draggedPosition.id === dragDataStr) {
+                        positionId = dragDataStr;
+                    } else if (state.draggedScenario && state.draggedScenario.id === dragDataStr) {
+                        scenarioId = dragDataStr;
+                    }
+                }
+            }
+            
+            // Fallback to state if dataTransfer didn't have it
+            if (!positionId && !scenarioId) {
+                if (state.draggedPosition) {
+                    positionId = state.draggedPosition.id;
+                } else if (state.draggedScenario) {
+                    scenarioId = state.draggedScenario.id;
+                }
+            }
+            
+            if (positionId || scenarioId) {
+                e.preventDefault();
+                e.stopPropagation();
+                dom.timelineContainer.classList.remove('drag-over');
+                
+                // Dropping on empty space - append to end
+                if (positionId) {
+                    const { addItemToSequence } = await import('./sequences.js');
+                    await addItemToSequence(sequence.id, 'position', positionId, null);
+                    setDraggedPosition(null);
+                } else if (scenarioId) {
+                    const { addItemToSequence } = await import('./sequences.js');
+                    await addItemToSequence(sequence.id, 'scenario', scenarioId, null);
+                    setDraggedScenario(null);
+                }
             }
         }
     }, true); // Use capture phase
