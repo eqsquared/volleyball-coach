@@ -1152,6 +1152,9 @@ svg[data-lucide] {
 .player-container.dragging {
     opacity: 0.7;
     z-index: 100;
+    /* Use transparent border to create space for shadow without affecting position */
+    border: 12px solid transparent;
+    margin: -12px;
 }
 
 .player-container.removing {
@@ -1182,16 +1185,21 @@ svg[data-lucide] {
     font-size: 18px;
     cursor: move;
     border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    transition: transform 0.3s ease, box-shadow 0.2s;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+    transition: transform 0.3s ease, filter 0.2s;
     touch-action: none; /* Enable touch dragging */
     -webkit-user-select: none;
     user-select: none;
 }
 
+/* When dragging, increase shadow to make it more visible */
+.player-container.dragging .player-on-court {
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+}
+
 .player-container:hover .player-on-court {
     transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
 }
 
 .player-label {
@@ -1745,6 +1753,18 @@ svg[data-lucide] {
     pointer-events: none !important;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
     transform: scale(1.1) rotate(2deg) !important;
+}
+
+/* Use drop-shadow for player circles in preview to maintain circular shadow */
+.touch-drag-preview.player-on-court,
+.touch-drag-preview .player-on-court {
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4)) !important;
+    box-shadow: none !important;
+}
+
+/* Remove box-shadow from player container previews to avoid square shadow */
+.touch-drag-preview.player-container {
+    box-shadow: none !important;
 }
 
 /* Reordering visual feedback for item cards */
