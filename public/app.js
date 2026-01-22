@@ -121,11 +121,11 @@ async function init() {
         // Set up mobile drawer
         setupMobileDrawer();
         
-        // Set up court scaling for mobile
-        setupCourtScaling();
-        
         // Initialize court drag and drop
         initCourtListeners();
+        
+        // Set up court font-size scaling
+        setupCourtFontScaling();
         
         // Initialize filters
         initFilters();
@@ -327,93 +327,35 @@ function setupMobileDrawer() {
     });
 }
 
-// Set up court scaling - uses CSS transform to scale court while keeping 600x600 coordinate system
-function setupCourtScaling() {
+
+// Set up court font-size scaling - updates CSS variable based on actual court size
+function setupCourtFontScaling() {
     if (!dom.court) return;
     
-    // Helper to detect if we're on iPad (768px - 1024px portrait)
-    function isiPadPortrait() {
-        return window.innerWidth >= 768 && 
-               window.innerWidth <= 1024 && 
-               window.innerHeight > window.innerWidth;
+    function updateCourtFontSize() {
+        const rect = dom.court.getBoundingClientRect();
+        const courtWidth = rect.width;
+        // Base: 16px at 600px court width
+        // Scale proportionally: fontSize = (courtWidth / 600) * 16
+        const fontSize = Math.max(10, Math.min(16, (courtWidth / 600) * 16));
+        dom.court.style.setProperty('--court-font-size', fontSize + 'px');
     }
     
-    function scaleCourt() {
-        const container = dom.court.closest('.court-container');
-        if (!container) return;
-        
-        // Get available space (accounting for padding)
-        // iPad has more padding (10px in CSS = 20px total), phone has less (6px in CSS = 12px total)
-        const isiPad = isiPadPortrait();
-        const padding = isiPad ? 20 : 12; // Match CSS padding values
-        const availableWidth = container.clientWidth - padding;
-        const availableHeight = container.clientHeight - padding;
-        
-        // Base court size is always 600px - CSS handles the visual scaling
-        const baseCourtSize = 600;
-        
-        // Calculate scale based on both width and height constraints
-        // Use the smaller scale to ensure court fits in both dimensions
-        const scaleX = availableWidth / baseCourtSize;
-        const scaleY = availableHeight / baseCourtSize;
-        
-        // On iPad, allow scaling up beyond 100% to use more space
-        // On phone, cap at 100% to prevent it from being too large
-        const maxScale = isiPad ? 1.5 : 1; // Allow up to 150% on iPad (600px * 1.5 = 900px max)
-        const scale = Math.min(scaleX, scaleY, maxScale);
-        
-        // Apply scaling via CSS transform
-        dom.court.style.transform = `scale(${scale})`;
-        
-        // Store scale for coordinate calculations
-        // Note: Coordinate conversion uses getBoundingClientRect() which gives actual rendered size,
-        // so the stored scale is just the transform scale. The base size difference (800 vs 600)
-        // is handled automatically by the rect dimensions.
-        dom.court.dataset.scale = scale.toString();
-    }
+    // Initial update
+    updateCourtFontSize();
     
-    // Initial scale
-    scaleCourt();
-    
-    // Scale on resize (with debouncing)
+    // Update on resize
     let resizeTimeout;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(scaleCourt, 100);
+        resizeTimeout = setTimeout(updateCourtFontSize, 100);
     });
     
-    // No need to recalculate positions - court is always 600x600 base size
-    // CSS transform handles all scaling, so coordinates don't need conversion
-    
-    // Scale when layout changes (drawer, accordions, etc.)
+    // Use ResizeObserver to watch for court size changes
     const resizeObserver = new ResizeObserver(() => {
-        scaleCourt();
+        updateCourtFontSize();
     });
-    
-    if (dom.sidebar) {
-        resizeObserver.observe(dom.sidebar);
-    }
-    
-    const courtContainer = dom.court.closest('.court-container');
-    if (courtContainer) {
-        resizeObserver.observe(courtContainer);
-    }
-    
-    // Also observe the court element itself to detect CSS size changes (600px vs 800px)
     resizeObserver.observe(dom.court);
-    
-    // Listen for orientation changes
-    window.addEventListener('orientationchange', () => {
-        // Wait for layout to settle after orientation change
-        setTimeout(scaleCourt, 200);
-    });
-    
-    // Listen for media query changes to detect iPad/phone transitions
-    const mediaQuery = window.matchMedia('(min-width: 768px) and (max-width: 1024px) and (orientation: portrait)');
-    mediaQuery.addEventListener('change', () => {
-        // Wait a bit for CSS to apply
-        setTimeout(scaleCourt, 100);
-    });
 }
 
 // Set up modification tracking

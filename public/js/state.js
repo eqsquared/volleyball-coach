@@ -201,13 +201,13 @@ export async function checkForModifications() {
     // Get current player positions on court
     const currentCourtPositions = [];
     // Import conversion function - use dynamic import to avoid circular dependency
-    const courtModule = await import('./court.js');
+    const { percentToCoordinate } = await import('./court.js');
     state.playerElements.forEach((element, playerId) => {
         const player = state.players.find(p => p.id === playerId);
         if (player) {
-            // Coordinates are already in 600x600 system
-            const x = parseInt(element.style.left) || 0;
-            const y = parseInt(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system
+            const x = percentToCoordinate(element.style.left) || 0;
+            const y = percentToCoordinate(element.style.top) || 0;
             currentCourtPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,

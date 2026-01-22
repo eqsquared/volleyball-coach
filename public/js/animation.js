@@ -3,7 +3,7 @@
 import { state, setIsAnimating, setLastStartPosition, getPlayerElements, getSavedPositions, getPlayers, getSelectedStartPosition, getSelectedEndPosition, getPositions } from './state.js';
 import { dom } from './dom.js';
 import { loadPosition } from './positions.js';
-import { placePlayerOnCourt } from './court.js';
+import { placePlayerOnCourt, percentToCoordinate, coordinateToPercent } from './court.js';
 import { alert } from './modal.js';
 
 // Play animation
@@ -81,10 +81,10 @@ export async function playAnimation() {
             
             playerElement.classList.add('animating');
             
-            // Set end position (coordinates are in 600x600 system)
+            // Set end position (convert from 600x600 coordinates to percentage)
             setTimeout(() => {
-                playerElement.style.left = endPos.x + 'px';
-                playerElement.style.top = endPos.y + 'px';
+                playerElement.style.left = coordinateToPercent(endPos.x) + '%';
+                playerElement.style.top = coordinateToPercent(endPos.y) + '%';
             }, 10);
             
             // Remove animating class after animation completes
@@ -139,9 +139,9 @@ export async function resetToStartPosition() {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Coordinates are already in 600x600 system
-            const x = parseInt(element.style.left) || 0;
-            const y = parseInt(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system
+            const x = percentToCoordinate(element.style.left) || 0;
+            const y = percentToCoordinate(element.style.top) || 0;
             currentPositions.push({
                 playerId: playerId,
                 x: x,
@@ -208,10 +208,10 @@ export async function resetToStartPosition() {
         
         playerElement.classList.add('animating');
         
-        // Set start position (coordinates are in 600x600 system)
+        // Set start position (convert from 600x600 coordinates to percentage)
         setTimeout(() => {
-            playerElement.style.left = startPos.x + 'px';
-            playerElement.style.top = startPos.y + 'px';
+            playerElement.style.left = coordinateToPercent(startPos.x) + '%';
+            playerElement.style.top = coordinateToPercent(startPos.y) + '%';
         }, 10);
         
         // Remove animating class after animation completes
@@ -262,9 +262,9 @@ export async function animateToPosition(targetPositionId, updateLoadedItem = fal
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Coordinates are already in 600x600 system
-            const x = parseInt(element.style.left) || 0;
-            const y = parseInt(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system
+            const x = percentToCoordinate(element.style.left) || 0;
+            const y = percentToCoordinate(element.style.top) || 0;
             currentPositions.push({
                 playerId: playerId,
                 x: x,
@@ -372,10 +372,10 @@ export async function animateToPosition(targetPositionId, updateLoadedItem = fal
         
         playerElement.classList.add('animating');
         
-        // Set target position (coordinates are in 600x600 system)
+        // Set target position (convert from 600x600 coordinates to percentage)
         setTimeout(() => {
-            playerElement.style.left = targetPos.x + 'px';
-            playerElement.style.top = targetPos.y + 'px';
+            playerElement.style.left = coordinateToPercent(targetPos.x) + '%';
+            playerElement.style.top = coordinateToPercent(targetPos.y) + '%';
         }, 10);
         
         // Remove animating class after animation completes

@@ -11,8 +11,7 @@ import {
     setIsModified,
     checkForModifications
 } from './state.js';
-import { dom } from './dom.js';
-import { placePlayerOnCourt } from './court.js';
+import { placePlayerOnCourt, percentToCoordinate } from './court.js';
 import { renderPositionsList, updateCurrentItemDisplay } from './ui.js';
 import { alert, confirm, prompt } from './modal.js';
 import { animateToPosition } from './animation.js';
@@ -29,9 +28,9 @@ export async function createNewPosition() {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Coordinates are already in 600x600 system
-            const x = parseInt(element.style.left) || 0;
-            const y = parseInt(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system
+            const x = percentToCoordinate(element.style.left) || 0;
+            const y = percentToCoordinate(element.style.top) || 0;
             playerPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,
@@ -248,9 +247,9 @@ export async function savePosition() {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Coordinates are already in 600x600 system
-            const x = parseInt(element.style.left) || 0;
-            const y = parseInt(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system
+            const x = percentToCoordinate(element.style.left) || 0;
+            const y = percentToCoordinate(element.style.top) || 0;
             playerPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,
@@ -644,9 +643,9 @@ export async function createPositionFromModal(isSaveAs = false) {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Coordinates are already in 600x600 system
-            const x = parseInt(element.style.left) || 0;
-            const y = parseInt(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system
+            const x = percentToCoordinate(element.style.left) || 0;
+            const y = percentToCoordinate(element.style.top) || 0;
             playerPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,

@@ -78,6 +78,9 @@ button {
 .mobile-logo-img {
     width: 32px;
     height: 32px;
+    object-fit: contain;
+    /* Retina display optimization - using 512x512 source for crisp display on high-DPI screens */
+    /* Browser automatically uses higher resolution when source is larger than display size */
 }
 
 .mobile-header-spacer {
@@ -1088,15 +1091,17 @@ svg[data-lucide] {
 
 .court {
     position: relative;
-    width: 600px;
-    height: 600px;
+    width: min(600px, calc(100vh - 300px), 100%);
+    height: min(600px, calc(100vh - 300px), 100%);
+    aspect-ratio: 1;
     background: #e8dcc6; /* Birch/tan color */
     border: 3px solid #8b7355;
     border-radius: 4px;
     overflow: hidden;
     flex-shrink: 0;
-    transform-origin: center center;
     touch-action: none; /* Enable touch dragging on court */
+    /* Font-size will be set via CSS variable --court-font-size by JavaScript */
+    font-size: var(--court-font-size, 16px);
 }
 
 /* ============================================
@@ -1107,13 +1112,13 @@ svg[data-lucide] {
     top: 0;
     left: 0;
     width: 100%;
-    height: 4px;
+    height: 0.25em; /* 4px / 16px = 0.25em - scales with court font-size */
     background: repeating-linear-gradient(
         to right,
-        #fff 0px,
-        #fff 8px,
-        #333 8px,
-        #333 12px
+        #fff 0,
+        #fff 0.5em,
+        #333 0.5em,
+        #333 0.75em
     );
     z-index: 10;
 }
@@ -1123,10 +1128,10 @@ svg[data-lucide] {
    ============================================ */
 .attack-line {
     position: absolute;
-    top: 200px; /* 1/3 of the way down from top (600px / 3 = 200px) */
+    top: 33.333%; /* 1/3 of the way down from top - scales with court height */
     left: 0;
     width: 100%;
-    height: 2px;
+    height: 0.125em; /* 2px / 16px = 0.125em - scales with court font-size */
     background: #8b7355;
     z-index: 5;
 }
@@ -1139,7 +1144,7 @@ svg[data-lucide] {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 0.25em; /* 4px / 16px = 0.25em - scales with court font-size */
     z-index: 20;
     user-select: none;
 }
@@ -1147,20 +1152,11 @@ svg[data-lucide] {
 .player-container.animating {
     transition: left 1s ease, top 1s ease;
     z-index: 30;
-    /* Force hardware acceleration to prevent shadow streaks in Safari */
-    will-change: left, top;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
 }
 
 .player-container.dragging {
     opacity: 0.7;
     z-index: 100;
-    /* Force hardware acceleration during drag to fix Safari shadow rendering */
-    /* Use will-change without transform to avoid clipping issues */
-    will-change: transform, filter;
 }
 
 .player-container.removing {
@@ -1179,8 +1175,9 @@ svg[data-lucide] {
    ============================================ */
 .player-on-court {
     position: relative;
-    width: 50px;
-    height: 50px;
+    width: 3.125em; /* 50px / 16px = 3.125em - scales with court font-size */
+    height: 3.125em;
+    aspect-ratio: 1; /* Maintain circle shape */
     border-radius: 50%;
     background: #3498db;
     color: white;
@@ -1188,52 +1185,25 @@ svg[data-lucide] {
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 18px;
+    font-size: 1.125em; /* 18px / 16px = 1.125em - scales with court font-size */
     cursor: move;
-    border: 3px solid white;
-    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
-    transition: transform 0.3s ease, filter 0.2s;
+    border: 0.1875em solid white; /* 3px / 16px = 0.1875em - scales with court font-size */
     touch-action: none; /* Enable touch dragging */
     -webkit-user-select: none;
     user-select: none;
-    /* Prevent shadow rendering artifacts in Safari */
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    /* Create stacking context without transform to avoid Safari shadow issues */
-    isolation: isolate;
-}
-
-/* When animating, optimize shadow rendering */
-.player-container.animating .player-on-court {
-    will-change: filter;
-    /* Ensure hardware acceleration is maintained during animation */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-}
-
-/* When dragging, increase shadow to make it more visible */
-.player-container.dragging .player-on-court {
-    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
-    /* Optimize shadow rendering without transform to avoid clipping */
-    will-change: filter;
-    /* Ensure proper compositing layer for shadow */
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-}
-
-.player-container:hover .player-on-court {
-    transform: scale(1.1);
-    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .player-label {
-    font-size: 11px;
+    font-size: 0.6875em; /* 11px / 16px = 0.6875em - scales with court font-size */
     font-weight: 600;
     color: #2c3e50;
     text-align: center;
     white-space: nowrap;
     text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
-    max-width: 80px;
+    max-width: 5em; /* 80px / 16px = 5em - scales with court font-size */
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -1779,22 +1749,22 @@ svg[data-lucide] {
 
 /* Touch drag preview - visual element that follows touch */
 .touch-drag-preview {
-    pointer-events: none !important;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
-    transform: scale(1.1) rotate(2deg) !important;
+    pointer-events: none;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1) rotate(2deg);
 }
 
 /* Use drop-shadow for player circles in preview to maintain circular shadow */
-.touch-drag-preview.player-on-court,
+/* .touch-drag-preview.player-on-court,
 .touch-drag-preview .player-on-court {
     filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4)) !important;
     box-shadow: none !important;
-}
+} */
 
 /* Remove box-shadow from player container previews to avoid square shadow */
-.touch-drag-preview.player-container {
+/* .touch-drag-preview.player-container {
     box-shadow: none !important;
-}
+} */
 
 /* Reordering visual feedback for item cards */
 .item-card.drag-insert-before::before {
@@ -2094,17 +2064,17 @@ svg[data-lucide] {
     }
     
     /* Court section takes full width */
-    .court-section {
+    /* .court-section {
         width: 100%;
         padding: 10px;
         height: auto;
         min-height: auto;
         display: flex;
         flex-direction: column;
-    }
+    } */
     
     /* Court container scales to fit available space */
-    .court-container {
+    /* .court-container {
         width: 100%;
         padding: 6px;
         display: flex;
@@ -2114,14 +2084,14 @@ svg[data-lucide] {
         position: relative;
         flex: 1 1 auto;
         min-height: 0;
-    }
+    } */
     
     /* Court scales to fit available space while maintaining aspect ratio */
-    /* .court {
-        width: 600px;
-        height: 600px;
-        transform-origin: center center;
-    } */
+    .court {
+        width: min(800px, calc(100vh - 260px), calc(100% - 12px));
+        height: min(800px, calc(100vh - 260px), calc(100% - 12px));
+        aspect-ratio: 1;
+    }
     
     /* Court top bar adjustments */
     .court-top-bar {
@@ -2182,7 +2152,7 @@ svg[data-lucide] {
         overflow: hidden !important;
     }
     
-    /* State indicator on mobile - keep horizontal layout */
+    /* State indicator on mobile - keep horizontal layout for iPad */
     .state-indicator {
         flex-direction: row;
         align-items: center;
@@ -2242,7 +2212,7 @@ svg[data-lucide] {
         border-top: 2px solid #e9ecef;
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
         z-index: 200;
-        max-height: 40vh;
+        max-height: 34vh;
         display: flex !important;
         flex-direction: column;
         overflow: hidden;
@@ -2331,6 +2301,46 @@ svg[data-lucide] {
 }
 
 /* ============================================
+   Phone-Specific Styles (max-width: 767px portrait)
+   ============================================ */
+@media (max-width: 767px) and (orientation: portrait) {
+    /* Court top bar stacks on phones */
+    .court-top-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    /* Stack state indicator and animation buttons vertically */
+    .state-indicator {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    
+    .animation-buttons {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .current-item {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        width: 100%;
+    }
+    
+    /* Modified indicator stacks buttons on phones */
+    .modified-indicator {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+/* ============================================
    iPad-Specific Optimizations (768px - 1024px portrait)
    ============================================ */
 @media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
@@ -2370,31 +2380,22 @@ svg[data-lucide] {
     }
     
     /* Increase court container padding and ensure adequate space */
-    .court-container {
+    /* .court-container {
         padding: 10px;
-        min-height: 580px; /* Standard iPad (768px) */
-        flex: 1 1 auto; /* Take up available space */
-    }
+        min-height: 580px; 
+        flex: 1 1 auto;
+    } */
     
-    /* Keep court at 600px base - CSS transform will scale it up */
+    /* Court scales responsively using CSS */
     /* .court {
-        width: 600px;
-        height: 600px;
+        width: min(500px, calc(100vh - 220px), calc(100% - 20px));
+        height: min(500px, calc(100vh - 220px), calc(100% - 20px));
+        aspect-ratio: 1;
     } */
     
     /* Court top bar can have more padding on iPad */
     .court-top-bar {
         padding: 12px;
         gap: 12px;
-    }
-}
-
-/* ============================================
-   iPad Pro Specific (1024px and above portrait)
-   ============================================ */
-@media (min-width: 1024px) and (max-width: 1024px) and (orientation: portrait) {
-    /* Larger min-height for iPad Pro (1024px) */
-    .court-container {
-        min-height: 800px;
     }
 }

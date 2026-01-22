@@ -3,42 +3,54 @@
 import { state, setDraggedPlayer, setDraggedElement, getPlayerElements, checkForModifications } from './state.js';
 import { dom } from './dom.js';
 
-// Court is always 600x600 base size - CSS transform handles scaling
-// No coordinate conversion needed since base size matches coordinate system
+// Court coordinate system is 600x600, but positions are stored as percentages
+// to scale proportionally when the court size changes
 
 // Get court dimensions (always uses 600x600 coordinate system)
 function getCourtDimensions() {
-    const baseSize = 600; // Court is always 600x600 base size
+    const baseSize = 600; // Court coordinate system is always 600x600
     const playerSize = 50;
     const netOffset = 4;
-    
-    // Get scale from data attribute (set by setupCourtScaling)
-    const scale = parseFloat(dom.court.dataset.scale || '1');
     
     return {
         baseSize, // Always 600
         playerSize,
         netOffset,
-        scale, // CSS transform scale
         maxX: baseSize - playerSize,
         maxY: baseSize - playerSize,
         minY: netOffset
     };
 }
 
+// Convert 600x600 coordinate to percentage for CSS positioning
+export function coordinateToPercent(value) {
+    return (value / 600) * 100;
+}
+
+// Convert percentage back to 600x600 coordinate (for reading positions)
+export function percentToCoordinate(percentValue) {
+    // Handle both percentage strings ("50%") and numeric values
+    if (typeof percentValue === 'string') {
+        const percent = parseFloat(percentValue.replace('%', ''));
+        return (percent / 100) * 600;
+    }
+    // If it's already a number, assume it's already in coordinate space
+    return percentValue;
+}
+
 // Convert mouse coordinates from rendered space to 600x600 coordinate space
-// The court is visually scaled via CSS transform, so we need to account for that
+// The court is now sized via CSS (max-height: 85vh, aspect-ratio: 1), so we use getBoundingClientRect()
+// to get the actual rendered size and convert to the 600x600 coordinate system
 export function convertToCourtCoordinates(clientX, clientY) {
     const rect = dom.court.getBoundingClientRect();
     const dims = getCourtDimensions();
     
-    // Get mouse position relative to rendered court (which may be scaled)
+    // Get mouse position relative to rendered court
     const relativeX = clientX - rect.left;
     const relativeY = clientY - rect.top;
     
     // Convert to 600x600 coordinate system
-    // Since the court is scaled via transform, the rect dimensions are the scaled size
-    // We need to convert back to the original 600x600 coordinate system
+    // getBoundingClientRect() gives us the actual rendered size, so we convert proportionally
     const courtX = (relativeX / rect.width) * dims.baseSize;
     const courtY = (relativeY / rect.height) * dims.baseSize;
     
@@ -60,12 +72,13 @@ export function placePlayerOnCourt(player, x, y) {
     y = Math.max(dims.minY, Math.min(y, dims.maxY));
     
     // Create container for player circle and label
-    // Coordinates are in 600x600 system, which matches the base court size
+    // Coordinates are in 600x600 system, converted to percentages for scaling
     const playerContainer = document.createElement('div');
     playerContainer.className = 'player-container';
     playerContainer.dataset.playerId = player.id;
-    playerContainer.style.left = x + 'px';
-    playerContainer.style.top = y + 'px';
+    // Use percentages so positions scale with court size
+    playerContainer.style.left = coordinateToPercent(x) + '%';
+    playerContainer.style.top = coordinateToPercent(y) + '%';
     
     // Create player circle
     const playerElement = document.createElement('div');
@@ -184,8 +197,9 @@ export function handleCourtDrop(e) {
         const constrainedX = Math.max(0, Math.min(x - dims.playerSize / 2, dims.maxX));
         const constrainedY = Math.max(dims.minY, Math.min(y - dims.playerSize / 2, dims.maxY));
         
-        state.draggedElement.style.left = constrainedX + 'px';
-        state.draggedElement.style.top = constrainedY + 'px';
+        // Use percentages so positions scale with court size
+        state.draggedElement.style.left = coordinateToPercent(constrainedX) + '%';
+        state.draggedElement.style.top = coordinateToPercent(constrainedY) + '%';
     }
     
     state.draggedElement.classList.remove('removing');
