@@ -30,9 +30,9 @@ A web-based volleyball coaching tool designed to help new players visualize cour
 - **Reset to start**: Refresh button to return to the start position after animation
 
 ### 💾 Data Persistence
-- **File-based storage**: All data is automatically saved to `data/data.json` file
-- **Automatic saving**: Every change (add player, save position, etc.) is immediately saved to the file
-- **No data loss**: Data persists even if browser is closed or cleared
+- **MongoDB database**: All data is automatically saved to MongoDB database
+- **Automatic saving**: Every change (add player, save position, etc.) is immediately saved to the database
+- **No data loss**: Data persists permanently across all deployments and server restarts
 - **Automatic migration**: Seamlessly migrates from legacy XML files on first load
 - **Import/Export**: Import and export data in JSON or XML format for backup
 - **Server-based**: Requires Node.js server to run (included in npm start)
@@ -53,36 +53,45 @@ A web-based volleyball coaching tool designed to help new players visualize cour
    cd volleyball-coach
    ```
 
-2. **Install dependencies and start the server**:
+2. **Set up MongoDB** (required):
+   - Create a free MongoDB Atlas account at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+   - Create a cluster (M0 Free tier works great)
+   - Get your connection string (see [DEPLOYMENT.md](DEPLOYMENT.md) for detailed setup)
+   - Set environment variable: `export MONGODB_URI="your-connection-string"`
+
+3. **Install dependencies and start the server**:
    ```bash
    npm install
    npm start
    ```
    This will:
    - Start the Express server on http://localhost:8000 (or the port specified by `PORT` environment variable)
-   - Create `data/data.json` file automatically if it doesn't exist
+   - Connect to MongoDB and initialize the database
    - Serve the application and handle all data persistence
-   - All changes are automatically saved to `data/data.json`
+   - All changes are automatically saved to MongoDB
 
-3. **Open your browser**:
+4. **Open your browser**:
    - Navigate to http://localhost:8000
-   - The app will load and automatically save all changes to `data.json`
+   - The app will load and automatically save all changes to MongoDB
 
 ### Deployment
 
 For instructions on deploying this application to production, see **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 The app is ready to deploy to platforms like:
-- Railway (recommended for file-based storage)
+- Railway (recommended - great MongoDB integration)
 - Render
 - Heroku
 - DigitalOcean App Platform
 - Self-hosted VPS
 
+**Note**: All platforms require MongoDB Atlas (free tier available). See [DEPLOYMENT.md](DEPLOYMENT.md) for setup instructions.
+
 ### First Time Setup
 
 1. **Automatic data migration** (if upgrading):
-   - If you have existing `data.xml` file in the `public/` directory, it will automatically migrate to `data/data.json` on first load
+   - If you have existing `data.xml` file in the `public/` directory, it will automatically migrate to MongoDB on first load
+   - If you have existing `data/data.json` file, you can import it using the app's import feature
    - No action required - your data is preserved!
 
 2. **Add players**:
@@ -116,15 +125,18 @@ volleyball-coach/
 │   ├── app.js          # Application logic and functionality
 │   ├── db.js           # API-based database module
 │   └── data.xml        # Legacy XML file (optional, for migration)
-├── data/               # Data storage directory
-│   └── data.json       # Data storage file (auto-created)
-├── server.js           # Express server for file-based storage
+├── data/               # Legacy data storage (optional, for migration)
+│   └── data.json       # Legacy data file (optional)
+├── server.js           # Express server with MongoDB integration
+├── db.js               # MongoDB database module
 ├── package.json        # Node.js dependencies and scripts
 ├── .gitignore         # Git ignore rules
+├── DEPLOYMENT.md       # Deployment guide with MongoDB setup
+├── MIGRATION.md        # Migration guide from file-based to MongoDB
 └── README.md           # This file
 ```
 
-**Note**: Data is automatically saved to `data/data.json` file. All changes are persisted immediately - no need to export!
+**Note**: Data is automatically saved to MongoDB database. All changes are persisted immediately - no need to export! Data persists across all deployments and server restarts.
 
 ## Usage Guide
 
@@ -170,8 +182,9 @@ volleyball-coach/
 - Data will be loaded and merged with existing data
 
 #### Data Storage
-- All data is automatically saved to `data/data.json` in the project directory
+- All data is automatically saved to MongoDB database
 - No manual saving required - every change is persisted immediately
+- Data persists across all deployments and server restarts
 - You can still export/import JSON or XML files for backup purposes
 
 ## Technical Details
@@ -180,8 +193,8 @@ volleyball-coach/
 - **HTML5**: Structure and semantic markup
 - **CSS3**: Styling, layout, and animations
 - **Vanilla JavaScript (ES6 Modules)**: Frontend application logic
-- **Node.js/Express**: Backend server for file-based storage
-- **JSON file storage**: All data persisted to `data/data.json` file
+- **Node.js/Express**: Backend server with REST API
+- **MongoDB**: Database for persistent data storage
 
 ### Browser Compatibility
 - **All modern browsers**: Chrome, Edge, Firefox, Safari all fully supported
@@ -189,16 +202,16 @@ volleyball-coach/
 
 ### Data Storage Architecture
 
-**Primary Storage: File-based (data/data.json)**
-- All data is automatically saved to `data/data.json` file
+**Primary Storage: MongoDB Database**
+- All data is automatically saved to MongoDB database
 - Every change (add player, save position, delete, etc.) is immediately persisted
-- Data persists even if browser is closed, cleared, or computer is restarted
+- Data persists permanently across all deployments, server restarts, and rebuilds
 - No risk of data loss - everything is saved automatically
-- The file is human-readable JSON format for easy backup/editing
+- Scalable and reliable database storage
 
 **Data Structure:**
 
-The `data/data.json` file structure:
+The MongoDB document structure:
 ```json
 {
   "players": [
@@ -208,25 +221,26 @@ The `data/data.json` file structure:
       "name": "..."
     }
   ],
-  "savedPositions": {
-    "positionName": [
-      {
-        "playerId": "...",
-        "jersey": "...",
-        "name": "...",
-        "x": 0,
-        "y": 0
-      }
-    ]
-  },
-  "version": "3.0",
-  "database": "file-based"
+  "positions": [
+    {
+      "id": "...",
+      "name": "...",
+      "playerPositions": [...]
+    }
+  ],
+  "rotations": [...],
+  "scenarios": [...],
+  "sequences": [...],
+  "version": "4.0",
+  "database": "mongodb"
 }
 ```
 
 **Migration:**
-- On first load, the app automatically migrates data from `public/data.xml` to `data/data.json`
+- On first load, the app automatically migrates data from `public/data.xml` to MongoDB
+- If you have existing `data/data.json`, you can import it using the app's import feature
 - Your existing data is preserved and upgraded seamlessly
+- See [MIGRATION.md](MIGRATION.md) for detailed migration instructions
 
 ## Features in Detail
 

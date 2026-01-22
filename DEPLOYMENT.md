@@ -7,7 +7,7 @@ This guide covers how to build and deploy the Volleyball Coach application to va
 The application consists of:
 - **Backend**: Node.js/Express server (`server.js`) that serves static files and provides REST API endpoints
 - **Frontend**: Vanilla JavaScript (ES6 modules) in the `public/` directory
-- **Data Storage**: File-based storage using `data/data.json`
+- **Data Storage**: MongoDB database (MongoDB Atlas recommended)
 - **No Build Step Required**: The frontend uses vanilla JavaScript, so no compilation/bundling is needed
 
 ## Pre-Deployment Checklist
@@ -15,20 +15,88 @@ The application consists of:
 1. ✅ **Dependencies**: All dependencies are in `package.json`
 2. ✅ **Port Configuration**: Server uses `process.env.PORT` (falls back to 8000)
 3. ✅ **Static Files**: All frontend files are in `public/` directory
-4. ⚠️ **Data Persistence**: `data/data.json` must be writable on the server
+4. ✅ **MongoDB Database**: Set up MongoDB Atlas cluster and configure `MONGODB_URI` environment variable
+
+## MongoDB Atlas Setup (Required)
+
+Before deploying, you need to set up a MongoDB database. MongoDB Atlas is recommended (free tier available).
+
+### Step 1: Create MongoDB Atlas Account
+1. Go to [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+2. Sign up for a free account
+3. Create a new project (or use the default)
+
+### Step 2: Create a Cluster
+1. Click **"Build a Database"** or **"Create"**
+2. Choose **"M0 Free"** tier (perfect for development)
+3. Select your preferred cloud provider and region
+4. Click **"Create Cluster"** (takes 3-5 minutes)
+
+### Step 3: Create Database User
+1. Go to **Database Access** in the left sidebar
+2. Click **"Add New Database User"**
+3. Choose **"Password"** authentication
+4. Enter a username and strong password (save these!)
+5. Set privileges to **"Atlas Admin"** (or **"Read and write to any database"**)
+6. Click **"Add User"**
+
+### Step 4: Configure Network Access
+1. Go to **Network Access** in the left sidebar
+2. Click **"Add IP Address"**
+3. For development: Click **"Add Current IP Address"**
+4. For production: Click **"Allow Access from Anywhere"** (0.0.0.0/0)
+5. Click **"Confirm"**
+
+### Step 5: Get Connection String
+1. Go to **Database** in the left sidebar
+2. Click **"Connect"** on your cluster
+3. Choose **"Connect your application"**
+4. Copy the connection string (looks like: `mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority`)
+5. Replace `<password>` with your actual password
+6. Add database name at the end: `...mongodb.net/volleyball-coach?retryWrites=true&w=majority`
+
+**Your connection string should look like:**
+```
+mongodb+srv://myuser:mypassword@cluster0.xxxxx.mongodb.net/volleyball-coach?retryWrites=true&w=majority
+```
+
+### Step 6: Set Environment Variable
+Set `MONGODB_URI` (or `MONGO_URI`) to your connection string in your hosting platform's environment variables.
+
+---
 
 ## Deployment Options
 
-### Option 1: Railway (Recommended for File-Based Storage)
+### Option 1: Railway (Recommended)
 
-Railway is excellent for Node.js apps with file-based storage.
+Railway is excellent for Node.js apps with MongoDB.
 
 **Steps:**
 1. Sign up at [railway.app](https://railway.app)
 2. Create a new project
 3. Connect your GitHub repository (or deploy from CLI)
 4. Railway will auto-detect Node.js and run `npm start`
-5. The `data/` directory will persist between deployments
+
+**Setting Up MongoDB on Railway:**
+1. In your Railway project, click **"+ New"**
+2. Select **"Database"** → **"Add MongoDB"**
+3. Railway will automatically create a MongoDB instance
+4. Click on the MongoDB service
+5. Go to **"Variables"** tab
+6. Copy the `MONGO_URL` value
+7. Go back to your app service
+8. Go to **"Variables"** tab
+9. Add a new variable:
+   - **Name**: `MONGODB_URI`
+   - **Value**: Paste the `MONGO_URL` from the MongoDB service
+10. Add database name: Append `/volleyball-coach` to the connection string
+
+**Or use MongoDB Atlas:**
+1. Follow the MongoDB Atlas setup above
+2. In Railway, go to your app service → **"Variables"**
+3. Add variable:
+   - **Name**: `MONGODB_URI`
+   - **Value**: Your MongoDB Atlas connection string
 
 **Finding Your App URL:**
 1. In Railway dashboard, click on your **service** (the deployed app)
@@ -36,40 +104,30 @@ Railway is excellent for Node.js apps with file-based storage.
 3. Scroll down to **Networking** section
 4. Click **Generate Domain** (if you haven't already)
 5. Railway will generate a public URL like: `https://your-app-name.up.railway.app`
-6. Click the URL or copy it to open your app in a browser
-7. **Alternative**: The URL is also shown in the **Deployments** tab after a successful deployment
 
 **Environment Variables:**
-- None required (PORT is auto-set by Railway)
+- `MONGODB_URI` or `MONGO_URI`: Your MongoDB connection string (required)
+- `PORT`: Auto-set by Railway (no action needed)
+- `DB_NAME`: Optional, defaults to `volleyball-coach`
 
-**Data Persistence on Railway:**
-- ✅ **Changes ARE saved live**: Every API call (add player, save position, etc.) writes directly to `data/data.json` on Railway's persistent volume
-- ✅ **Data persists between deployments**: Railway uses persistent volumes, so your `data/data.json` file survives:
-  - Code deployments (git push)
-  - Server restarts
-  - Service updates
-- ✅ **No data loss risk**: As long as the service is running, all changes are immediately written to disk
-- ⚠️ **Important**: Make sure `data/data.json` is in `.gitignore` (it should be) so it's not overwritten during deployments
-
-**How it works:**
-1. User makes a change in the app (e.g., adds a player)
-2. Frontend calls API endpoint (e.g., `POST /api/players`)
-3. Server writes to `data/data.json` immediately
-4. Data is saved on Railway's persistent volume
-5. Next time the app loads, it reads from the same file
+**Data Persistence:**
+- ✅ **Data persists permanently**: All data is stored in MongoDB
+- ✅ **Survives deployments**: Data is independent of code deployments
+- ✅ **No data loss**: Database persists across all server restarts and rebuilds
+- ✅ **Scalable**: Easy to scale and backup
 
 **Pros:**
-- Easy file-based storage persistence
 - Automatic HTTPS
 - Free tier available
 - Simple deployment
-- **Live data updates** - no deployment needed for data changes
+- Great MongoDB integration
+- **Data persists across all deployments**
 
 ---
 
 ### Option 2: Render
 
-Render provides persistent disk storage for file-based apps.
+Render is great for Node.js apps with MongoDB.
 
 **Steps:**
 1. Sign up at [render.com](https://render.com)
@@ -79,18 +137,20 @@ Render provides persistent disk storage for file-based apps.
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
    - **Environment**: Node
-5. Deploy
+5. Add environment variable:
+   - **Key**: `MONGODB_URI`
+   - **Value**: Your MongoDB Atlas connection string (from setup above)
+6. Deploy
 
 **Environment Variables:**
+- `MONGODB_URI` or `MONGO_URI`: Your MongoDB connection string (required)
 - `PORT`: Auto-set by Render (no action needed)
 
-**Important**: Render provides persistent disk storage, so `data/data.json` will persist.
-
 **Pros:**
-- Persistent disk storage
 - Free tier available
 - Automatic HTTPS
 - Easy GitHub integration
+- Great for MongoDB Atlas
 
 ---
 
@@ -100,25 +160,21 @@ Render provides persistent disk storage for file-based apps.
 1. Install Heroku CLI: `brew install heroku/brew/heroku` (macOS)
 2. Login: `heroku login`
 3. Create app: `heroku create your-app-name`
-4. Deploy: `git push heroku main`
-5. Open: `heroku open`
-
-**Important Notes:**
-- Heroku uses **ephemeral filesystem** - data will be lost on restart!
-- Consider migrating to a database (PostgreSQL) for production
-- For file-based storage, use Heroku's add-ons or external storage
+4. Set MongoDB URI: `heroku config:set MONGODB_URI="your-mongodb-atlas-connection-string"`
+5. Deploy: `git push heroku main`
+6. Open: `heroku open`
 
 **Environment Variables:**
+- `MONGODB_URI` or `MONGO_URI`: Your MongoDB Atlas connection string (required)
 - `PORT`: Auto-set by Heroku
 
 **Pros:**
 - Well-established platform
 - Good documentation
-- Free tier (with limitations)
+- Works great with MongoDB Atlas
 
 **Cons:**
-- Ephemeral filesystem (data loss on restart)
-- Not ideal for file-based storage
+- Free tier has limitations (sleeps after inactivity)
 
 ---
 
@@ -143,16 +199,30 @@ Render provides persistent disk storage for file-based apps.
 
 ---
 
-### Option 5: Vercel (Not Recommended for File-Based Storage)
+### Option 5: Vercel
 
-Vercel is serverless and doesn't support persistent file storage. You would need to migrate to a database.
+Vercel works great with MongoDB Atlas!
 
-**If you want to use Vercel:**
-1. Migrate data storage to a database (MongoDB, PostgreSQL, etc.)
-2. Update API endpoints to use database instead of file system
-3. Deploy backend as serverless functions
+**Steps:**
+1. Sign up at [vercel.com](https://vercel.com)
+2. Import your GitHub repository
+3. Configure:
+   - **Framework Preset**: Other
+   - **Build Command**: (leave empty)
+   - **Output Directory**: (leave empty)
+   - **Install Command**: `npm install`
+4. Add environment variable:
+   - **Name**: `MONGODB_URI`
+   - **Value**: Your MongoDB Atlas connection string
+5. Deploy
 
-**Not recommended** for current file-based architecture.
+**Note**: You may need to adjust the server setup for serverless functions, or use Vercel's API routes feature.
+
+**Pros:**
+- Excellent performance
+- Automatic HTTPS
+- Great for static + API routes
+- Free tier available
 
 ---
 
@@ -197,15 +267,15 @@ export PORT=8000
 
 ### 2. Data Persistence
 
-⚠️ **Important**: Most hosting platforms have ephemeral filesystems. Your `data/data.json` file will be lost on:
-- Server restarts (Heroku)
-- New deployments (some platforms)
-- Container restarts
+✅ **MongoDB Database**: The app now uses MongoDB for data storage, which provides:
+- Permanent data persistence across all deployments
+- No data loss on server restarts or rebuilds
+- Easy backups and scaling
+- Works on any hosting platform
 
-**Solutions:**
-- Use platforms with persistent storage (Railway, Render with persistent disk)
-- Migrate to a database (PostgreSQL, MongoDB, etc.)
-- Use external storage (AWS S3, Google Cloud Storage)
+**Required Setup:**
+- Set up MongoDB Atlas (free tier available) - see setup instructions above
+- Set `MONGODB_URI` environment variable with your connection string
 
 ### 3. HTTPS
 
@@ -282,7 +352,14 @@ open http://localhost:8000
 ## Troubleshooting
 
 ### Issue: Data not persisting
-**Solution**: Use a platform with persistent storage or migrate to a database.
+**Solution**: Ensure `MONGODB_URI` environment variable is set correctly. Check your MongoDB Atlas cluster is running and network access is configured.
+
+### Issue: Cannot connect to MongoDB
+**Solution**: 
+- Verify `MONGODB_URI` is set correctly
+- Check MongoDB Atlas network access allows your IP (or 0.0.0.0/0 for production)
+- Verify database user credentials are correct
+- Check MongoDB Atlas cluster is running (not paused)
 
 ### Issue: Port already in use
 **Solution**: Change PORT environment variable or kill the process using that port.
@@ -297,11 +374,12 @@ open http://localhost:8000
 
 ## Recommended Deployment Path
 
-For this application with file-based storage:
+For this application with MongoDB:
 
-1. **Best Option**: **Railway** or **Render** (persistent storage, easy setup)
-2. **Alternative**: Self-hosted VPS (full control, persistent storage)
-3. **Future**: Migrate to database (PostgreSQL/MongoDB) for better scalability
+1. **Best Option**: **Railway** with MongoDB Atlas (easiest setup, great integration)
+2. **Alternative**: **Render** with MongoDB Atlas (free tier, simple setup)
+3. **Alternative**: **Heroku** with MongoDB Atlas (well-established platform)
+4. **Self-hosted**: VPS with MongoDB Atlas or self-hosted MongoDB
 
 ---
 

@@ -1,14 +1,13 @@
 // Express server for Volleyball Coach app
-// Provides API endpoints to read/write data to data.json file
+// Provides API endpoints to read/write data to MongoDB database
 
 const express = require('express');
-const fs = require('fs').promises;
 const path = require('path');
 const cors = require('cors');
+const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
-const DATA_FILE = path.join(__dirname, 'data', 'data.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // Middleware
@@ -16,137 +15,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(PUBLIC_DIR)); // Serve static files from public directory
 
-// Initialize data.json if it doesn't exist
-async function ensureDataFile() {
-    try {
-        // Ensure data directory exists
-        const dataDir = path.dirname(DATA_FILE);
-        await fs.mkdir(dataDir, { recursive: true });
-        
-        // Check if file exists
-        try {
-            await fs.access(DATA_FILE);
-            // File exists, check if migration is needed
-            await migrateDataIfNeeded();
-        } catch (error) {
-            // File doesn't exist, create it with empty data
-            const initialData = {
-                players: [],
-                positions: [],
-                rotations: [],
-                scenarios: [],
-                sequences: [],
-                version: '4.0',
-                database: 'file-based'
-            };
-            await fs.writeFile(DATA_FILE, JSON.stringify(initialData, null, 2));
-            console.log('Created initial data.json file');
-        }
-    } catch (error) {
-        console.error('Error ensuring data file:', error);
-        throw error;
-    }
-}
-
-// Migrate from old format (v3.0) to new format (v4.0)
-async function migrateDataIfNeeded() {
-    try {
-        const data = await readData();
-        
-        // Check if already migrated (has positions array)
-        if (data.positions && Array.isArray(data.positions)) {
-            return; // Already migrated
-        }
-        
-        // Check if old format exists (has savedPositions object)
-        if (data.savedPositions && typeof data.savedPositions === 'object' && !Array.isArray(data.savedPositions)) {
-            console.log('Migrating data from v3.0 to v4.0...');
-            
-            // Convert savedPositions object to positions array
-            const positions = [];
-            const positionNameToId = new Map();
-            
-            Object.keys(data.savedPositions).forEach((positionName, index) => {
-                // Use index to ensure unique IDs even if Date.now() is the same
-                const positionId = `pos_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
-                positionNameToId.set(positionName, positionId);
-                
-                positions.push({
-                    id: positionId,
-                    name: positionName,
-                    rotationIds: [],
-                    playerPositions: data.savedPositions[positionName] || []
-                });
-            });
-            
-            // Create default rotations based on position names that start with "Rotation"
-            const rotations = [];
-            const rotationMap = new Map();
-            
-            positions.forEach(position => {
-                // Extract rotation name from position name (e.g., "Rotation 1" from "Rotation 1: Serve Receive")
-                const rotationMatch = position.name.match(/^(Rotation \d+)/);
-                if (rotationMatch) {
-                    const rotationName = rotationMatch[1];
-                    
-                    if (!rotationMap.has(rotationName)) {
-                        const rotationId = `rot_${Date.now()}_${rotations.length}_${Math.random().toString(36).substr(2, 9)}`;
-                        rotations.push({
-                            id: rotationId,
-                            name: rotationName,
-                            positionIds: []
-                        });
-                        rotationMap.set(rotationName, rotationId);
-                    }
-                    
-                    const rotationId = rotationMap.get(rotationName);
-                    const rotation = rotations.find(r => r.id === rotationId);
-                    if (rotation) {
-                        rotation.positionIds.push(position.id);
-                        position.rotationIds.push(rotationId);
-                    }
-                }
-            });
-            
-            // Update data structure
-            data.positions = positions;
-            data.rotations = rotations;
-            data.scenarios = [];
-            data.sequences = [];
-            data.version = '4.0';
-            
-            // Keep savedPositions for backward compatibility during transition
-            // (will be removed in future version)
-            
-            await writeData(data);
-            console.log(`Migration complete: ${positions.length} positions, ${rotations.length} rotations`);
-        }
-    } catch (error) {
-        console.error('Error during migration:', error);
-        // Don't throw - allow app to continue
-    }
-}
-
-// Read data from file
+// Read data from MongoDB
 async function readData() {
-    try {
-        const data = await fs.readFile(DATA_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error reading data file:', error);
-        throw error;
-    }
+    return await db.readData();
 }
 
-// Write data to file
+// Write data to MongoDB
 async function writeData(data) {
-    try {
-        await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
-        return true;
-    } catch (error) {
-        console.error('Error writing data file:', error);
-        throw error;
-    }
+    return await db.writeData(data);
 }
 
 // API Routes
@@ -544,7 +420,7 @@ app.post('/api/import', async (req, res) => {
                 scenarios: importedData.scenarios || [],
                 sequences: importedData.sequences || [],
                 version: '4.0',
-                database: 'file-based',
+                database: 'mongodb',
                 importDate: new Date().toISOString()
             };
         } else {
@@ -553,7 +429,7 @@ app.post('/api/import', async (req, res) => {
                 players: importedData.players || [],
                 savedPositions: importedData.savedPositions || {},
                 version: '3.0',
-                database: 'file-based',
+                database: 'mongodb',
                 importDate: new Date().toISOString()
             };
         }
@@ -565,14 +441,35 @@ app.post('/api/import', async (req, res) => {
     }
 });
 
+// Graceful shutdown
+process.on('SIGINT', async () => {
+    console.log('\nShutting down gracefully...');
+    await db.close();
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    console.log('\nShutting down gracefully...');
+    await db.close();
+    process.exit(0);
+});
+
 // Start server
 async function startServer() {
-    await ensureDataFile();
-    
-    app.listen(PORT, () => {
-        console.log(`Volleyball Coach server running on http://localhost:${PORT}`);
-        console.log(`Data file: ${DATA_FILE}`);
-    });
+    try {
+        await db.initialize();
+        
+        app.listen(PORT, () => {
+            console.log(`Volleyball Coach server running on http://localhost:${PORT}`);
+            console.log(`Database: MongoDB`);
+            if (process.env.MONGODB_URI || process.env.MONGO_URI) {
+                console.log(`MongoDB URI: ${(process.env.MONGODB_URI || process.env.MONGO_URI).substring(0, 20)}...`);
+            }
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
 }
 
 startServer().catch(console.error);
