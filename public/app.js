@@ -501,6 +501,13 @@ async function handleDiscard() {
     }
 }
 
+// Initialize drag-drop-touch polyfill for mobile devices
+// This makes HTML5 drag and drop work on touch devices
+if (typeof DragDropTouch !== 'undefined') {
+    // Polyfill is loaded and will automatically handle touch events
+    console.log('Drag-drop-touch polyfill loaded');
+}
+
 // Initialize app when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

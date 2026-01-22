@@ -11,6 +11,14 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background: #f5f5f5;
     color: #333;
+    /* Improve touch responsiveness on mobile */
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Improve button touch handling on mobile */
+button {
+    touch-action: manipulation; /* Remove 300ms delay on mobile taps */
+    -webkit-tap-highlight-color: transparent;
 }
 
 .app-container {
@@ -894,6 +902,9 @@ svg[data-lucide] {
     gap: 6px;
     transition: transform 0.2s, box-shadow 0.2s;
     border: 2px solid transparent;
+    touch-action: pan-y; /* Allow vertical scrolling but enable drag */
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .player-lineup-item:hover {
@@ -1085,6 +1096,7 @@ svg[data-lucide] {
     overflow: hidden;
     flex-shrink: 0;
     transform-origin: center center;
+    touch-action: none; /* Enable touch dragging on court */
 }
 
 /* ============================================
@@ -1172,6 +1184,9 @@ svg[data-lucide] {
     border: 3px solid white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     transition: transform 0.3s ease, box-shadow 0.2s;
+    touch-action: none; /* Enable touch dragging */
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .player-container:hover .player-on-court {
@@ -1289,6 +1304,7 @@ svg[data-lucide] {
     border-radius: 6px;
     padding: 12px;
     background: #f8f9fa;
+    touch-action: none; /* Enable touch dragging to drop zones */
     transition: all 0.2s;
     min-height: 86px; /* Fixed height to prevent layout shift when position name and tags are added */
     display: flex;
@@ -1711,6 +1727,9 @@ svg[data-lucide] {
    ============================================ */
 .item-card.draggable {
     cursor: grab;
+    touch-action: pan-y; /* Allow vertical scrolling but enable drag */
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .item-card.draggable:active {
@@ -1719,6 +1738,13 @@ svg[data-lucide] {
 
 .item-card.dragging {
     opacity: 0.5;
+}
+
+/* Touch drag preview - visual element that follows touch */
+.touch-drag-preview {
+    pointer-events: none !important;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
+    transform: scale(1.1) rotate(2deg) !important;
 }
 
 /* Reordering visual feedback for item cards */

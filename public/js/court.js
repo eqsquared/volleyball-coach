@@ -95,6 +95,40 @@ export function placePlayerOnCourt(player, x, y) {
         setDraggedElement(null);
     });
     
+    // Add touch drag support for mobile - attach to both circle and container
+    // This ensures touch works even if user touches the label
+    setTimeout(() => {
+        import('./touchDrag.js').then(({ initTouchDrag }) => {
+            // Initialize on the player circle (main drag handle)
+            initTouchDrag(playerElement, {
+                dragType: 'element',
+                dragData: playerContainer,
+                onDragStart: () => {
+                    setDraggedElement(playerContainer);
+                    playerContainer.classList.add('dragging');
+                },
+                onDragEnd: () => {
+                    playerContainer.classList.remove('dragging');
+                    // State will be cleared by touchDrag handler
+                }
+            });
+            
+            // Also initialize on the container in case touch hits the label
+            initTouchDrag(playerContainer, {
+                dragType: 'element',
+                dragData: playerContainer,
+                onDragStart: () => {
+                    setDraggedElement(playerContainer);
+                    playerContainer.classList.add('dragging');
+                },
+                onDragEnd: () => {
+                    playerContainer.classList.remove('dragging');
+                    // State will be cleared by touchDrag handler
+                }
+            });
+        });
+    }, 0);
+    
     getPlayerElements().set(player.id, playerContainer);
     dom.court.appendChild(playerContainer);
 }

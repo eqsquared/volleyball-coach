@@ -150,6 +150,18 @@ export function renderLineup() {
             isReordering = false;
         });
         
+        // Add touch drag support for mobile
+        setTimeout(() => {
+            import('./touchDrag.js').then(({ initTouchDrag }) => {
+                initTouchDrag(item, {
+                    dragType: 'player',
+                    dragData: { ...player, index },
+                    onDragStart: () => {},
+                    onDragEnd: () => {}
+                });
+            });
+        }, 0);
+        
         // Reordering handlers
         item.addEventListener('dragover', (e) => {
             const draggedItem = dom.lineupList.querySelector('.player-lineup-item.dragging');
@@ -507,6 +519,24 @@ export function renderPositionsList() {
             }, 100);
         });
         
+        // Add touch drag support for mobile (initialize after item is added to DOM)
+        setTimeout(() => {
+            import('./touchDrag.js').then(({ initTouchDrag }) => {
+                initTouchDrag(item, {
+                    dragType: 'position',
+                    dragData: position,
+                    onDragStart: () => {
+                        isDragging = true;
+                    },
+                    onDragEnd: () => {
+                        setTimeout(() => {
+                            isDragging = false;
+                        }, 100);
+                    }
+                });
+            });
+        }, 0);
+        
         // Reordering handlers (only when dragging within the list)
         item.addEventListener('dragover', (e) => {
             const draggedItem = dom.positionsList.querySelector('.item-card.dragging');
@@ -697,6 +727,24 @@ export function renderScenariosList() {
             e.dataTransfer.setData('application/reorder', `scenario-${scenarioIndexMap.get(scenario.id)}`);
         });
         
+        // Add touch drag support for mobile
+        setTimeout(() => {
+            import('./touchDrag.js').then(({ initTouchDrag }) => {
+                initTouchDrag(item, {
+                    dragType: 'scenario',
+                    dragData: scenario,
+                    onDragStart: () => {
+                        isDragging = true;
+                    },
+                    onDragEnd: () => {
+                        setTimeout(() => {
+                            isDragging = false;
+                        }, 100);
+                    }
+                });
+            });
+        }, 0);
+        
         item.addEventListener('dragend', () => {
             item.classList.remove('dragging');
             setDraggedScenario(null);
@@ -885,6 +933,24 @@ export function renderSequencesList() {
                 isDragging = false;
             }, 100);
         });
+        
+        // Add touch drag support for mobile (sequences are mainly for reordering)
+        setTimeout(() => {
+            import('./touchDrag.js').then(({ initTouchDrag }) => {
+                initTouchDrag(item, {
+                    dragType: 'sequence',
+                    dragData: sequence,
+                    onDragStart: () => {
+                        isDragging = true;
+                    },
+                    onDragEnd: () => {
+                        setTimeout(() => {
+                            isDragging = false;
+                        }, 100);
+                    }
+                });
+            });
+        }, 0);
         
         // Make item clickable to load (but not when clicking on buttons or after dragging)
         item.addEventListener('click', (e) => {
@@ -1443,6 +1509,32 @@ export function renderSequenceTimeline(sequence) {
                 item.classList.remove('drag-insert-before', 'drag-insert-after');
             });
         });
+        
+        // Add touch drag support for mobile timeline items
+        setTimeout(() => {
+            import('./touchDrag.js').then(({ initTouchDrag }) => {
+                initTouchDrag(timelineItem, {
+                    dragType: 'timeline-item',
+                    dragData: { type: item.type, id: item.id, index },
+                    onDragStart: () => {
+                        timelineItem.classList.add('dragging');
+                        draggingTimelineIndex = index;
+                        // Clear all insert indicators
+                        dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                            item.classList.remove('drag-insert-before', 'drag-insert-after');
+                        });
+                    },
+                    onDragEnd: () => {
+                        timelineItem.classList.remove('dragging');
+                        draggingTimelineIndex = null;
+                        // Clear all insert indicators
+                        dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                            item.classList.remove('drag-insert-before', 'drag-insert-after');
+                        });
+                    }
+                });
+            });
+        }, 0);
         
         // Drop handlers for reordering (only when dragging timeline items)
         timelineItem.addEventListener('dragover', (e) => {
