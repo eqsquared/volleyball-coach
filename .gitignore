@@ -2,3 +2,10 @@ node_modules/
 package-lock.json
 data/data.json
 .env
+
+# Capacitor
+ios/App/Podfile.lock
+ios/App/Pods/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+.DS_Store

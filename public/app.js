@@ -2,6 +2,7 @@
 // Orchestrates initialization and event handling
 
 import * as db from './db.js';
+import { initCapacitor } from './js/capacitor-init.js';
 import { initDOM, dom } from './js/dom.js';
 import { alert } from './js/modal.js';
 import { 
@@ -51,10 +52,13 @@ function isPhoneView() {
 // Initialize application
 async function init() {
     try {
+        // Initialize Capacitor (if available)
+        await initCapacitor();
+        
         // Initialize DOM references
         initDOM();
         
-        // Initialize API connection
+        // Initialize API connection (or local storage in native mode)
         await db.initDB();
         setDbInitialized(true);
         
