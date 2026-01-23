@@ -190,11 +190,12 @@ export function createSearchAndTagsFilter(config) {
                 <label for="tag-${escapeHtml(tag)}-${searchInputId}">${escapeHtml(tag)}</label>
             `;
             
-            tagItem.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const checkbox = tagItem.querySelector('input[type="checkbox"]');
-                checkbox.checked = !checkbox.checked;
-                
+            // Get checkbox and label after they're created
+            const checkbox = tagItem.querySelector('input[type="checkbox"]');
+            const label = tagItem.querySelector('label');
+            
+            // Function to update state based on checkbox checked status
+            const updateState = () => {
                 if (checkbox.checked) {
                     selectedTags.add(tag);
                     tagItem.classList.add('selected');
@@ -202,9 +203,29 @@ export function createSearchAndTagsFilter(config) {
                     selectedTags.delete(tag);
                     tagItem.classList.remove('selected');
                 }
-                
                 renderSelectedTags();
                 onFilterChange();
+            };
+            
+            // Handle checkbox change event (fires for both checkbox clicks and label clicks)
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                updateState();
+            });
+            
+            // Handle clicks on the item container
+            tagItem.addEventListener('click', (e) => {
+                // If clicking on checkbox or label, let their natural behavior handle it
+                // The label's 'for' attribute will automatically toggle the checkbox
+                // and trigger the change event
+                if (e.target === checkbox || e.target === label || label.contains(e.target)) {
+                    // Don't prevent default - let label's natural behavior work
+                    return;
+                }
+                // If clicking elsewhere on the item, toggle the checkbox manually
+                e.stopPropagation();
+                checkbox.checked = !checkbox.checked;
+                updateState();
             });
             
             tagsList.appendChild(tagItem);

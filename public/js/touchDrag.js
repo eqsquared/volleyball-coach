@@ -20,6 +20,10 @@ let touchDragState = {
 // Threshold for detecting a drag vs a tap (in pixels)
 const DRAG_THRESHOLD = 10;
 
+// Delay before allowing drag to start (in milliseconds)
+// This allows users to scroll before drag starts
+const DRAG_START_DELAY = 300;
+
 /**
  * Initialize touch drag support for an element
  * @param {HTMLElement} element - The draggable element
@@ -103,8 +107,11 @@ export function initTouchDrag(element, options = {}) {
         if (deltaX > threshold || deltaY > threshold) {
             hasMoved = true;
             
-            // Start drag if not already dragging
-            if (!touchDragState.isDragging) {
+            // Check if enough time has passed since touch start (to allow scrolling)
+            const timeSinceStart = Date.now() - touchStartTime;
+            
+            // Start drag if not already dragging AND enough time has passed
+            if (!touchDragState.isDragging && timeSinceStart >= DRAG_START_DELAY) {
                 e.preventDefault();
                 startTouchDrag(element, touch, dragType, dragData, onDragStart);
             } else if (touchDragState.isDragging) {
@@ -112,6 +119,7 @@ export function initTouchDrag(element, options = {}) {
                 e.preventDefault();
                 updateTouchDrag(touch);
             }
+            // If time hasn't passed yet, don't prevent default - allow scrolling
         }
     };
     
