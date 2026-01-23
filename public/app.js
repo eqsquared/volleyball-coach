@@ -129,6 +129,9 @@ async function init() {
         // Initialize court drag and drop
         initCourtListeners();
         
+        // Set up dynamic viewport dimension tracking (handles browser UI changes)
+        setupViewportDimensions();
+        
         // Set up court font-size scaling
         setupCourtFontScaling();
         
@@ -332,6 +335,55 @@ function setupMobileDrawer() {
     });
 }
 
+
+// Set up dynamic viewport dimension tracking - handles browser UI changes (e.g., Safari tabs)
+function setupViewportDimensions() {
+    function updateViewportDimensions() {
+        const root = document.documentElement;
+        
+        // Get actual viewport dimensions
+        const vh = window.innerHeight;
+        const vw = window.innerWidth;
+        
+        // Calculate available height (accounting for browser UI)
+        // Use the actual innerHeight which accounts for browser chrome
+        const availableHeight = vh;
+        
+        // Update CSS custom properties
+        root.style.setProperty('--viewport-height', `${vh}px`);
+        root.style.setProperty('--viewport-width', `${vw}px`);
+        root.style.setProperty('--available-height', `${availableHeight}px`);
+        
+        // Also support dvh (dynamic viewport height) where available
+        // This is a newer CSS feature that handles this automatically
+        if (CSS.supports('height', '100dvh')) {
+            root.style.setProperty('--viewport-height', '100dvh');
+            root.style.setProperty('--available-height', '100dvh');
+        }
+    }
+    
+    // Initial update
+    updateViewportDimensions();
+    
+    // Update on resize with debouncing
+    let resizeTimeout;
+    const handleResize = () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(updateViewportDimensions, 50);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', () => {
+        // Delay slightly to allow orientation change to complete
+        setTimeout(updateViewportDimensions, 100);
+    });
+    
+    // Use Visual Viewport API if available (better for mobile browsers)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', handleResize);
+        window.visualViewport.addEventListener('scroll', handleResize);
+    }
+}
 
 // Set up court font-size scaling - updates CSS variable based on actual court size
 function setupCourtFontScaling() {
