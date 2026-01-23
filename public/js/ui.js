@@ -42,6 +42,11 @@ function isMobileView() {
     return window.innerWidth <= 1024 && window.innerHeight > window.innerWidth;
 }
 
+// Helper function to check if we're on a phone (matches CSS media query: max-width: 767px and orientation: portrait)
+function isPhoneView() {
+    return window.innerWidth <= 767 && window.innerHeight > window.innerWidth;
+}
+
 // Helper function to initialize Lucide icons for a container
 // This ensures icons are always initialized after DOM updates
 function initializeIcons(container) {
@@ -1158,6 +1163,17 @@ export function updateScenarioButtonsVisibility() {
 
 // Update modified indicator
 export function updateModifiedIndicator(isModified) {
+    // Always hide modified indicator on phones - they're read-only
+    // Helper function to check if we're on a phone (matches CSS media query: max-width: 767px and orientation: portrait)
+    const isPhoneView = () => window.innerWidth <= 767 && window.innerHeight > window.innerWidth;
+    if (isPhoneView()) {
+        if (dom.modifiedIndicator) {
+            dom.modifiedIndicator.classList.add('hidden');
+            dom.modifiedIndicator.classList.remove('show-flex');
+        }
+        return;
+    }
+    
     if (dom.modifiedIndicator) {
         const badge = dom.modifiedIndicator.querySelector('.badge');
         if (isModified) {
@@ -1487,55 +1503,62 @@ export function renderSequenceTimeline(sequence) {
             });
         }
         
-        // Drag handlers for reordering
-        timelineItem.addEventListener('dragstart', (e) => {
-            timelineItem.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            // Store item identifier instead of index
-            const dragData = { type: item.type, id: item.id };
-            e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
-            draggingTimelineIndex = index; // Store for use during dragover (will be recalculated on drop)
-            
-            // Clear all insert indicators
-            dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
-                item.classList.remove('drag-insert-before', 'drag-insert-after');
-            });
-        });
-        
-        timelineItem.addEventListener('dragend', () => {
-            timelineItem.classList.remove('dragging');
-            draggingTimelineIndex = null; // Clear when drag ends
-            // Clear all insert indicators
-            dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
-                item.classList.remove('drag-insert-before', 'drag-insert-after');
-            });
-        });
-        
-        // Add touch drag support for mobile timeline items
-        setTimeout(() => {
-            import('./touchDrag.js').then(({ initTouchDrag }) => {
-                initTouchDrag(timelineItem, {
-                    dragType: 'timeline-item',
-                    dragData: { type: item.type, id: item.id, index },
-                    onDragStart: () => {
-                        timelineItem.classList.add('dragging');
-                        draggingTimelineIndex = index;
-                        // Clear all insert indicators
-                        dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
-                            item.classList.remove('drag-insert-before', 'drag-insert-after');
-                        });
-                    },
-                    onDragEnd: () => {
-                        timelineItem.classList.remove('dragging');
-                        draggingTimelineIndex = null;
-                        // Clear all insert indicators
-                        dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
-                            item.classList.remove('drag-insert-before', 'drag-insert-after');
-                        });
-                    }
+        // Only enable drag handlers if NOT on a phone (phones are read-only)
+        if (!isPhoneView()) {
+            // Drag handlers for reordering
+            timelineItem.draggable = true;
+            timelineItem.addEventListener('dragstart', (e) => {
+                timelineItem.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                // Store item identifier instead of index
+                const dragData = { type: item.type, id: item.id };
+                e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+                draggingTimelineIndex = index; // Store for use during dragover (will be recalculated on drop)
+                
+                // Clear all insert indicators
+                dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                    item.classList.remove('drag-insert-before', 'drag-insert-after');
                 });
             });
-        }, 0);
+            
+            timelineItem.addEventListener('dragend', () => {
+                timelineItem.classList.remove('dragging');
+                draggingTimelineIndex = null; // Clear when drag ends
+                // Clear all insert indicators
+                dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                    item.classList.remove('drag-insert-before', 'drag-insert-after');
+                });
+            });
+            
+            // Add touch drag support for mobile timeline items (tablets/iPads, not phones)
+            setTimeout(() => {
+                import('./touchDrag.js').then(({ initTouchDrag }) => {
+                    initTouchDrag(timelineItem, {
+                        dragType: 'timeline-item',
+                        dragData: { type: item.type, id: item.id, index },
+                        onDragStart: () => {
+                            timelineItem.classList.add('dragging');
+                            draggingTimelineIndex = index;
+                            // Clear all insert indicators
+                            dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                                item.classList.remove('drag-insert-before', 'drag-insert-after');
+                            });
+                        },
+                        onDragEnd: () => {
+                            timelineItem.classList.remove('dragging');
+                            draggingTimelineIndex = null;
+                            // Clear all insert indicators
+                            dom.timelineContainer.querySelectorAll('.timeline-item').forEach(item => {
+                                item.classList.remove('drag-insert-before', 'drag-insert-after');
+                            });
+                        }
+                    });
+                });
+            }, 0);
+        } else {
+            // On phones, disable dragging - read-only mode
+            timelineItem.draggable = false;
+        }
         
         // Individual item handlers removed - all drag/drop handled by unified container handler
         // This prevents conflicts and ensures consistent behavior
@@ -1553,6 +1576,11 @@ export function renderSequenceTimeline(sequence) {
 // Set up timeline as drop zone for positions and scenarios
 function setupTimelineDropZone(sequence) {
     if (!dom.timelineContainer) return;
+    
+    // Skip drop zone setup on phones (read-only mode)
+    if (isPhoneView()) {
+        return;
+    }
     
     // Make sure placeholder doesn't block drops
     const placeholder = dom.timelineContainer.querySelector('.timeline-placeholder');
@@ -2150,11 +2178,37 @@ export function updateMobileUI() {
     const courtSection = document.querySelector('.court-section');
     if (courtSection) {
         if (hasScenario || hasSequence) {
-            // No bucket, remove padding class
+            // No positions bucket, remove padding class
             courtSection.classList.remove('has-mobile-bucket');
+            
+            // On phones, add classes for scenario/sequence buckets
+            if (isPhoneView()) {
+                if (hasScenario) {
+                    const startPos = getSelectedStartPosition();
+                    const endPos = getSelectedEndPosition();
+                    const hasScenarioContent = startPos && endPos;
+                    if (hasScenarioContent) {
+                        courtSection.classList.add('has-scenario-bucket');
+                    } else {
+                        courtSection.classList.remove('has-scenario-bucket');
+                    }
+                } else {
+                    courtSection.classList.remove('has-scenario-bucket');
+                }
+                
+                if (hasSequence) {
+                    courtSection.classList.add('has-sequence-bucket');
+                } else {
+                    courtSection.classList.remove('has-sequence-bucket');
+                }
+            }
         } else {
-            // Bucket visible, add padding class
+            // Positions bucket visible, add padding class
             courtSection.classList.add('has-mobile-bucket');
+            // Remove scenario/sequence bucket classes
+            if (isPhoneView()) {
+                courtSection.classList.remove('has-scenario-bucket', 'has-sequence-bucket');
+            }
         }
     }
     

@@ -43,6 +43,11 @@ import {
     handleFileImport 
 } from './js/importExport.js';
 
+// Helper function to check if we're on a phone (matches CSS media query: max-width: 767px and orientation: portrait)
+function isPhoneView() {
+    return window.innerWidth <= 767 && window.innerHeight > window.innerWidth;
+}
+
 // Initialize application
 async function init() {
     try {
@@ -362,16 +367,22 @@ function setupCourtFontScaling() {
 function setupModificationTracking() {
     // Track player movements on court
     if (dom.court) {
-        // Mouse events for desktop
+        // Mouse events for desktop (skip on phones - read-only mode)
         dom.court.addEventListener('mousemove', () => {
+            // Skip modification checks on phones - they're read-only
+            if (isPhoneView()) return;
+            
             if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
                 checkForModifications();
                 updateModifiedIndicator(state.isModified);
             }
         });
         
-        // Also check on mouseup (after drag)
+        // Also check on mouseup (after drag) (skip on phones)
         dom.court.addEventListener('mouseup', () => {
+            // Skip modification checks on phones - they're read-only
+            if (isPhoneView()) return;
+            
             if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
                 setTimeout(() => {
                     checkForModifications();
@@ -381,8 +392,11 @@ function setupModificationTracking() {
         });
         
         // Touch events for mobile devices
-        // Check after touch drag ends
+        // Check after touch drag ends (skip on phones - read-only mode)
         dom.court.addEventListener('touchend', async (e) => {
+            // Skip modification checks on phones - they're read-only
+            if (isPhoneView()) return;
+            
             if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
                 // Use setTimeout to ensure DOM has updated after touch drag
                 setTimeout(async () => {
@@ -393,9 +407,12 @@ function setupModificationTracking() {
         }, { passive: true });
         
         // Also check on touchmove to catch movements during drag
-        // This helps detect modifications even if touchend doesn't fire
+        // This helps detect modifications even if touchend doesn't fire (skip on phones)
         let touchMoveTimeout;
         dom.court.addEventListener('touchmove', () => {
+            // Skip modification checks on phones - they're read-only
+            if (isPhoneView()) return;
+            
             if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
                 // Debounce to avoid excessive checks
                 clearTimeout(touchMoveTimeout);

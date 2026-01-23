@@ -3,6 +3,11 @@
 import { state, setDraggedPlayer, setDraggedElement, getPlayerElements, checkForModifications } from './state.js';
 import { dom } from './dom.js';
 
+// Helper function to check if we're on a phone (matches CSS media query: max-width: 767px and orientation: portrait)
+function isPhoneView() {
+    return window.innerWidth <= 767 && window.innerHeight > window.innerWidth;
+}
+
 // Court coordinate system is 600x600, but positions are stored as percentages
 // to scale proportionally when the court size changes
 
@@ -94,52 +99,58 @@ export function placePlayerOnCourt(player, x, y) {
     playerContainer.appendChild(playerElement);
     playerContainer.appendChild(playerLabel);
     
-    // Make draggable on court (drag from the circle)
-    playerElement.draggable = true;
-    playerElement.addEventListener('dragstart', (e) => {
-        setDraggedElement(playerContainer);
-        playerContainer.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-    });
-    
-    playerElement.addEventListener('dragend', () => {
-        playerContainer.classList.remove('dragging');
-        setDraggedElement(null);
-    });
-    
-    // Add touch drag support for mobile - attach to both circle and container
-    // This ensures touch works even if user touches the label
-    setTimeout(() => {
-        import('./touchDrag.js').then(({ initTouchDrag }) => {
-            // Initialize on the player circle (main drag handle)
-            initTouchDrag(playerElement, {
-                dragType: 'element',
-                dragData: playerContainer,
-                onDragStart: () => {
-                    setDraggedElement(playerContainer);
-                    playerContainer.classList.add('dragging');
-                },
-                onDragEnd: () => {
-                    playerContainer.classList.remove('dragging');
-                    // State will be cleared by touchDrag handler
-                }
-            });
-            
-            // Also initialize on the container in case touch hits the label
-            initTouchDrag(playerContainer, {
-                dragType: 'element',
-                dragData: playerContainer,
-                onDragStart: () => {
-                    setDraggedElement(playerContainer);
-                    playerContainer.classList.add('dragging');
-                },
-                onDragEnd: () => {
-                    playerContainer.classList.remove('dragging');
-                    // State will be cleared by touchDrag handler
-                }
-            });
+    // Only enable dragging if NOT on a phone (phones are read-only)
+    if (!isPhoneView()) {
+        // Make draggable on court (drag from the circle)
+        playerElement.draggable = true;
+        playerElement.addEventListener('dragstart', (e) => {
+            setDraggedElement(playerContainer);
+            playerContainer.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
         });
-    }, 0);
+        
+        playerElement.addEventListener('dragend', () => {
+            playerContainer.classList.remove('dragging');
+            setDraggedElement(null);
+        });
+        
+        // Add touch drag support for mobile (tablets/iPads) - attach to both circle and container
+        // This ensures touch works even if user touches the label
+        setTimeout(() => {
+            import('./touchDrag.js').then(({ initTouchDrag }) => {
+                // Initialize on the player circle (main drag handle)
+                initTouchDrag(playerElement, {
+                    dragType: 'element',
+                    dragData: playerContainer,
+                    onDragStart: () => {
+                        setDraggedElement(playerContainer);
+                        playerContainer.classList.add('dragging');
+                    },
+                    onDragEnd: () => {
+                        playerContainer.classList.remove('dragging');
+                        // State will be cleared by touchDrag handler
+                    }
+                });
+                
+                // Also initialize on the container in case touch hits the label
+                initTouchDrag(playerContainer, {
+                    dragType: 'element',
+                    dragData: playerContainer,
+                    onDragStart: () => {
+                        setDraggedElement(playerContainer);
+                        playerContainer.classList.add('dragging');
+                    },
+                    onDragEnd: () => {
+                        playerContainer.classList.remove('dragging');
+                        // State will be cleared by touchDrag handler
+                    }
+                });
+            });
+        }, 0);
+    } else {
+        // On phones, disable dragging - read-only mode
+        playerElement.draggable = false;
+    }
     
     getPlayerElements().set(player.id, playerContainer);
     dom.court.appendChild(playerContainer);
@@ -156,6 +167,9 @@ export function removePlayerFromCourt(playerId) {
 
 // Handle dragging within court
 export function handleCourtDragOver(e) {
+    // Skip on phones - read-only mode
+    if (isPhoneView()) return;
+    
     if (state.draggedElement) {
         e.preventDefault();
         
@@ -177,6 +191,9 @@ export function handleCourtDragOver(e) {
 }
 
 export function handleCourtDrop(e) {
+    // Skip on phones - read-only mode
+    if (isPhoneView()) return;
+    
     if (!state.draggedElement) return;
     
     e.preventDefault();
@@ -221,11 +238,16 @@ export function handleCourtDrop(e) {
 export function initCourtListeners() {
     // Court drag and drop
     dom.court.addEventListener('dragover', (e) => {
+        // Skip on phones - read-only mode
+        if (isPhoneView()) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
     });
 
     dom.court.addEventListener('drop', (e) => {
+        // Skip on phones - read-only mode
+        if (isPhoneView()) return;
+        
         e.preventDefault();
         
         if (!state.draggedPlayer) return;
@@ -247,6 +269,9 @@ export function initCourtListeners() {
     
     // Handle drops outside the court (on document)
     document.addEventListener('dragover', (e) => {
+        // Skip on phones - read-only mode
+        if (isPhoneView()) return;
+        
         if (state.draggedElement && !dom.court.contains(e.target)) {
             e.preventDefault();
             if (!state.draggedElement.classList.contains('removing')) {
@@ -256,6 +281,9 @@ export function initCourtListeners() {
     });
 
     document.addEventListener('drop', (e) => {
+        // Skip on phones - read-only mode
+        if (isPhoneView()) return;
+        
         if (state.draggedElement && !dom.court.contains(e.target)) {
             e.preventDefault();
             

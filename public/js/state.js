@@ -134,6 +134,13 @@ export function setCurrentLoadedItem(item) {
 }
 
 export function setIsModified(value) {
+    // Prevent setting modifications on phones for positions - they're read-only
+    // Helper function to check if we're on a phone (matches CSS media query: max-width: 767px and orientation: portrait)
+    const isPhoneView = () => window.innerWidth <= 767 && window.innerHeight > window.innerWidth;
+    if (isPhoneView() && value === true && state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
+        // Don't set modified state to true on phones for positions
+        return;
+    }
     state.isModified = value;
 }
 
@@ -191,6 +198,13 @@ export function getSelectedEndPosition() {
 
 // Helper to detect if court positions have changed
 export async function checkForModifications() {
+    // Skip modification checks on phones - they're read-only
+    // Helper function to check if we're on a phone (matches CSS media query: max-width: 767px and orientation: portrait)
+    const isPhoneView = () => window.innerWidth <= 767 && window.innerHeight > window.innerWidth;
+    if (isPhoneView()) {
+        return;
+    }
+    
     if (!state.currentLoadedItem || state.currentLoadedItem.type !== 'position') {
         return;
     }
