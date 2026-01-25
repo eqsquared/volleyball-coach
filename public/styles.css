@@ -3852,6 +3852,122 @@ svg[data-lucide] {
     transform: scale(0.98);
 }
 
+/* Team Code Input Styling */
+#team-code-input {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+    text-align: center;
+    font-weight: 300;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+/* View-Only Mode */
+.view-only-indicator {
+    margin-bottom: 10px;
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.view-only-indicator .badge {
+    background: var(--color-warning);
+    color: var(--color-warning-text);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.view-only-logout-btn {
+    background: transparent;
+    border: 1px solid var(--color-warning);
+    color: var(--color-warning);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.view-only-logout-btn:hover {
+    background: var(--color-warning);
+    color: var(--color-warning-text);
+}
+
+.view-only-logout-btn:active {
+    transform: scale(0.95);
+}
+
+.view-only-mode .player-lineup-item,
+.view-only-mode .item-card {
+    cursor: default;
+}
+
+.view-only-mode .player-lineup-item[draggable],
+.view-only-mode .item-card[draggable] {
+    cursor: default;
+}
+
+/* Team Code Display in Settings */
+.team-code-display-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.team-code-input {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.copy-code-btn {
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.copy-code-btn:hover {
+    background: var(--bg-hover);
+}
+
+.copy-code-btn i {
+    width: 16px;
+    height: 16px;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.team-code-url-wrapper {
+    margin-top: 15px;
+}
+
 @media (max-width: 767px) {
     .auth-modal-container {
         width: 95%;
@@ -3865,4 +3981,5 @@ svg[data-lucide] {
     .auth-content {
         padding: 20px;
     }
+    
 }

@@ -59,13 +59,54 @@ async function init() {
         // Initialize DOM references
         initDOM();
         
+        // Check for team code in URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const teamCode = urlParams.get('code');
+        
+        // Check if we're in view-only mode
+        let isViewOnly = await db.isViewOnlyMode();
+        
+        // If team code is in URL and we're not already in view-only mode, try to load it
+        if (teamCode && !isViewOnly) {
+            const { getApiBase } = await import('./js/environment.js');
+            const apiBase = getApiBase();
+            
+            if (apiBase) {
+                try {
+                    // apiBase already includes /api, so just append /view/
+                    const endpoint = `${apiBase}/view/${teamCode.toUpperCase()}`;
+                    const response = await fetch(endpoint);
+                    if (response.ok) {
+                        const viewData = await response.json();
+                        await db.setViewOnlyMode(teamCode.toUpperCase(), viewData);
+                        // Reload to initialize in view-only mode
+                        window.location.href = window.location.pathname + '?code=' + teamCode.toUpperCase();
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error loading team code:', error);
+                }
+            }
+        }
+        
+        // Re-check view-only mode after potential team code load
+        // This will also check expiration and clear if expired
+        isViewOnly = await db.isViewOnlyMode();
+        
+        // If view-only mode was just cleared due to expiration, reload to show login
+        if (!isViewOnly && urlParams.get('code')) {
+            // Was in view-only mode but it expired, reload without code param
+            window.location.href = window.location.pathname;
+            return;
+        }
+        
         // Initialize authentication (checks if user is logged in)
         const isAuthenticated = await initAuth();
         
-        // If not authenticated in web mode, stop here - user needs to log in first
+        // If not authenticated in web mode and not in view-only mode, stop here - user needs to log in first
         const { getApiBase } = await import('./js/environment.js');
         const apiBase = getApiBase();
-        if (apiBase && !isAuthenticated) {
+        if (apiBase && !isAuthenticated && !isViewOnly) {
             // User needs to authenticate - don't try to load data
             // The auth modal is already showing, so we'll wait for login
             // Hide loading overlay and show app container (auth modal is part of app)
@@ -73,11 +114,16 @@ async function init() {
             return;
         }
         
+        // If in view-only mode, set up view-only UI
+        if (isViewOnly) {
+            setupViewOnlyMode();
+        }
+        
         // Initialize API connection (or local storage in native mode)
         await db.initDB();
         setDbInitialized(true);
         
-        // Try to load data (only if authenticated or in native mode)
+        // Try to load data (only if authenticated or in native mode or view-only mode)
         // For web mode with auth, we're using the database - no legacy migration needed
         let hasDBData = false;
         try {
@@ -85,11 +131,11 @@ async function init() {
         } catch (error) {
             // If hasData fails (e.g., new user with no data yet), that's fine
             // The database will create empty data structure on first save
-            console.log('No existing data found - starting fresh');
             hasDBData = false;
         }
         
-        if (hasDBData) {
+        // In view-only mode, always try to load data (it was just stored)
+        if (hasDBData || isViewOnly) {
             // Load existing data
             try {
                 setPlayers(await db.getAllPlayers());
@@ -115,7 +161,9 @@ async function init() {
                 }
                 
                 if (dom.fileStatus) {
-                    if (apiBase) {
+                    if (isViewOnly) {
+                        dom.fileStatus.textContent = '✓ View-only mode - Data loaded.';
+                    } else if (apiBase) {
                         dom.fileStatus.textContent = '✓ Data loaded from database.';
                     } else {
                         dom.fileStatus.textContent = '✓ Data loaded from local storage.';
@@ -132,7 +180,6 @@ async function init() {
         // New users start with empty data - database will create structure on first save
         if (!hasDBData && !apiBase) {
             // Only try legacy migration in native mode (local storage)
-            console.log('No file data found, attempting migration...');
             const migrated = await migrateFromLegacyStorage();
             
             if (!migrated) {
@@ -194,8 +241,10 @@ async function init() {
         // Initialize drop zones
         initDropZones();
         
-        // Initialize profile menu
-        initProfile();
+        // Initialize profile menu (only if not in view-only mode)
+        if (!isViewOnly) {
+            initProfile();
+        }
         
         // Initial render
         renderLineup();
@@ -271,7 +320,8 @@ async function init() {
         console.error('Error initializing app:', error);
         // Still hide loading overlay even on error so user can see the error
         hideLoadingOverlay();
-        await alert('Error initializing database. Please refresh the page.');
+        const errorMessage = error.message || 'Unknown error';
+        await alert(`Error initializing database: ${errorMessage}. Please refresh the page.`, 'Initialization Error');
     }
 }
 
@@ -518,6 +568,76 @@ function setupModificationTracking() {
     
     // Track scenario modifications when drop zones change
     // This is handled in checkAndUpdateScenarioState in ui.js
+}
+
+/**
+ * Set up view-only mode - disable all edit functionality
+ */
+async function setupViewOnlyMode() {
+    // Add view-only indicator to the UI with logout button
+    const stateIndicator = document.getElementById('state-indicator');
+    if (stateIndicator) {
+        const viewOnlyIndicator = document.createElement('div');
+        viewOnlyIndicator.className = 'view-only-indicator';
+        viewOnlyIndicator.innerHTML = `
+            <span class="badge">Player View</span>
+            <button id="view-only-logout" class="view-only-logout-btn" title="Exit View-Only Mode">
+                <i data-lucide="log-out"></i>
+            </button>
+        `;
+        // Append to end (right side) instead of beginning
+        stateIndicator.appendChild(viewOnlyIndicator);
+        
+        // Add logout button event listener
+        const logoutBtn = document.getElementById('view-only-logout');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                const { confirm } = await import('./js/modal.js');
+                const confirmed = await confirm('Exit view-only mode? You will need to enter the team code again to view this data.', 'Exit View-Only Mode');
+                if (confirmed) {
+                    await db.clearViewOnlyMode();
+                    // Reload to show login screen
+                    window.location.href = window.location.pathname;
+                }
+            });
+            
+            // Initialize icons
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+    }
+    
+    // Hide all edit buttons
+    if (dom.addPlayerBtn) dom.addPlayerBtn.style.display = 'none';
+    if (dom.newPositionBtn) dom.newPositionBtn.style.display = 'none';
+    if (dom.createSequenceBtn) dom.createSequenceBtn.style.display = 'none';
+    if (dom.saveBtn) dom.saveBtn.style.display = 'none';
+    if (dom.saveAsBtn) dom.saveAsBtn.style.display = 'none';
+    if (dom.discardBtn) dom.discardBtn.style.display = 'none';
+    if (dom.exportJsonBtn) dom.exportJsonBtn.style.display = 'none';
+    if (dom.importBtn) dom.importBtn.style.display = 'none';
+    
+    // Hide profile menu (settings, logout, etc.)
+    const profileButton = document.getElementById('profile-button');
+    if (profileButton) profileButton.style.display = 'none';
+    
+    // Disable player input fields
+    if (dom.jerseyInput) dom.jerseyInput.disabled = true;
+    if (dom.nameInput) dom.nameInput.disabled = true;
+    
+    // Disable sequence name input
+    const sequenceNameInput = document.getElementById('sequence-name-input');
+    if (sequenceNameInput) sequenceNameInput.disabled = true;
+    
+    // Add CSS class to body for view-only styling
+    document.body.classList.add('view-only-mode');
+    
+    // Disable drag and drop on court (players can still view positions)
+    // This will be handled in court.js by checking view-only mode
+    
+    // Store view-only mode in state
+    window.isViewOnlyMode = true;
 }
 
 // Switch edit mode (kept for internal state management, but UI removed)

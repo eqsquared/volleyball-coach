@@ -8,6 +8,9 @@ import { getApiBase, isNative } from './js/environment.js';
 const STORAGE_KEY = 'volleyball-coach-data';
 const AUTH_TOKEN_KEY = 'volleyball-coach-auth-token';
 const USER_KEY = 'volleyball-coach-user';
+const VIEW_ONLY_MODE_KEY = 'volleyball-coach-view-only';
+const VIEW_ONLY_TEAM_CODE_KEY = 'volleyball-coach-view-only-code';
+const VIEW_ONLY_EXPIRATION_KEY = 'volleyball-coach-view-only-expiration';
 
 // Get API base URL (lazy evaluation - null in native mode)
 function getApiBaseUrl() {
@@ -253,6 +256,7 @@ export async function login(email, password) {
  */
 export async function logout() {
     await clearAuthToken();
+    await clearViewOnlyMode();
 }
 
 /**
@@ -281,9 +285,15 @@ export async function fetchCurrentUser() {
     
     try {
         const user = await apiRequest('/auth/me');
+        // Ensure teamCode and playerViewEnabled fields exist (for backward compatibility)
+        if (user) {
+            user.teamCode = user.teamCode || null;
+            user.playerViewEnabled = user.playerViewEnabled || false;
+        }
         await setCurrentUser(user);
         return user;
     } catch (error) {
+        console.error('Error fetching current user:', error);
         await clearAuthToken();
         return null;
     }
@@ -321,6 +331,17 @@ export async function initDB() {
  * Get all data
  */
 async function getAllData() {
+    // If in view-only mode, always use local data (stored from team code)
+    try {
+        const viewOnly = await isViewOnlyMode();
+        if (viewOnly) {
+            return await getLocalData();
+        }
+    } catch (error) {
+        // If checking view-only mode fails, continue with normal flow
+        console.warn('Error checking view-only mode:', error);
+    }
+    
     const apiBase = getApiBaseUrl();
     if (apiBase) {
         return await apiRequest('/data');
@@ -332,6 +353,17 @@ async function getAllData() {
 // ==================== Players ====================
 
 export async function getAllPlayers() {
+    // If in view-only mode, always use local data
+    try {
+        const viewOnly = await isViewOnlyMode();
+        if (viewOnly) {
+            const data = await getLocalData();
+            return data.players || [];
+        }
+    } catch (error) {
+        console.warn('Error checking view-only mode:', error);
+    }
+    
     const apiBase = getApiBaseUrl();
     if (apiBase) {
         return await apiRequest('/players');
@@ -407,6 +439,17 @@ export async function deletePlayer(playerId) {
 // ==================== Positions ====================
 
 export async function getAllPositions() {
+    // If in view-only mode, always use local data
+    try {
+        const viewOnly = await isViewOnlyMode();
+        if (viewOnly) {
+            const data = await getLocalData();
+            return data.positions || [];
+        }
+    } catch (error) {
+        console.warn('Error checking view-only mode:', error);
+    }
+    
     const apiBase = getApiBaseUrl();
     if (apiBase) {
         return await apiRequest('/positions');
@@ -582,6 +625,17 @@ export async function deleteRotation(rotationId) {
 // ==================== Scenarios ====================
 
 export async function getAllScenarios() {
+    // If in view-only mode, always use local data
+    try {
+        const viewOnly = await isViewOnlyMode();
+        if (viewOnly) {
+            const data = await getLocalData();
+            return data.scenarios || [];
+        }
+    } catch (error) {
+        console.warn('Error checking view-only mode:', error);
+    }
+    
     const apiBase = getApiBaseUrl();
     if (apiBase) {
         return await apiRequest('/scenarios');
@@ -648,6 +702,17 @@ export async function deleteScenario(scenarioId) {
 // ==================== Sequences ====================
 
 export async function getAllSequences() {
+    // If in view-only mode, always use local data
+    try {
+        const viewOnly = await isViewOnlyMode();
+        if (viewOnly) {
+            const data = await getLocalData();
+            return data.sequences || [];
+        }
+    } catch (error) {
+        console.warn('Error checking view-only mode:', error);
+    }
+    
     const apiBase = getApiBaseUrl();
     if (apiBase) {
         return await apiRequest('/sequences');
@@ -764,6 +829,15 @@ export async function importData(importedData) {
 
 export async function hasData() {
     try {
+        // If in view-only mode, check local data directly
+        const viewOnly = await isViewOnlyMode();
+        if (viewOnly) {
+            const data = await getLocalData();
+            return (data.players?.length > 0 || 
+                   (data.positions && data.positions.length > 0) ||
+                   Object.keys(data.savedPositions || {}).length > 0);
+        }
+        
         const data = await exportAllData();
         return (data.players?.length > 0 || 
                 (data.positions && data.positions.length > 0) ||
@@ -771,5 +845,113 @@ export async function hasData() {
     } catch (error) {
         console.error('Error checking data:', error);
         return false;
+    }
+}
+
+// ==================== View-Only Mode ====================
+
+/**
+ * Set view-only mode with team code and data
+ */
+export async function setViewOnlyMode(teamCode, viewData) {
+    try {
+        const dataToStore = viewData.data || viewData;
+        
+        // Set expiration to 24 hours from now
+        const expirationTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+        
+        const { Preferences } = await import('@capacitor/preferences');
+        await Preferences.set({ key: VIEW_ONLY_MODE_KEY, value: 'true' });
+        await Preferences.set({ key: VIEW_ONLY_TEAM_CODE_KEY, value: teamCode });
+        await Preferences.set({ key: VIEW_ONLY_EXPIRATION_KEY, value: expirationTime.toString() });
+        await Preferences.set({ key: STORAGE_KEY, value: JSON.stringify(dataToStore) });
+    } catch (capError) {
+        const dataToStore = viewData.data || viewData;
+        // Set expiration to 24 hours from now
+        const expirationTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+        localStorage.setItem(VIEW_ONLY_MODE_KEY, 'true');
+        localStorage.setItem(VIEW_ONLY_TEAM_CODE_KEY, teamCode);
+        localStorage.setItem(VIEW_ONLY_EXPIRATION_KEY, expirationTime.toString());
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore));
+    }
+}
+
+/**
+ * Check if in view-only mode (and not expired)
+ */
+export async function isViewOnlyMode() {
+    try {
+        const { Preferences } = await import('@capacitor/preferences');
+        const result = await Preferences.get({ key: VIEW_ONLY_MODE_KEY });
+        if (result.value !== 'true') {
+            return false;
+        }
+        
+        // Check expiration
+        const expirationResult = await Preferences.get({ key: VIEW_ONLY_EXPIRATION_KEY });
+        if (expirationResult.value) {
+            const expirationTime = parseInt(expirationResult.value, 10);
+            if (Date.now() > expirationTime) {
+                // Expired - clear view-only mode
+                await clearViewOnlyMode();
+                return false;
+            }
+        }
+        
+        return true;
+    } catch (capError) {
+        const isViewOnly = localStorage.getItem(VIEW_ONLY_MODE_KEY) === 'true';
+        if (!isViewOnly) {
+            return false;
+        }
+        
+        // Check expiration
+        const expirationTimeStr = localStorage.getItem(VIEW_ONLY_EXPIRATION_KEY);
+        if (expirationTimeStr) {
+            const expirationTime = parseInt(expirationTimeStr, 10);
+            if (Date.now() > expirationTime) {
+                // Expired - clear view-only mode
+                await clearViewOnlyMode();
+                return false;
+            }
+        }
+        
+        return true;
+    }
+}
+
+/**
+ * Get view-only team code
+ */
+export async function getViewOnlyTeamCode() {
+    try {
+        const { Preferences } = await import('@capacitor/preferences');
+        const result = await Preferences.get({ key: VIEW_ONLY_TEAM_CODE_KEY });
+        return result.value || null;
+    } catch (capError) {
+        return localStorage.getItem(VIEW_ONLY_TEAM_CODE_KEY);
+    }
+}
+
+/**
+ * Clear view-only mode
+ */
+export async function clearViewOnlyMode() {
+    try {
+        const { Preferences } = await import('@capacitor/preferences');
+        await Preferences.remove({ key: VIEW_ONLY_MODE_KEY });
+        await Preferences.remove({ key: VIEW_ONLY_TEAM_CODE_KEY });
+        await Preferences.remove({ key: VIEW_ONLY_EXPIRATION_KEY });
+    } catch (capError) {
+        localStorage.removeItem(VIEW_ONLY_MODE_KEY);
+        localStorage.removeItem(VIEW_ONLY_TEAM_CODE_KEY);
+        localStorage.removeItem(VIEW_ONLY_EXPIRATION_KEY);
+    }
+    // Also clear the view-only data from storage
+    try {
+        const { Preferences } = await import('@capacitor/preferences');
+        await Preferences.remove({ key: STORAGE_KEY });
+    } catch (capError) {
+        localStorage.removeItem(STORAGE_KEY);
     }
 }

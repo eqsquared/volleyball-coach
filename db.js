@@ -277,6 +277,107 @@ async function getUserCredentials(userId) {
     return await credentialsCollection.findOne({ userId: userId });
 }
 
+/**
+ * Generate a random team code
+ * @returns {string} - Random 6-character alphanumeric code
+ */
+function generateTeamCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing characters (0, O, I, 1)
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+/**
+ * Get user by team code
+ * @param {string} teamCode - Team code
+ * @returns {Promise<object|null>} - User object or null
+ */
+async function getUserByTeamCode(teamCode) {
+    const database = await connect();
+    const usersCollection = database.collection(USERS_COLLECTION);
+    
+    const user = await usersCollection.findOne({ teamCode: teamCode.toUpperCase() });
+    if (!user) return null;
+    
+    const { _id, ...userWithoutId } = user;
+    return {
+        id: _id.toString(),
+        ...userWithoutId
+    };
+}
+
+/**
+ * Update user's team code
+ * @param {string} userId - User ID
+ * @param {boolean} enabled - Whether player view is enabled
+ * @returns {Promise<string|null>} - Team code if enabled, null if disabled
+ */
+async function updateUserTeamCode(userId, enabled) {
+    const database = await connect();
+    const usersCollection = database.collection(USERS_COLLECTION);
+    
+    if (enabled) {
+        // Check if user already has a team code - preserve it if it exists
+        const existingUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
+        if (existingUser && existingUser.teamCode && existingUser.teamCode.length > 0) {
+            // User already has a code, just ensure playerViewEnabled is true
+            await usersCollection.updateOne(
+                { _id: new ObjectId(userId) },
+                { 
+                    $set: { 
+                        playerViewEnabled: true,
+                        updatedAt: new Date().toISOString()
+                    }
+                }
+            );
+            return existingUser.teamCode;
+        }
+        
+        // Generate a new team code only if one doesn't exist
+        let teamCode;
+        let attempts = 0;
+        do {
+            teamCode = generateTeamCode();
+            const existing = await usersCollection.findOne({ teamCode: teamCode });
+            if (!existing) break;
+            attempts++;
+            if (attempts > 10) {
+                throw new Error('Failed to generate unique team code');
+            }
+        } while (true);
+        
+        await usersCollection.updateOne(
+            { _id: new ObjectId(userId) },
+            { 
+                $set: { 
+                    teamCode: teamCode,
+                    playerViewEnabled: true,
+                    updatedAt: new Date().toISOString()
+                }
+            }
+        );
+        
+        return teamCode;
+    } else {
+        // Disable player view
+        await usersCollection.updateOne(
+            { _id: new ObjectId(userId) },
+            { 
+                $set: { 
+                    playerViewEnabled: false,
+                    updatedAt: new Date().toISOString()
+                },
+                $unset: { teamCode: '' }
+            }
+        );
+        
+        return null;
+    }
+}
+
 // Migrate from old format (v3.0) to new format (v4.0) - Legacy support
 // Note: This is for migrating old single-document data to user-scoped data
 // In production, you'd want to assign old data to a default user or migrate it properly
@@ -406,5 +507,8 @@ module.exports = {
     getUserByEmail,
     getUserById,
     saveUserCredentials,
-    getUserCredentials
+    getUserCredentials,
+    // Team code management
+    getUserByTeamCode,
+    updateUserTeamCode
 };

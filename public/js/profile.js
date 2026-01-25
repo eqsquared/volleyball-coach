@@ -1,7 +1,7 @@
 // Profile menu and settings module
 
 import * as db from '../db.js';
-import { customModal, prompt, confirm } from './modal.js';
+import { customModal, prompt, confirm, hideModal } from './modal.js';
 import { handleLogout, getCurrentUser } from './auth.js';
 import { exportToJSON, handleFileImport } from './importExport.js';
 import { dom } from './dom.js';
@@ -12,16 +12,20 @@ let profileMenuOpen = false;
  * Initialize profile menu
  */
 export function initProfile() {
-    const profileButton = document.getElementById('profile-button');
-    const profileMenu = document.getElementById('profile-menu');
-    const profileSection = document.querySelector('.profile-section');
-    const profileName = document.getElementById('profile-name');
-    const settingsBtn = document.getElementById('profile-settings');
-    const themeBtn = document.getElementById('profile-theme');
-    const logoutBtn = document.getElementById('profile-logout');
-    
-    // Load and display user name
-    updateProfileName();
+    try {
+        const profileButton = document.getElementById('profile-button');
+        const profileMenu = document.getElementById('profile-menu');
+        const profileSection = document.querySelector('.profile-section');
+        const profileName = document.getElementById('profile-name');
+        const settingsBtn = document.getElementById('profile-settings');
+        const themeBtn = document.getElementById('profile-theme');
+        const logoutBtn = document.getElementById('profile-logout');
+        
+        // Load and display user name (don't await - non-blocking)
+        updateProfileName().catch(error => {
+            console.error('Error updating profile name:', error);
+            // Non-critical error, continue initialization
+        });
     
     // Toggle profile menu
     if (profileButton) {
@@ -96,6 +100,10 @@ export function initProfile() {
             }
         });
     }
+    } catch (error) {
+        console.error('Error initializing profile:', error);
+        // Don't throw - profile initialization is not critical for app functionality
+    }
 }
 
 /**
@@ -152,7 +160,7 @@ async function updateProfileName() {
     try {
         const user = getCurrentUser() || await db.fetchCurrentUser();
         if (user) {
-            const fullName = `${user.firstName} ${user.lastName}`.trim();
+            const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
             profileName.textContent = fullName || 'My Profile';
         } else {
             profileName.textContent = 'My Profile';
@@ -160,6 +168,7 @@ async function updateProfileName() {
     } catch (error) {
         console.error('Error loading user:', error);
         profileName.textContent = 'My Profile';
+        // Don't throw - this is a non-critical error
     }
 }
 
@@ -211,6 +220,36 @@ async function showSettingsModal() {
                 </div>
                 
                 <div class="settings-section">
+                    <h4 class="settings-section-title">Player View</h4>
+                    <div class="form-group">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="settings-player-view-enabled" ${(user.playerViewEnabled === true) ? 'checked' : ''}>
+                            <span>Enable Player View</span>
+                        </label>
+                        <small class="form-help">Allow players to view your team data using a team code</small>
+                    </div>
+                    <div class="form-group" id="team-code-section" style="${(user.playerViewEnabled === true) ? '' : 'display: none;'}">
+                        <label for="team-code-display">Team Code</label>
+                        <div class="team-code-display-wrapper">
+                            <input type="text" id="team-code-display" class="modal-input team-code-input" value="${escapeHtml(user.teamCode || '')}" readonly>
+                            <button type="button" class="copy-code-btn" id="copy-team-code-btn" title="Copy to clipboard">
+                                <i data-lucide="copy"></i>
+                            </button>
+                        </div>
+                        <small class="form-help">Share this code with players to give them read-only access</small>
+                        <div class="team-code-url-wrapper" style="margin-top: 10px;">
+                            <label for="team-code-url">Share URL</label>
+                            <div class="team-code-display-wrapper">
+                                <input type="text" id="team-code-url" class="modal-input team-code-input" value="${user.teamCode ? window.location.origin + window.location.pathname + '?code=' + escapeHtml(user.teamCode) : ''}" readonly>
+                                <button type="button" class="copy-code-btn" id="copy-url-btn" title="Copy to clipboard">
+                                    <i data-lucide="copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
                     <h4 class="settings-section-title">Data Management</h4>
                     <div class="data-buttons">
                         <button class="modal-btn modal-btn-secondary" id="settings-export-btn">Export Data</button>
@@ -229,10 +268,14 @@ async function showSettingsModal() {
             <button class="modal-btn modal-btn-primary" id="settings-save-btn">Save Changes</button>
         `;
         
-        await customModal('Settings', bodyHtml, footerHtml);
+        // Show modal and set up listeners immediately (don't await - modal Promise resolves on close)
+        customModal('Settings', bodyHtml, footerHtml);
         
-        // Set up event listeners for the settings modal
-        setupSettingsListeners(user);
+        // Set up event listeners immediately after modal is shown
+        // Use setTimeout to ensure DOM is fully rendered
+        setTimeout(() => {
+            setupSettingsListeners(user);
+        }, 100);
     } catch (error) {
         console.error('Error showing settings modal:', error);
         await alert('Unable to load settings. Please try again.', 'Error');
@@ -261,7 +304,15 @@ function setupSettingsListeners(user) {
     // Save button
     if (saveBtn) {
         saveBtn.addEventListener('click', async () => {
-            await handleSaveSettings(user, errorEl);
+            try {
+                await handleSaveSettings(user, errorEl);
+            } catch (error) {
+                console.error('Error in save button handler:', error);
+                if (errorEl) {
+                    errorEl.textContent = error.message || 'Failed to save settings. Please try again.';
+                    errorEl.style.display = 'block';
+                }
+            }
         });
     }
     
@@ -319,6 +370,77 @@ function setupSettingsListeners(user) {
             }
         });
     }
+    
+    // Player view toggle
+    const playerViewToggle = document.getElementById('settings-player-view-enabled');
+    const teamCodeSection = document.getElementById('team-code-section');
+    
+    if (playerViewToggle && teamCodeSection) {
+        playerViewToggle.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            teamCodeSection.style.display = isChecked ? 'block' : 'none';
+            
+            // If enabling player view but no team code yet, show a message
+            if (isChecked && !document.getElementById('team-code-display')?.value) {
+                // Team code will be generated when saved
+                const teamCodeInput = document.getElementById('team-code-display');
+                if (teamCodeInput) {
+                    teamCodeInput.value = 'Will be generated when saved...';
+                }
+            } else if (!isChecked) {
+                // Clear team code display when disabling
+                const teamCodeInput = document.getElementById('team-code-display');
+                const urlInput = document.getElementById('team-code-url');
+                if (teamCodeInput) {
+                    teamCodeInput.value = '';
+                }
+                if (urlInput) {
+                    urlInput.value = '';
+                }
+            }
+        });
+    }
+    
+    // Copy team code button
+    const copyTeamCodeBtn = document.getElementById('copy-team-code-btn');
+    if (copyTeamCodeBtn) {
+        copyTeamCodeBtn.addEventListener('click', async () => {
+            const teamCodeInput = document.getElementById('team-code-display');
+            if (teamCodeInput && teamCodeInput.value) {
+                try {
+                    await navigator.clipboard.writeText(teamCodeInput.value);
+                    const { alert: showAlert } = await import('./modal.js');
+                    await showAlert('Team code copied to clipboard!', 'Copied');
+                } catch (error) {
+                    console.error('Failed to copy:', error);
+                }
+            }
+        });
+    }
+    
+    // Copy URL button
+    const copyUrlBtn = document.getElementById('copy-url-btn');
+    if (copyUrlBtn) {
+        copyUrlBtn.addEventListener('click', async () => {
+            const urlInput = document.getElementById('team-code-url');
+            if (urlInput && urlInput.value) {
+                try {
+                    await navigator.clipboard.writeText(urlInput.value);
+                    const { alert: showAlert } = await import('./modal.js');
+                    await showAlert('URL copied to clipboard!', 'Copied');
+                } catch (error) {
+                    console.error('Failed to copy:', error);
+                }
+            }
+        });
+    }
+    
+    // Initialize Lucide icons for copy buttons
+    if (window.lucide) {
+        setTimeout(() => {
+            window.lucide.createIcons();
+        }, 100);
+    }
 }
 
 /**
@@ -335,6 +457,7 @@ async function handleSaveSettings(user, errorEl) {
     const currentPassword = document.getElementById('settings-current-password')?.value;
     const newPassword = document.getElementById('settings-new-password')?.value;
     const confirmPassword = document.getElementById('settings-confirm-password')?.value;
+    const playerViewEnabled = document.getElementById('settings-player-view-enabled')?.checked || false;
     
     // Validate name fields
     if (!firstName || !lastName) {
@@ -376,7 +499,8 @@ async function handleSaveSettings(user, errorEl) {
         // Update user profile
         const updates = {
             firstName,
-            lastName
+            lastName,
+            playerViewEnabled
         };
         
         if (newPassword && currentPassword) {
@@ -384,7 +508,7 @@ async function handleSaveSettings(user, errorEl) {
             updates.newPassword = newPassword;
         }
         
-        // Call API to update user (we'll need to add this endpoint)
+        // Call API to update user
         const { getApiBase } = await import('./environment.js');
         const apiBase = getApiBase();
         
@@ -400,7 +524,13 @@ async function handleSaveSettings(user, errorEl) {
                 token = localStorage.getItem('volleyball-coach-auth-token');
             }
             
-            const response = await fetch(`${apiBase}/api/auth/profile`, {
+            if (!token) {
+                throw new Error('Not authenticated. Please log in again.');
+            }
+            
+            // apiBase already includes /api, so just append /auth/profile
+            const endpoint = `${apiBase}/auth/profile`;
+            const response = await fetch(endpoint, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -410,8 +540,8 @@ async function handleSaveSettings(user, errorEl) {
             });
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to update profile');
+                const errorData = await response.json().catch(() => ({ error: 'Failed to update profile' }));
+                throw new Error(errorData.error || `Failed to update profile (${response.status})`);
             }
             
             const updatedUser = await response.json();
@@ -419,12 +549,30 @@ async function handleSaveSettings(user, errorEl) {
             await db.fetchCurrentUser();
             updateProfileName();
             
-            // Refresh user data
-            await db.fetchCurrentUser();
-            updateProfileName();
+            // Update team code display if player view was enabled
+            if (updatedUser.teamCode) {
+                const teamCodeInput = document.getElementById('team-code-display');
+                const urlInput = document.getElementById('team-code-url');
+                if (teamCodeInput) {
+                    teamCodeInput.value = updatedUser.teamCode;
+                }
+                if (urlInput) {
+                    urlInput.value = window.location.origin + window.location.pathname + '?code=' + updatedUser.teamCode;
+                }
+                // Make sure team code section is visible if it was just enabled
+                const teamCodeSection = document.getElementById('team-code-section');
+                if (teamCodeSection) {
+                    teamCodeSection.style.display = 'block';
+                }
+            } else if (!updatedUser.playerViewEnabled) {
+                // If player view was disabled, hide the section
+                const teamCodeSection = document.getElementById('team-code-section');
+                if (teamCodeSection) {
+                    teamCodeSection.style.display = 'none';
+                }
+            }
             
             // Close modal
-            const { hideModal } = await import('./modal.js');
             hideModal();
             
             const { alert: showAlert } = await import('./modal.js');
@@ -432,7 +580,6 @@ async function handleSaveSettings(user, errorEl) {
         } else {
             // Native mode - just update local display
             updateProfileName();
-            const { hideModal } = await import('./modal.js');
             hideModal();
             const { alert: showAlert } = await import('./modal.js');
             await showAlert('Settings saved successfully!', 'Success');

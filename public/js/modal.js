@@ -61,7 +61,7 @@ function showModal(title, body, footer) {
 }
 
 // Hide modal
-function hideModal() {
+export function hideModal() {
     const overlay = document.getElementById('modal-overlay');
     if (overlay) {
         overlay.classList.add('hidden');

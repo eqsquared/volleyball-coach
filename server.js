@@ -153,7 +153,9 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
-            role: user.role
+            role: user.role,
+            teamCode: user.teamCode || null,
+            playerViewEnabled: user.playerViewEnabled || false
         });
     } catch (error) {
         console.error('Get user error:', error);
@@ -164,7 +166,7 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
 // PUT /api/auth/profile - Update user profile (requires authentication)
 app.put('/api/auth/profile', authenticate, async (req, res) => {
     try {
-        const { firstName, lastName, currentPassword, newPassword } = req.body;
+        const { firstName, lastName, currentPassword, newPassword, playerViewEnabled } = req.body;
         const userId = req.user.userId;
         
         // Get current user
@@ -208,6 +210,29 @@ app.put('/api/auth/profile', authenticate, async (req, res) => {
             await db.saveUserCredentials(userId, hashedPassword);
         }
         
+        // Update team code if player view enabled/disabled
+        // Only generate a new code if enabling for the first time (user doesn't already have one)
+        let teamCode = null;
+        if (playerViewEnabled !== undefined) {
+            try {
+                // Check if user already has player view enabled and a team code
+                const currentUser = await db.getUserById(userId);
+                const alreadyEnabled = currentUser.playerViewEnabled === true;
+                const hasExistingCode = currentUser.teamCode && currentUser.teamCode.length > 0;
+                
+                // Only update if the state is actually changing
+                if (playerViewEnabled !== alreadyEnabled) {
+                    teamCode = await db.updateUserTeamCode(userId, playerViewEnabled);
+                } else if (playerViewEnabled && hasExistingCode) {
+                    // Player view is already enabled and user has a code - keep the existing code
+                    teamCode = currentUser.teamCode;
+                }
+            } catch (error) {
+                console.error('Error updating team code:', error);
+                return res.status(500).json({ error: 'Failed to update team code: ' + error.message });
+            }
+        }
+        
         // Return updated user
         const updatedUser = await db.getUserById(userId);
         res.json({
@@ -215,11 +240,43 @@ app.put('/api/auth/profile', authenticate, async (req, res) => {
             firstName: updatedUser.firstName,
             lastName: updatedUser.lastName,
             email: updatedUser.email,
-            role: updatedUser.role
+            role: updatedUser.role,
+            teamCode: updatedUser.teamCode || null,
+            playerViewEnabled: updatedUser.playerViewEnabled || false
         });
     } catch (error) {
         console.error('Update profile error:', error);
         res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
+// GET /api/view/:teamCode - Get user data by team code (read-only, no authentication required)
+app.get('/api/view/:teamCode', async (req, res) => {
+    try {
+        const teamCode = req.params.teamCode.toUpperCase();
+        
+        // Get user by team code
+        const user = await db.getUserByTeamCode(teamCode);
+        if (!user) {
+            return res.status(404).json({ error: 'Invalid team code' });
+        }
+        
+        // Check if player view is enabled (handle missing field for existing users)
+        if (!user.playerViewEnabled && user.playerViewEnabled !== true) {
+            return res.status(403).json({ error: 'Player view is not enabled for this team' });
+        }
+        
+        // Get user's data (read-only)
+        const data = await readData(user.id);
+        
+        // Return data with user info (but no sensitive data)
+        res.json({
+            teamName: `${user.firstName} ${user.lastName}`,
+            data: data
+        });
+    } catch (error) {
+        console.error('Get view data error:', error);
+        res.status(500).json({ error: 'Failed to get view data' });
     }
 });
 

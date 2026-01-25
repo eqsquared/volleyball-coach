@@ -338,6 +338,7 @@
             <div class="auth-tabs">
                 <button class="auth-tab active" data-tab="login">Login</button>
                 <button class="auth-tab" data-tab="register">Register</button>
+                <button class="auth-tab" data-tab="team-code">Team Code</button>
             </div>
             <div class="auth-content">
                 <!-- Login Form -->
@@ -385,6 +386,17 @@
                     <div class="auth-error" id="register-error"></div>
                     <button type="submit" class="auth-submit-btn">Register</button>
                 </form>
+                
+                <!-- Team Code Form -->
+                <div id="team-code-form" class="auth-form hidden">
+                    <div class="form-group">
+                        <label for="team-code-input">Enter Team Code</label>
+                        <input type="text" id="team-code-input" placeholder="Enter 6-character team code" maxlength="6">
+                        <small class="form-help">Enter the team code provided by your coach to view team data</small>
+                    </div>
+                    <div class="auth-error" id="team-code-error"></div>
+                    <button type="button" id="team-code-submit-btn" class="auth-submit-btn">View Team</button>
+                </div>
             </div>
         </div>
     </div>

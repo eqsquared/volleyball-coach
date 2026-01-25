@@ -8,6 +8,11 @@ function isPhoneView() {
     return window.innerWidth <= 767 && window.innerHeight > window.innerWidth;
 }
 
+// Helper function to check if we're in view-only mode
+function isViewOnlyMode() {
+    return window.isViewOnlyMode === true;
+}
+
 // Court coordinate system is 600x600, but positions are stored as percentages
 // to scale proportionally when the court size changes
 
@@ -228,6 +233,9 @@ export function placePlayerOnCourt(player, x, y) {
                 });
             });
         }, 0);
+    } else if (isViewOnlyMode()) {
+        // In view-only mode, disable dragging
+        playerElement.draggable = false;
     } else {
         // On phones, disable dragging - read-only mode
         playerElement.draggable = false;
@@ -248,8 +256,8 @@ export function removePlayerFromCourt(playerId) {
 
 // Handle dragging within court
 export function handleCourtDragOver(e) {
-    // Skip on phones - read-only mode
-    if (isPhoneView()) return;
+    // Skip on phones or in view-only mode - read-only mode
+    if (isPhoneView() || isViewOnlyMode()) return;
     
     if (state.draggedElement) {
         e.preventDefault();
@@ -274,8 +282,8 @@ export function handleCourtDragOver(e) {
 }
 
 export function handleCourtDrop(e) {
-    // Skip on phones - read-only mode
-    if (isPhoneView()) return;
+    // Skip on phones or in view-only mode - read-only mode
+    if (isPhoneView() || isViewOnlyMode()) return;
     
     if (!state.draggedElement) return;
     
@@ -395,15 +403,15 @@ export function rotateCourt() {
 export function initCourtListeners() {
     // Court drag and drop
     dom.court.addEventListener('dragover', (e) => {
-        // Skip on phones - read-only mode
-        if (isPhoneView()) return;
+        // Skip on phones or in view-only mode - read-only mode
+        if (isPhoneView() || isViewOnlyMode()) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
     });
 
     dom.court.addEventListener('drop', (e) => {
-        // Skip on phones - read-only mode
-        if (isPhoneView()) return;
+        // Skip on phones or in view-only mode - read-only mode
+        if (isPhoneView() || isViewOnlyMode()) return;
         
         e.preventDefault();
         
@@ -428,8 +436,8 @@ export function initCourtListeners() {
     
     // Handle drops outside the court (on document)
     document.addEventListener('dragover', (e) => {
-        // Skip on phones - read-only mode
-        if (isPhoneView()) return;
+        // Skip on phones or in view-only mode - read-only mode
+        if (isPhoneView() || isViewOnlyMode()) return;
         
         if (state.draggedElement && !dom.court.contains(e.target)) {
             e.preventDefault();
@@ -440,8 +448,8 @@ export function initCourtListeners() {
     });
 
     document.addEventListener('drop', (e) => {
-        // Skip on phones - read-only mode
-        if (isPhoneView()) return;
+        // Skip on phones or in view-only mode - read-only mode
+        if (isPhoneView() || isViewOnlyMode()) return;
         
         if (state.draggedElement && !dom.court.contains(e.target)) {
             e.preventDefault();

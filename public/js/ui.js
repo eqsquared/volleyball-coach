@@ -95,37 +95,48 @@ async function reorderItems(items, fromIndex, toIndex, saveCallback) {
     return newItems;
 }
 
+// Helper function to check view-only mode
+function isViewOnlyMode() {
+    return window.isViewOnlyMode === true;
+}
+
 // Render lineup
 export function renderLineup() {
     dom.lineupList.innerHTML = '';
     
     const players = getPlayers();
+    const viewOnlyMode = isViewOnlyMode();
     players.forEach((player, index) => {
         const item = document.createElement('div');
         item.className = 'player-lineup-item';
-        item.draggable = true;
+        item.draggable = !viewOnlyMode;
         item.dataset.playerId = player.id;
         item.dataset.playerIndex = index;
-        
         item.innerHTML = `
             <div class="player-jersey">${player.jersey}</div>
             <div class="player-name">${player.name}</div>
+            ${!viewOnlyMode ? `
             <div class="player-actions">
                 <button class="edit-player-btn" title="Edit player"><i data-lucide="edit"></i></button>
                 <button class="delete-player-btn" title="Delete player">×</button>
             </div>
+            ` : ''}
         `;
         
         // Add edit button event listener
         const editBtn = item.querySelector('.edit-player-btn');
-        editBtn.addEventListener('click', async () => {
-            const { editPlayer } = await import('./players.js');
-            await editPlayer(player.id);
-        });
+        if (editBtn) {
+            editBtn.addEventListener('click', async () => {
+                const { editPlayer } = await import('./players.js');
+                await editPlayer(player.id);
+            });
+        }
         
         // Add delete button event listener
         const deleteBtn = item.querySelector('.delete-player-btn');
-        deleteBtn.addEventListener('click', () => deletePlayer(player.id));
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => deletePlayer(player.id));
+        }
         
         // Track if we're reordering (dragging within list) vs dragging to court
         let isReordering = false;
@@ -455,10 +466,11 @@ export function renderPositionsList() {
     });
     
     // Render new format positions
+    const viewOnlyMode = isViewOnlyMode();
     filteredPositions.forEach((position, filteredIndex) => {
         const item = document.createElement('div');
         item.className = 'item-card draggable';
-        item.draggable = true;
+        item.draggable = !viewOnlyMode;
         item.dataset.positionId = position.id;
         item.dataset.positionIndex = positionIndexMap.get(position.id).originalIndex;
         if (getCurrentLoadedItem()?.type === 'position' && getCurrentLoadedItem()?.id === position.id) {
@@ -473,16 +485,17 @@ export function renderPositionsList() {
                 return `<span class="tag-badge tag-badge-dynamic tag-color-${colorIndex}">${escapeHtml(tag)}</span>`;
             }).join('')
             : '<span class="tag-badge-no-tags">No tags</span>';
-        
         item.innerHTML = `
             <div class="item-card-name">${position.name}</div>
             <div class="item-card-tags-container">
                 ${tagsDisplay}
             </div>
+            ${!viewOnlyMode ? `
             <div class="item-card-actions">
                 <button class="btn-edit" title="Edit position"><i data-lucide="edit"></i></button>
                 <button class="btn-delete" title="Delete position"><i data-lucide="trash-2"></i></button>
             </div>
+            ` : ''}
         `;
         
         const editBtn = item.querySelector('.btn-edit');
@@ -562,7 +575,7 @@ export function renderPositionsList() {
         item.addEventListener('touchend', handleTapTouchEnd, { passive: false });
         
         // Prevent drag when clicking buttons
-        [editBtn, deleteBtn].forEach(btn => {
+        [editBtn, deleteBtn].filter(btn => btn !== null).forEach(btn => {
             btn.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
             });
@@ -571,16 +584,21 @@ export function renderPositionsList() {
             });
         });
         
-        editBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            // Load the position first, then open edit modal
-            loadPosition(position.id);
-            await editPosition(position.id);
-        });
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deletePositionNew(position.id);
-        });
+        // Add edit and delete button handlers (only if buttons exist)
+        if (editBtn) {
+            editBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                // Load the position first, then open edit modal
+                loadPosition(position.id);
+                await editPosition(position.id);
+            });
+        }
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deletePositionNew(position.id);
+            });
+        }
         
         // Track mouse down for click detection
         item.addEventListener('mousedown', (e) => {
@@ -738,10 +756,11 @@ export function renderScenariosList() {
         scenarioIndexMap.set(scen.id, originalIndex);
     });
     
+    const viewOnlyMode = isViewOnlyMode();
     filteredScenarios.forEach(scenario => {
         const item = document.createElement('div');
         item.className = 'item-card draggable';
-        item.draggable = true;
+        item.draggable = !viewOnlyMode;
         item.dataset.scenarioId = scenario.id;
         item.dataset.scenarioIndex = scenarioIndexMap.get(scenario.id);
         if (getCurrentLoadedItem()?.type === 'scenario' && getCurrentLoadedItem()?.id === scenario.id) {
@@ -761,7 +780,6 @@ export function renderScenariosList() {
                 return `<span class="tag-badge tag-badge-dynamic tag-color-${colorIndex}">${escapeHtml(tag)}</span>`;
             }).join('')
             : '';
-        
         item.innerHTML = `
             <div class="item-card-name">${scenario.name}</div>
             <div class="item-card-metadata">
@@ -770,8 +788,10 @@ export function renderScenariosList() {
             ${tagsDisplay ? `<div class="item-card-tags-container">${tagsDisplay}</div>` : ''}
             <div class="item-card-actions">
                 <button class="${playBtnClass} ${isActive ? 'btn-play-active' : 'btn-play-inactive'}" title="Play scenario"><i data-lucide="play"></i></button>
+                ${!viewOnlyMode ? `
                 <button class="btn-edit" title="Edit scenario"><i data-lucide="edit"></i></button>
                 <button class="btn-delete" title="Delete scenario"><i data-lucide="trash-2"></i></button>
+                ` : ''}
             </div>
         `;
         
@@ -934,7 +954,7 @@ export function renderScenariosList() {
         });
         
         // Prevent drag when clicking buttons
-        [playBtn, editBtn, deleteBtn].forEach(btn => {
+        [playBtn, editBtn, deleteBtn].filter(btn => btn !== null).forEach(btn => {
             if (btn) {
                 btn.addEventListener('mousedown', (e) => {
                     e.stopPropagation();
@@ -945,17 +965,23 @@ export function renderScenariosList() {
             }
         });
         
-        playBtn.addEventListener('click', () => playScenario(scenario.id));
-        editBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            // Load the scenario first, then open edit modal
-            await loadScenario(scenario.id);
-            await editScenario(scenario.id);
-        });
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteScenario(scenario.id);
-        });
+        if (playBtn) {
+            playBtn.addEventListener('click', () => playScenario(scenario.id));
+        }
+        if (editBtn) {
+            editBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                // Load the scenario first, then open edit modal
+                await loadScenario(scenario.id);
+                await editScenario(scenario.id);
+            });
+        }
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteScenario(scenario.id);
+            });
+        }
         
         dom.scenariosList.appendChild(item);
     });
@@ -972,15 +998,15 @@ export function renderSequencesList() {
     
     const allSequences = getSequences();
     
+    const viewOnlyMode = isViewOnlyMode();
     allSequences.forEach((sequence, index) => {
         const item = document.createElement('div');
         item.className = 'item-card draggable';
-        item.draggable = true;
+        item.draggable = !viewOnlyMode;
         item.dataset.sequenceId = sequence.id;
         item.dataset.sequenceIndex = index;
         
         const scenarioCount = sequence.items?.length || sequence.scenarioIds?.length || 0;
-        
         item.innerHTML = `
             <div class="item-card-name">${sequence.name}</div>
             <div class="item-card-metadata">
@@ -988,8 +1014,10 @@ export function renderSequencesList() {
             </div>
             <div class="item-card-actions">
                 <button class="btn-load btn-play-sequence" title="Play sequence"><i data-lucide="play"></i></button>
+                ${!viewOnlyMode ? `
                 <button class="btn-edit" title="Edit sequence"><i data-lucide="edit"></i></button>
                 <button class="btn-delete" title="Delete sequence"><i data-lucide="trash-2"></i></button>
+                ` : ''}
             </div>
         `;
         
@@ -1066,7 +1094,7 @@ export function renderSequencesList() {
         });
         
         // Prevent drag when clicking buttons
-        [playBtn, editBtn, deleteBtn].forEach(btn => {
+        [playBtn, editBtn, deleteBtn].filter(btn => btn !== null).forEach(btn => {
             if (btn) {
                 btn.addEventListener('mousedown', (e) => {
                     e.stopPropagation();
@@ -1077,18 +1105,24 @@ export function renderSequencesList() {
             }
         });
         
-        playBtn.addEventListener('click', () => loadSequence(sequence.id));
-        editBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            // Load the sequence first, then open edit modal
-            await loadSequence(sequence.id);
-            const { editSequence } = await import('./sequences.js');
-            await editSequence(sequence.id);
-        });
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteSequence(sequence.id);
-        });
+        if (playBtn) {
+            playBtn.addEventListener('click', () => loadSequence(sequence.id));
+        }
+        if (editBtn) {
+            editBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                // Load the sequence first, then open edit modal
+                await loadSequence(sequence.id);
+                const { editSequence } = await import('./sequences.js');
+                await editSequence(sequence.id);
+            });
+        }
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteSequence(sequence.id);
+            });
+        }
         
         // Reordering handlers
         item.addEventListener('dragover', (e) => {
