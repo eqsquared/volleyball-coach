@@ -893,7 +893,10 @@ svg[data-lucide] {
 
 .accordion.active .accordion-content {
     /* Fill the sidebar height minus padding and other accordion headers */
-    max-height: calc(var(--available-height) - 210px);
+    /* max-height: calc(var(--available-height) - 210px);  */
+    /* Fill the entire sidebar height */
+    max-height: 100%; 
+
     transition: max-height 0.3s ease-in;
     padding: 10px;
     overflow-y: auto;
