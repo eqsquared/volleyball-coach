@@ -104,6 +104,9 @@
     --shadow-md: rgba(0, 0, 0, 0.15);
     --shadow-lg: rgba(0, 0, 0, 0.2);
     --shadow-xl: rgba(0, 0, 0, 0.3);
+    
+    /* Player Label Text Shadow */
+    --player-label-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
 }
 
 /* ============================================
@@ -183,7 +186,7 @@
     --color-gray-light: #424242;
     
     /* Court Colors (slightly darker for dark mode) */
-    --court-bg: #c9b99a;
+    --court-bg: #695630;
     --court-border: #6b5d3f;
     --net-bg: #ffffff;
     --net-line: #333333;
@@ -194,6 +197,9 @@
     --shadow-md: rgba(0, 0, 0, 0.4);
     --shadow-lg: rgba(0, 0, 0, 0.5);
     --shadow-xl: rgba(0, 0, 0, 0.7);
+    
+    /* Player Label Text Shadow */
+    --player-label-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 /* System theme preference - respects OS/browser setting */
@@ -283,6 +289,9 @@
         --shadow-md: rgba(0, 0, 0, 0.4);
         --shadow-lg: rgba(0, 0, 0, 0.5);
         --shadow-xl: rgba(0, 0, 0, 0.7);
+        
+        /* Player Label Text Shadow */
+        --player-label-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     }
 }
 
@@ -1694,7 +1703,7 @@ svg[data-lucide] {
     color: var(--text-secondary);
     text-align: center;
     white-space: nowrap;
-    text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+    text-shadow: var(--player-label-shadow);
     max-width: 5em; /* 80px / 16px = 5em - scales with court font-size */
     overflow: hidden;
     text-overflow: ellipsis;
