@@ -75,39 +75,61 @@ async function init() {
         await db.initDB();
         setDbInitialized(true);
         
-        // Try to load from file-based storage (only if authenticated or in native mode)
-        const hasDBData = await db.hasData();
+        // Try to load data (only if authenticated or in native mode)
+        // For web mode with auth, we're using the database - no legacy migration needed
+        let hasDBData = false;
+        try {
+            hasDBData = await db.hasData();
+        } catch (error) {
+            // If hasData fails (e.g., new user with no data yet), that's fine
+            // The database will create empty data structure on first save
+            console.log('No existing data found - starting fresh');
+            hasDBData = false;
+        }
         
         if (hasDBData) {
-            // Load from file-based storage
-            setPlayers(await db.getAllPlayers());
-            
-            // Try to load new format first, fall back to old format
+            // Load existing data
             try {
-                const positions = await db.getAllPositionsNew();
-                const scenarios = await db.getAllScenarios();
-                const sequences = await db.getAllSequences();
+                setPlayers(await db.getAllPlayers());
                 
-                // Also load old format for backward compatibility
-                const savedPositions = await db.getAllPositions();
-                setSavedPositions(savedPositions);
+                // Try to load new format first, fall back to old format
+                try {
+                    const positions = await db.getAllPositionsNew();
+                    const scenarios = await db.getAllScenarios();
+                    const sequences = await db.getAllSequences();
+                    
+                    // Also load old format for backward compatibility
+                    const savedPositions = await db.getAllPositions();
+                    setSavedPositions(savedPositions);
+                    
+                    setPositions(positions);
+                    setScenarios(scenarios);
+                    setSequences(sequences);
+                } catch (error) {
+                    // Fall back to old format
+                    console.error('Error loading new format:', error);
+                    const savedPositions = await db.getAllPositions();
+                    setSavedPositions(savedPositions);
+                }
                 
-                setPositions(positions);
-                setScenarios(scenarios);
-                setSequences(sequences);
+                if (dom.fileStatus) {
+                    if (apiBase) {
+                        dom.fileStatus.textContent = '✓ Data loaded from database.';
+                    } else {
+                        dom.fileStatus.textContent = '✓ Data loaded from local storage.';
+                    }
+                    dom.fileStatus.style.color = '#27ae60';
+                }
             } catch (error) {
-                // Fall back to old format
-                console.error('Error loading new format:', error);
-                const savedPositions = await db.getAllPositions();
-                setSavedPositions(savedPositions);
+                console.error('Error loading data:', error);
+                // Continue with empty data
             }
-            
-            if (dom.fileStatus) {
-                dom.fileStatus.textContent = '✓ Data loaded from data.json file.';
-                dom.fileStatus.style.color = '#27ae60';
-            }
-        } else {
-            // No file data, try to migrate from XML
+        }
+        
+        // For web mode with authentication, skip legacy migration
+        // New users start with empty data - database will create structure on first save
+        if (!hasDBData && !apiBase) {
+            // Only try legacy migration in native mode (local storage)
             console.log('No file data found, attempting migration...');
             const migrated = await migrateFromLegacyStorage();
             
@@ -118,11 +140,23 @@ async function init() {
                     dom.fileStatus.style.color = '#3498db';
                 }
             }
+        } else if (!hasDBData && apiBase) {
+            // Web mode with auth - new user, start fresh
+            if (dom.fileStatus) {
+                dom.fileStatus.textContent = 'Starting with empty database. Add players to begin.';
+                dom.fileStatus.style.color = '#3498db';
+            }
         }
         
-        // Update file status
-        if (dom.fileStatus && !dom.fileStatus.textContent.includes('✓')) {
-            dom.fileStatus.textContent = '✓ Data is automatically saved to data.json file.';
+        // Update file status if not already set
+        if (dom.fileStatus && !dom.fileStatus.textContent) {
+            const { getApiBase } = await import('./js/environment.js');
+            const apiBase = getApiBase();
+            if (apiBase) {
+                dom.fileStatus.textContent = '✓ Data is automatically saved to database.';
+            } else {
+                dom.fileStatus.textContent = '✓ Data is automatically saved to local storage.';
+            }
             dom.fileStatus.style.color = '#27ae60';
         }
         
