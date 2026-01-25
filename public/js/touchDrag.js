@@ -24,6 +24,12 @@ const DRAG_THRESHOLD = 10;
 // This allows users to scroll before drag starts
 const DRAG_START_DELAY = 300;
 
+// Long press delay for vertical reordering (in milliseconds)
+const LONG_PRESS_DELAY = 1500;
+
+// Threshold for determining if drag is primarily horizontal or vertical
+const DIRECTION_THRESHOLD = 20;
+
 /**
  * Initialize touch drag support for an element
  * @param {HTMLElement} element - The draggable element
@@ -47,6 +53,9 @@ export function initTouchDrag(element, options = {}) {
     let touchStartTime = 0;
     let hasMoved = false;
     let touchIdentifier = null;
+    let dragDirection = null; // 'horizontal', 'vertical', or null
+    let isInSidebar = false; // Track if element is in a sidebar list
+    let scrollableParent = null; // Track scrollable parent container
     
     const handleTouchStart = (e) => {
         // Only handle single touch
@@ -87,7 +96,18 @@ export function initTouchDrag(element, options = {}) {
         touchStartY = touch.clientY;
         touchStartTime = Date.now();
         hasMoved = false;
+        dragDirection = null;
         touchIdentifier = touch.identifier;
+        
+        // Check if element is in a sidebar list (positions, scenarios, sequences)
+        const sidebarList = element.closest('#positions-list, #scenarios-list, #sequences-list, .sidebar-content');
+        isInSidebar = !!sidebarList;
+        if (isInSidebar) {
+            // Find the scrollable parent (usually .sidebar-content)
+            scrollableParent = element.closest('.sidebar-content') || sidebarList;
+        } else {
+            scrollableParent = null;
+        }
         
         // Store element reference
         element.dataset.touchDragReady = 'true';
@@ -103,23 +123,87 @@ export function initTouchDrag(element, options = {}) {
         const deltaX = Math.abs(touch.clientX - touchStartX);
         const deltaY = Math.abs(touch.clientY - touchStartY);
         
+        // Determine drag direction early (if not already determined)
+        // Also re-evaluate if direction changes significantly
+        if (!dragDirection && (deltaX > DIRECTION_THRESHOLD || deltaY > DIRECTION_THRESHOLD)) {
+            // Determine primary direction
+            if (deltaX > deltaY * 1.5) {
+                dragDirection = 'horizontal';
+            } else if (deltaY > deltaX * 1.5) {
+                dragDirection = 'vertical';
+            } else {
+                // Ambiguous - use larger movement
+                dragDirection = deltaX > deltaY ? 'horizontal' : 'vertical';
+            }
+        } else if (dragDirection === 'vertical' && deltaX > deltaY * 1.5 && deltaX > DIRECTION_THRESHOLD * 2) {
+            // User started vertical but switched to horizontal - switch to horizontal drag
+            dragDirection = 'horizontal';
+            // If we were waiting for long press, start drag immediately
+            if (!touchDragState.isDragging && isInSidebar) {
+                if (scrollableParent) {
+                    scrollableParent.style.overflow = 'hidden';
+                    scrollableParent.style.touchAction = 'none';
+                }
+                e.preventDefault();
+                startTouchDrag(element, touch, dragType, dragData, onDragStart);
+            }
+        }
+        
         // Check if we've moved enough to be a drag
         if (deltaX > threshold || deltaY > threshold) {
             hasMoved = true;
             
-            // Check if enough time has passed since touch start (to allow scrolling)
             const timeSinceStart = Date.now() - touchStartTime;
             
-            // Start drag if not already dragging AND enough time has passed
-            if (!touchDragState.isDragging && timeSinceStart >= DRAG_START_DELAY) {
-                e.preventDefault();
-                startTouchDrag(element, touch, dragType, dragData, onDragStart);
+            // For sidebar items, use direction-aware drag logic
+            if (isInSidebar && !touchDragState.isDragging) {
+                if (dragDirection === 'horizontal') {
+                    // Horizontal drag (dragging out of sidebar) - start immediately
+                    // Prevent scrolling when dragging horizontally
+                    if (scrollableParent) {
+                        scrollableParent.style.overflow = 'hidden';
+                        scrollableParent.style.touchAction = 'none';
+                    }
+                    e.preventDefault();
+                    startTouchDrag(element, touch, dragType, dragData, onDragStart);
+                } else if (dragDirection === 'vertical') {
+                    // Vertical drag (reordering) - require long press
+                    if (timeSinceStart >= LONG_PRESS_DELAY) {
+                        // Prevent scrolling during reorder drag
+                        if (scrollableParent) {
+                            scrollableParent.style.overflow = 'hidden';
+                            scrollableParent.style.touchAction = 'none';
+                        }
+                        e.preventDefault();
+                        startTouchDrag(element, touch, dragType, dragData, onDragStart);
+                    } else {
+                        // Not long press yet - allow scrolling
+                        // Don't prevent default, allow normal scroll
+                    }
+                } else {
+                    // Direction not yet determined - wait a bit more
+                    // If moved significantly, assume horizontal (dragging out)
+                    if (deltaX > threshold * 2) {
+                        dragDirection = 'horizontal';
+                        if (scrollableParent) {
+                            scrollableParent.style.overflow = 'hidden';
+                            scrollableParent.style.touchAction = 'none';
+                        }
+                        e.preventDefault();
+                        startTouchDrag(element, touch, dragType, dragData, onDragStart);
+                    }
+                }
+            } else if (!touchDragState.isDragging) {
+                // Not in sidebar - use original logic with delay
+                if (timeSinceStart >= DRAG_START_DELAY) {
+                    e.preventDefault();
+                    startTouchDrag(element, touch, dragType, dragData, onDragStart);
+                }
             } else if (touchDragState.isDragging) {
-                // Update drag position
+                // Already dragging - update position
                 e.preventDefault();
                 updateTouchDrag(touch);
             }
-            // If time hasn't passed yet, don't prevent default - allow scrolling
         }
     };
     
@@ -131,30 +215,64 @@ export function initTouchDrag(element, options = {}) {
             Array.from(e.changedTouches).find(t => t.identifier === touchIdentifier) : null;
         
         if (touchDragState.isDragging && touchDragState.dragElement === element) {
+            // We're actively dragging - handle the drag end
             e.preventDefault();
             endTouchDrag(touch, onDragEnd);
+        } else if (!hasMoved) {
+            // This was just a tap, not a drag - completely ignore it
+            // Let tap/click handlers handle it instead
+            // Clean up immediately and don't interfere
+            delete element.dataset.touchDragReady;
+            touchIdentifier = null;
+            hasMoved = false;
+            dragDirection = null;
+            isInSidebar = false;
+            scrollableParent = null;
+            // Don't prevent default, don't stop propagation - let other handlers work
+            return;
+        }
+        
+        // Restore scrolling on scrollable parent
+        if (scrollableParent) {
+            scrollableParent.style.overflow = '';
+            scrollableParent.style.touchAction = '';
         }
         
         // Clean up
         delete element.dataset.touchDragReady;
         touchIdentifier = null;
         hasMoved = false;
+        dragDirection = null;
+        isInSidebar = false;
+        scrollableParent = null;
     };
     
     const handleTouchCancel = () => {
         if (touchDragState.isDragging && touchDragState.dragElement === element) {
             endTouchDrag(null, onDragEnd);
         }
+        
+        // Restore scrolling on scrollable parent
+        if (scrollableParent) {
+            scrollableParent.style.overflow = '';
+            scrollableParent.style.touchAction = '';
+        }
+        
         delete element.dataset.touchDragReady;
         touchIdentifier = null;
         hasMoved = false;
+        dragDirection = null;
+        isInSidebar = false;
+        scrollableParent = null;
     };
     
     // Add event listeners
-    element.addEventListener('touchstart', handleTouchStart, { passive: true });
-    element.addEventListener('touchmove', handleTouchMove, { passive: false });
-    element.addEventListener('touchend', handleTouchEnd, { passive: false });
-    element.addEventListener('touchcancel', handleTouchCancel, { passive: true });
+    // Use capture phase for touchstart to set up early, but don't interfere with taps
+    element.addEventListener('touchstart', handleTouchStart, { passive: true, capture: false });
+    element.addEventListener('touchmove', handleTouchMove, { passive: false, capture: false });
+    // Use capture: false and don't prevent default for taps - let tap handlers work
+    element.addEventListener('touchend', handleTouchEnd, { passive: false, capture: false });
+    element.addEventListener('touchcancel', handleTouchCancel, { passive: true, capture: false });
 }
 
 /**
@@ -170,6 +288,11 @@ function startTouchDrag(element, touch, dragType, dragData, onDragStart) {
     touchDragState.dragType = dragType;
     touchDragState.dragData = dragData;
     touchDragState.touchIdentifier = touch.identifier;
+    
+    // Prevent body scroll when dragging
+    const originalBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    touchDragState.originalBodyOverflow = originalBodyOverflow;
     
     // Add visual feedback to original element
     element.classList.add('dragging');
@@ -374,6 +497,14 @@ function endTouchDrag(touch, onDragEnd) {
     
     // Remove global touch move listener
     document.removeEventListener('touchmove', handleGlobalTouchMove);
+    
+    // Restore body scroll
+    if (touchDragState.originalBodyOverflow !== undefined) {
+        document.body.style.overflow = touchDragState.originalBodyOverflow;
+        delete touchDragState.originalBodyOverflow;
+    } else {
+        document.body.style.overflow = '';
+    }
     
     // Save drag type before resetting
     const dragType = touchDragState.dragType;

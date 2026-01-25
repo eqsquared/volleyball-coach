@@ -392,24 +392,36 @@ function setupViewportDimensions() {
     function updateViewportDimensions() {
         const root = document.documentElement;
         
-        // Get actual viewport dimensions
-        const vh = window.innerHeight;
-        const vw = window.innerWidth;
+        // Use Visual Viewport API if available (better for Safari's dynamic UI)
+        // This gives us the actual visible viewport excluding browser chrome
+        let vh, vw, availableHeight;
         
-        // Calculate available height (accounting for browser UI)
-        // Use the actual innerHeight which accounts for browser chrome
-        const availableHeight = vh;
+        if (window.visualViewport) {
+            vh = window.visualViewport.height;
+            vw = window.visualViewport.width;
+            availableHeight = vh;
+        } else {
+            // Fallback to window dimensions
+            vh = window.innerHeight;
+            vw = window.innerWidth;
+            availableHeight = vh;
+        }
         
         // Update CSS custom properties
-        root.style.setProperty('--viewport-height', `${vh}px`);
-        root.style.setProperty('--viewport-width', `${vw}px`);
-        root.style.setProperty('--available-height', `${availableHeight}px`);
-        
-        // Also support dvh (dynamic viewport height) where available
-        // This is a newer CSS feature that handles this automatically
+        // Prefer CSS viewport units (dvh/svh) over pixel values for better Safari support
         if (CSS.supports('height', '100dvh')) {
+            // Use dvh (dynamic viewport height) - adjusts as Safari UI shows/hides
             root.style.setProperty('--viewport-height', '100dvh');
             root.style.setProperty('--available-height', '100dvh');
+        } else if (CSS.supports('height', '100svh')) {
+            // Fallback to svh (small viewport height) - safe default when UI is visible
+            root.style.setProperty('--viewport-height', '100svh');
+            root.style.setProperty('--available-height', '100svh');
+        } else {
+            // Final fallback to pixel values for older browsers
+            root.style.setProperty('--viewport-height', `${vh}px`);
+            root.style.setProperty('--viewport-width', `${vw}px`);
+            root.style.setProperty('--available-height', `${availableHeight}px`);
         }
     }
     
@@ -430,9 +442,16 @@ function setupViewportDimensions() {
     });
     
     // Use Visual Viewport API if available (better for mobile browsers)
+    // This is especially important for Safari on iOS where the browser UI can collapse/expand
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', handleResize);
-        window.visualViewport.addEventListener('scroll', handleResize);
+        window.visualViewport.addEventListener('resize', () => {
+            // Immediate update for visual viewport changes (Safari UI collapsing/expanding)
+            updateViewportDimensions();
+        });
+        window.visualViewport.addEventListener('scroll', () => {
+            // Update when scrolling (Safari UI might change)
+            updateViewportDimensions();
+        });
     }
 }
 

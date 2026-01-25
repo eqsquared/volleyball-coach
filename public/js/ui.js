@@ -38,6 +38,7 @@ import { loadPosition, deletePosition as deletePositionNew, editPosition } from 
 import { loadScenario, playScenario, deleteScenario, editScenario } from './scenarios.js';
 import { loadSequence, deleteSequence } from './sequences.js';
 import { createSearchAndTagsFilter } from './searchAndTags.js';
+import { addTapListener, isTouchDevice } from './touchUtils.js';
 
 // Helper function to check if we're in mobile mode (matches CSS media query: max-width: 1024px and orientation: portrait)
 function isMobileView() {
@@ -456,7 +457,7 @@ export function renderPositionsList() {
         let mouseDownY = 0;
         
         // Make item clickable to load (but not when dragging)
-        item.addEventListener('click', (e) => {
+        const handlePositionClick = (e) => {
             // Don't load if clicking on buttons
             if (e.target.closest('.item-card-actions')) {
                 return;
@@ -471,7 +472,56 @@ export function renderPositionsList() {
                 return;
             }
             loadPosition(position.id);
-        });
+        };
+        
+        // Track touch for tap detection (separate from drag handler)
+        let tapTouchStartX = 0;
+        let tapTouchStartY = 0;
+        let tapTouchStartTime = 0;
+        let tapHasMoved = false;
+        
+        const handleTapTouchStart = (e) => {
+            if (e.touches && e.touches.length > 0) {
+                tapTouchStartX = e.touches[0].clientX;
+                tapTouchStartY = e.touches[0].clientY;
+                tapTouchStartTime = Date.now();
+                tapHasMoved = false;
+            }
+        };
+        
+        const handleTapTouchMove = (e) => {
+            if (e.touches && e.touches.length > 0 && !tapHasMoved) {
+                const deltaX = Math.abs(e.touches[0].clientX - tapTouchStartX);
+                const deltaY = Math.abs(e.touches[0].clientY - tapTouchStartY);
+                if (deltaX > 10 || deltaY > 10) {
+                    tapHasMoved = true;
+                }
+            }
+        };
+        
+        const handleTapTouchEnd = (e) => {
+            // Only handle if it was a tap (no movement) and not a drag
+            if (!tapHasMoved && !isDragging) {
+                const touchTime = Date.now() - tapTouchStartTime;
+                if (touchTime < 300) { // Quick tap
+                    // Check if clicking on buttons
+                    if (!e.target.closest('.item-card-actions')) {
+                        e.preventDefault();
+                        loadPosition(position.id);
+                    }
+                }
+            }
+            // Reset
+            tapHasMoved = false;
+        };
+        
+        // Use click event for desktop
+        item.addEventListener('click', handlePositionClick);
+        
+        // Use touch events for mobile (in addition to click as fallback)
+        item.addEventListener('touchstart', handleTapTouchStart, { passive: true });
+        item.addEventListener('touchmove', handleTapTouchMove, { passive: true });
+        item.addEventListener('touchend', handleTapTouchEnd, { passive: false });
         
         // Prevent drag when clicking buttons
         [editBtn, deleteBtn].forEach(btn => {
@@ -2012,15 +2062,12 @@ export function renderMobilePositionsList() {
             // Track touch events to distinguish tap from drag
             let touchStartX = 0;
             let touchStartY = 0;
-            let touchStartTime = 0;
             let hasMoved = false;
             const DRAG_THRESHOLD = 10; // pixels
-            const TAP_TIME_THRESHOLD = 300; // milliseconds
             
             item.addEventListener('touchstart', (e) => {
                 touchStartX = e.touches[0].clientX;
                 touchStartY = e.touches[0].clientY;
-                touchStartTime = Date.now();
                 hasMoved = false;
             }, { passive: true });
             
@@ -2035,22 +2082,16 @@ export function renderMobilePositionsList() {
             }, { passive: true });
             
             // Handle position selection - only on tap, not drag
-            const handlePositionSelect = async (e) => {
-                const touchTime = Date.now() - touchStartTime;
-                
-                // Only select if:
-                // 1. It's a click (mouse event)
-                // 2. OR it's a touch that didn't move much AND was quick (tap, not drag)
-                if (e.type === 'click' || (!hasMoved && touchTime < TAP_TIME_THRESHOLD)) {
+            // Use addTapListener to prevent double-firing on mobile
+            addTapListener(item, async (e) => {
+                // Only select if it wasn't a drag
+                if (!hasMoved) {
                     e.preventDefault();
                     e.stopPropagation();
                     const { loadPosition } = await import('./positions.js');
                     loadPosition(positionName);
                 }
-            };
-            
-            item.addEventListener('click', handlePositionSelect);
-            item.addEventListener('touchend', handlePositionSelect);
+            });
             
             dom.mobilePositionsList.appendChild(item);
         });
@@ -2086,15 +2127,12 @@ export function renderMobilePositionsList() {
         // Track touch events to distinguish tap from drag
         let touchStartX = 0;
         let touchStartY = 0;
-        let touchStartTime = 0;
         let hasMoved = false;
         const DRAG_THRESHOLD = 10; // pixels
-        const TAP_TIME_THRESHOLD = 300; // milliseconds
         
         item.addEventListener('touchstart', (e) => {
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
-            touchStartTime = Date.now();
             hasMoved = false;
         }, { passive: true });
         
@@ -2109,22 +2147,16 @@ export function renderMobilePositionsList() {
         }, { passive: true });
         
         // Handle position selection - only on tap, not drag
-        const handlePositionSelect = async (e) => {
-            const touchTime = Date.now() - touchStartTime;
-            
-            // Only select if:
-            // 1. It's a click (mouse event)
-            // 2. OR it's a touch that didn't move much AND was quick (tap, not drag)
-            if (e.type === 'click' || (!hasMoved && touchTime < TAP_TIME_THRESHOLD)) {
+        // Use addTapListener to prevent double-firing on mobile
+        addTapListener(item, async (e) => {
+            // Only select if it wasn't a drag
+            if (!hasMoved) {
                 e.preventDefault();
                 e.stopPropagation();
                 const { loadPosition } = await import('./positions.js');
                 loadPosition(position.id);
             }
-        };
-        
-        item.addEventListener('click', handlePositionSelect);
-        item.addEventListener('touchend', handlePositionSelect);
+        });
         
         dom.mobilePositionsList.appendChild(item);
     });

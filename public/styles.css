@@ -9,9 +9,12 @@
 
 :root {
     /* Dynamic viewport dimensions - updated via JavaScript */
-    --viewport-height: 100vh;
+    /* Use svh (small viewport height) as default - this is the viewport when Safari's UI is visible */
+    /* JavaScript will update this to the actual visual viewport height dynamically */
+    /* Fallback to vh for older browsers that don't support svh */
+    --viewport-height: 100svh;
     --viewport-width: 100vw;
-    --available-height: 100vh;
+    --available-height: 100svh;
     --header-height: 48px;
     --safe-area-top: env(safe-area-inset-top, 0px);
     --safe-area-bottom: env(safe-area-inset-bottom, 0px);
@@ -313,9 +316,12 @@ button {
     max-width: 100%;
     margin: 0;
     padding: 0;
-    min-height: 100vh;
+    min-height: var(--available-height, 100svh);
+    max-height: var(--available-height, 100svh);
+    height: var(--available-height, 100svh);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 /* Hide app content when auth is required */
@@ -433,7 +439,8 @@ header h1 {
     padding: 0;
     border-radius: 0;
     box-shadow: 2px 0 10px var(--shadow-sm);
-    height: 100vh;
+    /* height: var(--available-height, 100vh);
+    max-height: var(--available-height, 100vh); */
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -442,19 +449,17 @@ header h1 {
     position: relative;
 }
 
-.sidebar > * {
-    flex-shrink: 0;
-}
-
-/* Sidebar content area (scrollable) */
+/* Sidebar content area (scrollable) - must be able to shrink */
 .sidebar-content {
     flex: 1;
+    flex-shrink: 1; /* Explicitly allow shrinking to accommodate footer */
     overflow-y: auto;
     padding: 10px;
     display: flex;
     flex-direction: column;
     gap: 0;
     min-height: 0;
+    overflow-x: hidden;
 }
 
 .sidebar-content > .accordion:first-child {
@@ -837,7 +842,7 @@ svg[data-lucide] {
 
 .accordion.active .accordion-content {
     /* Fill the sidebar height minus padding and other accordion headers */
-    max-height: calc(var(--available-height) - 250px);
+    max-height: calc(var(--available-height) - 210px);
     transition: max-height 0.3s ease-in;
     padding: 10px;
     overflow-y: auto;
@@ -1554,7 +1559,6 @@ svg[data-lucide] {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    height: 100vh;
     background: var(--bg-secondary);
     border-radius: 0;
     box-shadow: none;
@@ -2943,12 +2947,15 @@ svg[data-lucide] {
    ============================================ */
 @media (max-width: 1024px) and (orientation: portrait) {
     body {
-        padding-top: 60px; /* Space for fixed mobile header */
+        padding-top: 0; /* Removed - using fixed positioning instead */
+        overflow: hidden; /* Prevent body scroll */
     }
     
     .app-container {
         padding: 0;
         max-width: 100%;
+        height: var(--available-height, 100vh);
+        max-height: var(--available-height, 100vh);
     }
     
     .sidebar {
@@ -2959,8 +2966,10 @@ svg[data-lucide] {
     .court-section {
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        max-height: calc(var(--available-height) - 60px);
-        height: auto;
+        height: 100%;
+        max-height: 100%;
+        flex: 1;
+        min-height: 0;
     }
     
     /* Show mobile header */
@@ -2979,19 +2988,23 @@ svg[data-lucide] {
     
     /* Adjust main content for mobile header */
     .main-content {
-        /* margin-top: 60px; */
+        margin-top: 48px; /* Space for fixed mobile header */
         gap: 0;
         flex-direction: column;
+        height: calc(var(--available-height, 100vh) - 48px);
+        max-height: calc(var(--available-height, 100vh) - 48px);
+        overflow: hidden;
     }
     
     /* Sidebar as drawer */
     .sidebar {
         position: fixed;
-        top: 60px;
+        top: 48px; /* Match mobile header height */
         left: 0;
         width: 300px;
         max-width: 85vw;
-        height: calc(var(--available-height) - 60px);
+        height: calc(var(--available-height, 100vh) - 48px);
+        max-height: calc(var(--available-height, 100vh) - 48px);
         transform: translateX(-100%);
         z-index: 1000;
         border-radius: 0;
@@ -2999,9 +3012,19 @@ svg[data-lucide] {
         transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
     
-    /* Hide sidebar footer on mobile/tablet portrait */
+    /* Show sidebar footer on mobile/tablet portrait - ensure it's visible in drawer */
     .sidebar-footer {
-        display: none;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Ensure sidebar content can scroll when footer is present */
+    .sidebar-content {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
     
     .sidebar.open {
@@ -3130,6 +3153,8 @@ svg[data-lucide] {
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        height: 100%;
+        max-height: 100%;
     }
     
     /* Add padding when mobile positions bucket is visible */
@@ -3249,12 +3274,7 @@ svg[data-lucide] {
 /* ============================================
    Phone-Specific Styles (max-width: 767px portrait)
    ============================================ */
-/* Hide sidebar footer on mobile portrait */
-@media (max-width: 767px) {
-    .sidebar-footer {
-        display: none;
-    }
-}
+/* Sidebar footer is visible on phones - no need to hide it */
 
 @media (max-width: 767px) and (orientation: portrait) {
     /* Accordion content takes full height on phones in sidebar/drawer */
@@ -3433,11 +3453,11 @@ svg[data-lucide] {
     .court-section {
         padding: 15px;
         gap: 12px;
-        flex: 1 1 auto;
+        flex: 1;
         min-height: 0;
-        height: auto; /* Allow it to grow */
-        /* Use flexbox to better handle dynamic heights */
-        max-height: none;
+        height: 100%;
+        max-height: 100%;
+        overflow: hidden;
     }
     
     /* Reduce bucket height to give more room to court - use percentage of available height */
@@ -3492,6 +3512,67 @@ svg[data-lucide] {
         padding: 12px;
         gap: 12px;
         flex-shrink: 0;
+    }
+}
+
+/* ============================================
+   iPad Landscape - Sidebar Footer Fix
+   ============================================ */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+    /* Constrain app-container to viewport height on iPad landscape */
+    .app-container {
+        height: var(--available-height, 100vh);
+        max-height: var(--available-height, 100vh);
+    }
+    
+    /* Ensure sidebar is properly constrained on iPad landscape */
+    .sidebar {
+        height: var(--available-height, 100vh);
+        max-height: var(--available-height, 100vh);
+    }
+    
+    /* Constrain main-content to viewport height on iPad landscape */
+    .main-content {
+        height: var(--available-height, 100vh);
+        max-height: var(--available-height, 100vh);
+        overflow: hidden;
+    }
+    
+    /* Make sure sidebar content can scroll when footer is present */
+    .sidebar-content {
+        flex: 1 1 auto;
+        flex-shrink: 1; /* Allow shrinking to accommodate footer */
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    /* Ensure footer doesn't cause overflow and stays fixed at bottom */
+    .sidebar-footer {
+        flex-shrink: 0;
+    }
+    
+    /* Ensure sidebar itself doesn't exceed viewport due to footer */
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    /* Ensure court-section is properly constrained */
+    .court-section {
+        height: 100%;
+        max-height: 100%;
+        overflow: hidden;
+        min-height: 0; /* Allow flex shrinking */
+        padding: 10px; /* Reduced from 15px to prevent overflow */
+        gap: 10px; /* Reduced from 15px to prevent overflow */
+    }
+    
+    /* Ensure court-container can shrink to fit available space */
+    .court-container {
+        min-height: 0;
+        flex: 1 1 auto; /* Allow shrinking if needed */
     }
 }
 
