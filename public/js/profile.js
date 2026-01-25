@@ -46,15 +46,45 @@ export function initProfile() {
         });
     }
     
-    // Theme button (placeholder)
-    if (themeBtn) {
-        themeBtn.addEventListener('click', async () => {
-            closeProfileMenu();
-            // Placeholder for theme functionality
-            const { alert: showAlert } = await import('./modal.js');
-            await showAlert('Theme settings coming soon!', 'Theme');
+    // Theme toggle button
+    const themeToggleBtn = document.getElementById('profile-theme-toggle');
+    const themeOptions = document.getElementById('profile-theme-options');
+    
+    if (themeToggleBtn && themeOptions) {
+        themeToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleThemeOptions();
         });
     }
+    
+    // Theme option buttons
+    const themeLightBtn = document.getElementById('profile-theme-light');
+    const themeDarkBtn = document.getElementById('profile-theme-dark');
+    const themeSystemBtn = document.getElementById('profile-theme-system');
+    
+    if (themeLightBtn) {
+        themeLightBtn.addEventListener('click', async () => {
+            await setTheme('light');
+            updateThemeSelection();
+        });
+    }
+    
+    if (themeDarkBtn) {
+        themeDarkBtn.addEventListener('click', async () => {
+            await setTheme('dark');
+            updateThemeSelection();
+        });
+    }
+    
+    if (themeSystemBtn) {
+        themeSystemBtn.addEventListener('click', async () => {
+            await setTheme('system');
+            updateThemeSelection();
+        });
+    }
+    
+    // Load saved theme preference on initialization
+    loadTheme();
     
     // Logout button
     if (logoutBtn) {
@@ -85,7 +115,7 @@ function toggleProfileMenu() {
 /**
  * Open profile menu
  */
-function openProfileMenu() {
+async function openProfileMenu() {
     const profileMenu = document.getElementById('profile-menu');
     const profileSection = document.querySelector('.profile-section');
     
@@ -93,6 +123,8 @@ function openProfileMenu() {
         profileMenu.classList.remove('hidden');
         profileSection.classList.add('active');
         profileMenuOpen = true;
+        // Update theme selection indicators
+        await updateThemeSelection();
     }
 }
 
@@ -424,3 +456,186 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+/**
+ * Toggle theme options visibility
+ */
+function toggleThemeOptions() {
+    const themeOptions = document.getElementById('profile-theme-options');
+    const themeToggleBtn = document.getElementById('profile-theme-toggle');
+    
+    if (themeOptions && themeToggleBtn) {
+        const isHidden = themeOptions.classList.contains('hidden');
+        
+        if (isHidden) {
+            themeOptions.classList.remove('hidden');
+            themeToggleBtn.classList.add('active');
+            // Initialize Lucide icons when menu opens
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        } else {
+            themeOptions.classList.add('hidden');
+            themeToggleBtn.classList.remove('active');
+        }
+    }
+}
+
+/**
+ * Update theme selection visual indicators
+ */
+async function updateThemeSelection() {
+    // Icons differentiate the options, no special styling needed
+    // This function is kept for potential future use
+}
+
+/**
+ * Get current theme preference
+ */
+async function getCurrentTheme() {
+    try {
+        // Try Capacitor Preferences first
+        try {
+            const { Preferences } = await import('@capacitor/preferences');
+            const result = await Preferences.get({ key: 'volleyball-coach-theme' });
+            if (result.value && ['light', 'dark', 'system'].includes(result.value)) {
+                return result.value;
+            }
+        } catch (capError) {
+            // Fallback to localStorage
+            const stored = localStorage.getItem('volleyball-coach-theme');
+            if (stored && ['light', 'dark', 'system'].includes(stored)) {
+                return stored;
+            }
+        }
+    } catch (e) {
+        // Storage not available
+    }
+    return 'system'; // Default to system
+}
+
+/**
+ * Set theme preference
+ */
+async function setTheme(theme) {
+    if (!['light', 'dark', 'system'].includes(theme)) {
+        theme = 'system';
+    }
+    
+    // Save to storage
+    try {
+        // Try Capacitor Preferences first
+        try {
+            const { Preferences } = await import('@capacitor/preferences');
+            await Preferences.set({ key: 'volleyball-coach-theme', value: theme });
+        } catch (capError) {
+            // Fallback to localStorage
+            localStorage.setItem('volleyball-coach-theme', theme);
+        }
+    } catch (e) {
+        console.error('Error saving theme preference:', e);
+    }
+    
+    // Apply theme
+    applyTheme(theme);
+}
+
+/**
+ * Apply theme to the document
+ */
+function applyTheme(theme) {
+    const html = document.documentElement;
+    
+    if (theme === 'system') {
+        // Remove data-theme attribute to use system preference via media query
+        html.removeAttribute('data-theme');
+    } else {
+        // Set explicit theme
+        html.setAttribute('data-theme', theme);
+    }
+    
+    // Clear tag color cache and re-render tags when theme changes
+    clearTagColorCache();
+    reRenderTags();
+}
+
+/**
+ * Clear tag color cache to force re-assignment with new theme colors
+ */
+function clearTagColorCache() {
+    // Tag color maps are module-scoped, so we can't directly clear them
+    // But getTagColor will use the new theme automatically when called
+    // The themeKey approach ensures old theme colors don't interfere
+}
+
+/**
+ * Re-render all tag displays when theme changes
+ */
+async function reRenderTags() {
+    try {
+        const ui = await import('./ui.js');
+        
+        // Re-render positions list (contains tags)
+        if (ui.renderPositionsList) {
+            ui.renderPositionsList();
+        }
+        
+        // Re-render scenarios list (contains tags)
+        if (ui.renderScenariosList) {
+            ui.renderScenariosList();
+        }
+        
+        // Re-render drop zones (contain tags)
+        if (ui.updateDropZoneDisplay) {
+            ui.updateDropZoneDisplay();
+        }
+        
+        // Re-render mobile positions list (contains tags)
+        if (ui.renderMobilePositionsList) {
+            ui.renderMobilePositionsList();
+        }
+    } catch (e) {
+        console.warn('Could not re-render tags:', e);
+    }
+    
+    // Re-render selected tags in filters by triggering filter change
+    // This will cause the filters to re-render their selected tags
+    const positionSearchInput = document.getElementById('position-search-input');
+    const scenarioSearchInput = document.getElementById('scenario-search-input');
+    
+    if (positionSearchInput) {
+        positionSearchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (scenarioSearchInput) {
+        scenarioSearchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
+/**
+ * Load saved theme preference
+ */
+async function loadTheme() {
+    const theme = await getCurrentTheme();
+    applyTheme(theme);
+    updateThemeSelection();
+    
+    // Listen for system theme changes when using system preference
+    if (theme === 'system' || !theme) {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        // Handle initial load
+        if (mediaQuery.matches) {
+            // System prefers dark, but we'll let CSS handle it via media query
+            document.documentElement.removeAttribute('data-theme');
+        }
+        
+        // Listen for changes
+        mediaQuery.addEventListener('change', async (e) => {
+            const currentTheme = await getCurrentTheme();
+            if (currentTheme === 'system') {
+                // Theme will update automatically via CSS media query
+                // Just ensure data-theme is not set
+                document.documentElement.removeAttribute('data-theme');
+            }
+        });
+    }
+}

@@ -4,28 +4,30 @@ import { state, getPlayers, getSavedPositions, getPlayerElements, getPositions, 
 
 // Tag filter state
 let selectedTags = new Set();
-// Tag color assignment - tracks which color each tag gets
+// Tag color assignment - tracks which color index (0-7) each tag gets
 let tagColorMap = new Map();
 // Track which timeline item is being dragged for reordering
 let draggingTimelineIndex = null;
-// Color palette for tags (cycling through these colors)
-const TAG_COLORS = [
-    { bg: '#e3f2fd', text: '#1976d2', border: '#bbdefb' }, // Blue
-    { bg: '#f3e5f5', text: '#7b1fa2', border: '#e1bee7' }, // Purple
-    { bg: '#e8f5e9', text: '#388e3c', border: '#c8e6c9' }, // Green
-    { bg: '#fff3e0', text: '#f57c00', border: '#ffe0b2' }, // Orange
-    { bg: '#fce4ec', text: '#c2185b', border: '#f8bbd0' }, // Pink
-    { bg: '#e0f2f1', text: '#00796b', border: '#b2dfdb' }, // Teal
-    { bg: '#fff9c4', text: '#f9a825', border: '#fff59d' }, // Yellow
-    { bg: '#e1f5fe', text: '#0277bd', border: '#b3e5fc' }, // Light Blue
-];
+
+// Get color index for a tag (consistent across themes)
+function getTagColorIndex(tag) {
+    // Calculate color index based on tag name hash to ensure consistency
+    // This ensures the same tag always gets the same color index regardless of theme
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+        const char = tag.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash) % 8; // 8 color options
+}
 
 // Get or assign a color for a tag based on selection order
+// Returns the color index (0-7) instead of color object
 function getTagColor(tag) {
     if (!tagColorMap.has(tag)) {
-        // Assign next color in cycle
-        const colorIndex = tagColorMap.size % TAG_COLORS.length;
-        tagColorMap.set(tag, TAG_COLORS[colorIndex]);
+        const colorIndex = getTagColorIndex(tag);
+        tagColorMap.set(tag, colorIndex);
     }
     return tagColorMap.get(tag);
 }
@@ -428,8 +430,8 @@ export function renderPositionsList() {
         const tags = position.tags || [];
         const tagsDisplay = tags.length > 0 
             ? tags.map(tag => {
-                const tagColor = getTagColor(tag);
-                return `<span class="tag-badge tag-badge-dynamic" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
+                const colorIndex = getTagColor(tag);
+                return `<span class="tag-badge tag-badge-dynamic tag-color-${colorIndex}">${escapeHtml(tag)}</span>`;
             }).join('')
             : '<span class="tag-badge-no-tags">No tags</span>';
         
@@ -667,8 +669,8 @@ export function renderScenariosList() {
         const tags = scenario.tags || [];
         const tagsDisplay = tags.length > 0 
             ? tags.map(tag => {
-                const tagColor = getTagColor(tag);
-                return `<span class="tag-badge tag-badge-dynamic" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
+                const colorIndex = getTagColor(tag);
+                return `<span class="tag-badge tag-badge-dynamic tag-color-${colorIndex}">${escapeHtml(tag)}</span>`;
             }).join('')
             : '';
         
@@ -1210,8 +1212,8 @@ export function updateDropZoneDisplay() {
             const tags = startPos.tags || [];
             const tagsDisplay = tags.length > 0 
                 ? tags.map(tag => {
-                    const tagColor = getTagColor(tag);
-                    return `<span class="tag-badge tag-badge-dynamic tag-badge-small" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
+                    const colorIndex = getTagColor(tag);
+                    return `<span class="tag-badge tag-badge-dynamic tag-badge-small tag-color-${colorIndex}">${escapeHtml(tag)}</span>`;
                 }).join('')
                 : '';
             
@@ -1238,8 +1240,8 @@ export function updateDropZoneDisplay() {
             const tags = endPos.tags || [];
             const tagsDisplay = tags.length > 0 
                 ? tags.map(tag => {
-                    const tagColor = getTagColor(tag);
-                    return `<span class="tag-badge tag-badge-dynamic tag-badge-small" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
+                    const colorIndex = getTagColor(tag);
+                    return `<span class="tag-badge tag-badge-dynamic tag-badge-small tag-color-${colorIndex}">${escapeHtml(tag)}</span>`;
                 }).join('')
                 : '';
             
@@ -2071,8 +2073,8 @@ export function renderMobilePositionsList() {
         const tags = position.tags || [];
         const tagsDisplay = tags.length > 0 
             ? tags.map(tag => {
-                const tagColor = getTagColor(tag);
-                return `<span class="mobile-position-tag" style="background: ${tagColor.bg}; color: ${tagColor.text}; border-color: ${tagColor.border};">${escapeHtml(tag)}</span>`;
+                const colorIndex = getTagColor(tag);
+                return `<span class="mobile-position-tag tag-color-${colorIndex}">${escapeHtml(tag)}</span>`;
             }).join('')
             : '';
         

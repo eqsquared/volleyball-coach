@@ -1,25 +1,27 @@
 // Reusable search and tags filter module
 
-// Tag color assignment - tracks which color each tag gets
+// Tag color assignment - tracks which color index (0-7) each tag gets
 const tagColorMap = new Map();
-// Color palette for tags (cycling through these colors)
-const TAG_COLORS = [
-    { bg: '#e3f2fd', text: '#1976d2', border: '#bbdefb' }, // Blue
-    { bg: '#f3e5f5', text: '#7b1fa2', border: '#e1bee7' }, // Purple
-    { bg: '#e8f5e9', text: '#388e3c', border: '#c8e6c9' }, // Green
-    { bg: '#fff3e0', text: '#f57c00', border: '#ffe0b2' }, // Orange
-    { bg: '#fce4ec', text: '#c2185b', border: '#f8bbd0' }, // Pink
-    { bg: '#e0f2f1', text: '#00796b', border: '#b2dfdb' }, // Teal
-    { bg: '#fff9c4', text: '#f9a825', border: '#fff59d' }, // Yellow
-    { bg: '#e1f5fe', text: '#0277bd', border: '#b3e5fc' }, // Light Blue
-];
 
-// Get or assign a color for a tag based on selection order
+// Get color index for a tag (consistent across themes)
+function getTagColorIndex(tag) {
+    // Calculate color index based on tag name hash to ensure consistency
+    // This ensures the same tag always gets the same color index regardless of theme
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+        const char = tag.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash) % 8; // 8 color options
+}
+
+// Get or assign a color index for a tag based on selection order
+// Returns the color index (0-7) instead of color object
 function getTagColor(tag) {
     if (!tagColorMap.has(tag)) {
-        // Assign next color in cycle
-        const colorIndex = tagColorMap.size % TAG_COLORS.length;
-        tagColorMap.set(tag, TAG_COLORS[colorIndex]);
+        const colorIndex = getTagColorIndex(tag);
+        tagColorMap.set(tag, colorIndex);
     }
     return tagColorMap.get(tag);
 }
@@ -127,12 +129,9 @@ export function createSearchAndTagsFilter(config) {
         container.style.display = 'flex';
         
         Array.from(selectedTags).forEach(tag => {
-            const tagColor = getTagColor(tag);
+            const colorIndex = getTagColor(tag);
             const tagChip = document.createElement('div');
-            tagChip.className = 'selected-tag-chip';
-            tagChip.style.background = tagColor.bg;
-            tagChip.style.color = tagColor.text;
-            tagChip.style.borderColor = tagColor.border;
+            tagChip.className = `selected-tag-chip tag-color-${colorIndex}`;
             tagChip.innerHTML = `
                 <span>${escapeHtml(tag)}</span>
                 <button class="remove-tag-btn" data-tag="${escapeHtml(tag)}" title="Remove filter">
@@ -141,7 +140,6 @@ export function createSearchAndTagsFilter(config) {
             `;
             
             const removeBtn = tagChip.querySelector('.remove-tag-btn');
-            removeBtn.style.color = tagColor.text;
             removeBtn.addEventListener('click', () => {
                 selectedTags.delete(tag);
                 renderSelectedTags();
