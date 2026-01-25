@@ -40,7 +40,6 @@ import { createSequence } from './js/sequences.js';
 import { 
     migrateFromLegacyStorage, 
     exportToJSON, 
-    exportToXML, 
     handleFileImport 
 } from './js/importExport.js';
 import { initAuth } from './js/auth.js';
@@ -341,9 +340,6 @@ function setupEventListeners() {
     // Import/Export
     if (dom.exportJsonBtn) {
         dom.exportJsonBtn.addEventListener('click', exportToJSON);
-    }
-    if (dom.exportXmlBtn) {
-        dom.exportXmlBtn.addEventListener('click', exportToXML);
     }
     if (dom.importBtn) {
         dom.importBtn.addEventListener('click', () => dom.importFileInput.click());

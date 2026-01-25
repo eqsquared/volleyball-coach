@@ -137,43 +137,6 @@ export async function selectDataFile() {
     }
 }
 
-function generateXML() {
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += '<volleyballCoachData>\n';
-    xml += `  <exportDate>${new Date().toISOString()}</exportDate>\n`;
-    xml += `  <version>3.0</version>\n`;
-    xml += `  <database>file-based</database>\n`;
-    
-    xml += '  <players>\n';
-    state.players.forEach(player => {
-        xml += '    <player>\n';
-        xml += `      <id>${escapeXml(player.id)}</id>\n`;
-        xml += `      <jersey>${escapeXml(player.jersey)}</jersey>\n`;
-        xml += `      <name>${escapeXml(player.name)}</name>\n`;
-        xml += '    </player>\n';
-    });
-    xml += '  </players>\n';
-    
-    xml += '  <savedPositions>\n';
-    Object.keys(state.savedPositions).forEach(posName => {
-        xml += `    <position name="${escapeXml(posName)}">\n`;
-        state.savedPositions[posName].forEach(pos => {
-            xml += '      <playerPosition>\n';
-            xml += `        <playerId>${escapeXml(pos.playerId)}</playerId>\n`;
-            xml += `        <jersey>${escapeXml(pos.jersey)}</jersey>\n`;
-            xml += `        <name>${escapeXml(pos.name)}</name>\n`;
-            xml += `        <x>${pos.x}</x>\n`;
-            xml += `        <y>${pos.y}</y>\n`;
-            xml += '      </playerPosition>\n';
-        });
-        xml += '    </position>\n';
-    });
-    xml += '  </savedPositions>\n';
-    
-    xml += '</volleyballCoachData>';
-    return xml;
-}
-
 export async function exportToJSON() {
     // Get latest data from file-based storage
     if (state.dbInitialized) {
@@ -217,29 +180,6 @@ export async function exportToJSON() {
     URL.revokeObjectURL(url);
 }
 
-export function exportToXML() {
-    // Export XML as download (separate from auto-save)
-    const xml = generateXML();
-    const blob = new Blob([xml], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `volleyball-coach-data-${new Date().toISOString().split('T')[0]}.xml`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-function escapeXml(text) {
-    if (!text) return '';
-    return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-}
 
 export async function handleFileImport(event) {
     const file = event.target.files[0];

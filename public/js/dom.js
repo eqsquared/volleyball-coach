@@ -65,7 +65,6 @@ export const dom = {
     
     // Data Management
     exportJsonBtn: null,
-    exportXmlBtn: null,
     importBtn: null,
     importFileInput: null,
     fileStatus: null,
@@ -147,7 +146,6 @@ export function initDOM() {
     
     // Data Management
     dom.exportJsonBtn = document.getElementById('export-json-btn');
-    dom.exportXmlBtn = document.getElementById('export-xml-btn');
     dom.importBtn = document.getElementById('import-btn');
     dom.importFileInput = document.getElementById('import-file');
     dom.fileStatus = document.getElementById('file-status');
