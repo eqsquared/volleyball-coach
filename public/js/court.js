@@ -1,6 +1,6 @@
 // Court and drag & drop functionality
 
-import { state, setDraggedPlayer, setDraggedElement, getPlayerElements, checkForModifications } from './state.js';
+import { state, setDraggedPlayer, setDraggedElement, getPlayerElements, checkForModifications, getCourtRotation, setCourtRotation, getSavedCourtRotation } from './state.js';
 import { dom } from './dom.js';
 
 // Helper function to check if we're on a phone (matches CSS media query: max-width: 767px and orientation: portrait)
@@ -43,26 +43,89 @@ export function percentToCoordinate(percentValue) {
     return percentValue;
 }
 
+// Convert displayed coordinates (which may be rotated) back to base (0°) coordinates
+// This is used when reading positions from the DOM to compare with saved positions
+// displayedX/Y represent the top-left corner of the player container
+// We need to convert to the center of the player circle
+export function convertDisplayedToBaseCoordinates(displayedX, displayedY) {
+    const rotation = getCourtRotation();
+    const dims = getCourtDimensions();
+    const halfPlayerSize = dims.playerSize / 2;
+    
+    // Add half player size to get center coordinates
+    const centerX = displayedX + halfPlayerSize;
+    const centerY = displayedY + halfPlayerSize;
+    
+    // Reverse transform to get base coordinates
+    return reverseTransformCoordinates(centerX, centerY, rotation);
+}
+
+// Transform coordinates based on rotation
+// This transforms from the base coordinate system (0°) to the rotated coordinate system
+export function transformCoordinatesForRotation(x, y, rotation) {
+    const baseSize = 600;
+    
+    switch (rotation) {
+        case 0:
+            return { x, y };
+        case 90:
+            // Rotate 90° clockwise: (x, y) -> (600 - y, x)
+            return { x: baseSize - y, y: x };
+        case 180:
+            // Rotate 180°: (x, y) -> (600 - x, 600 - y)
+            return { x: baseSize - x, y: baseSize - y };
+        case 270:
+            // Rotate 270° clockwise (90° counter-clockwise): (x, y) -> (y, 600 - x)
+            return { x: y, y: baseSize - x };
+        default:
+            return { x, y };
+    }
+}
+
+// Reverse transform - converts from rotated coordinate system back to base (0°)
+function reverseTransformCoordinates(x, y, rotation) {
+    const baseSize = 600;
+    
+    switch (rotation) {
+        case 0:
+            return { x, y };
+        case 90:
+            // Reverse of 90°: (x, y) -> (y, 600 - x)
+            return { x: y, y: baseSize - x };
+        case 180:
+            // Reverse of 180°: (x, y) -> (600 - x, 600 - y)
+            return { x: baseSize - x, y: baseSize - y };
+        case 270:
+            // Reverse of 270°: (x, y) -> (600 - y, x)
+            return { x: baseSize - y, y: x };
+        default:
+            return { x, y };
+    }
+}
+
 // Convert mouse coordinates from rendered space to 600x600 coordinate space
 // The court is now sized via CSS (max-height: 85vh, aspect-ratio: 1), so we use getBoundingClientRect()
 // to get the actual rendered size and convert to the 600x600 coordinate system
+// This function returns coordinates in the base (0°) coordinate system
 export function convertToCourtCoordinates(clientX, clientY) {
     const rect = dom.court.getBoundingClientRect();
     const dims = getCourtDimensions();
+    const rotation = getCourtRotation();
     
     // Get mouse position relative to rendered court
     const relativeX = clientX - rect.left;
     const relativeY = clientY - rect.top;
     
-    // Convert to 600x600 coordinate system
-    // getBoundingClientRect() gives us the actual rendered size, so we convert proportionally
-    const courtX = (relativeX / rect.width) * dims.baseSize;
-    const courtY = (relativeY / rect.height) * dims.baseSize;
+    // Convert to 600x600 coordinate system (in the rotated view)
+    const rotatedX = (relativeX / rect.width) * dims.baseSize;
+    const rotatedY = (relativeY / rect.height) * dims.baseSize;
     
-    return { x: courtX, y: courtY };
+    // Reverse transform to get base coordinates
+    return reverseTransformCoordinates(rotatedX, rotatedY, rotation);
 }
 
 // Place player on court
+// x and y are in the base (0°) coordinate system and represent the CENTER of the player circle
 export function placePlayerOnCourt(player, x, y) {
     // Remove existing player element if present
     const existingElement = getPlayerElements().get(player.id);
@@ -71,19 +134,37 @@ export function placePlayerOnCourt(player, x, y) {
     }
     
     const dims = getCourtDimensions();
+    const rotation = getCourtRotation();
+    
+    // Ensure court's visual rotation matches state (important when loading positions)
+    if (dom.court) {
+        const currentDataRotation = dom.court.getAttribute('data-rotation');
+        if (currentDataRotation !== rotation.toString()) {
+            dom.court.setAttribute('data-rotation', rotation.toString());
+        }
+    }
     
     // Constrain position to court bounds (accounting for player size)
-    x = Math.max(0, Math.min(x, dims.maxX));
-    y = Math.max(dims.minY, Math.min(y, dims.maxY));
+    // x and y represent center, so we need to ensure the circle stays within bounds
+    const halfPlayerSize = dims.playerSize / 2;
+    x = Math.max(halfPlayerSize, Math.min(x, dims.baseSize - halfPlayerSize));
+    y = Math.max(dims.minY + halfPlayerSize, Math.min(y, dims.baseSize - halfPlayerSize));
+    
+    // Transform coordinates for current rotation
+    const transformed = transformCoordinatesForRotation(x, y, rotation);
     
     // Create container for player circle and label
     // Coordinates are in 600x600 system, converted to percentages for scaling
+    // CSS left/top positions the top-left corner, so we offset by half the player size
     const playerContainer = document.createElement('div');
     playerContainer.className = 'player-container';
     playerContainer.dataset.playerId = player.id;
     // Use percentages so positions scale with court size
-    playerContainer.style.left = coordinateToPercent(x) + '%';
-    playerContainer.style.top = coordinateToPercent(y) + '%';
+    // Offset by half player size to center the circle
+    const offsetX = transformed.x - halfPlayerSize;
+    const offsetY = transformed.y - halfPlayerSize;
+    playerContainer.style.left = coordinateToPercent(offsetX) + '%';
+    playerContainer.style.top = coordinateToPercent(offsetY) + '%';
     
     // Create player circle
     const playerElement = document.createElement('div');
@@ -175,9 +256,11 @@ export function handleCourtDragOver(e) {
         
         const { x, y } = convertToCourtCoordinates(e.clientX, e.clientY);
         const dims = getCourtDimensions();
+        const halfPlayerSize = dims.playerSize / 2;
         
-        // Check if within court bounds (in original 600x600 coordinate system)
-        const isWithinBounds = x >= 0 && x <= dims.baseSize && y >= dims.minY && y <= dims.baseSize;
+        // Check if within court bounds (x and y represent center of player circle)
+        const isWithinBounds = x >= halfPlayerSize && x <= dims.baseSize - halfPlayerSize && 
+                               y >= dims.minY + halfPlayerSize && y <= dims.baseSize - halfPlayerSize;
         
         if (isWithinBounds) {
             e.dataTransfer.dropEffect = 'move';
@@ -200,23 +283,34 @@ export function handleCourtDrop(e) {
     
     const { x, y } = convertToCourtCoordinates(e.clientX, e.clientY);
     const dims = getCourtDimensions();
+    const halfPlayerSize = dims.playerSize / 2;
     
-    // Check if drop is outside court bounds (in original 600x600 coordinate system)
-    const isOutsideBounds = x < 0 || x > dims.baseSize || y < dims.minY || y > dims.baseSize;
+    // Check if drop is outside court bounds (x and y represent center of player circle)
+    const isOutsideBounds = x < halfPlayerSize || x > dims.baseSize - halfPlayerSize || 
+                           y < dims.minY + halfPlayerSize || y > dims.baseSize - halfPlayerSize;
     
     if (isOutsideBounds) {
         // Remove player from court
         const playerId = state.draggedElement.dataset.playerId;
         removePlayerFromCourt(playerId);
     } else {
-        // Move within court bounds - coordinates are in 600x600 system
-        // Center the player on the drop point
-        const constrainedX = Math.max(0, Math.min(x - dims.playerSize / 2, dims.maxX));
-        const constrainedY = Math.max(dims.minY, Math.min(y - dims.playerSize / 2, dims.maxY));
+        // Move within court bounds - coordinates are in base (0°) coordinate system
+        // x and y represent the center of the player circle
+        const halfPlayerSize = dims.playerSize / 2;
+        const constrainedX = Math.max(halfPlayerSize, Math.min(x, dims.baseSize - halfPlayerSize));
+        const constrainedY = Math.max(dims.minY + halfPlayerSize, Math.min(y, dims.baseSize - halfPlayerSize));
+        
+        // Transform coordinates for current rotation
+        const rotation = getCourtRotation();
+        const transformed = transformCoordinatesForRotation(constrainedX, constrainedY, rotation);
+        
+        // CSS left/top positions the top-left corner, so offset by half player size
+        const offsetX = transformed.x - halfPlayerSize;
+        const offsetY = transformed.y - halfPlayerSize;
         
         // Use percentages so positions scale with court size
-        state.draggedElement.style.left = coordinateToPercent(constrainedX) + '%';
-        state.draggedElement.style.top = coordinateToPercent(constrainedY) + '%';
+        state.draggedElement.style.left = coordinateToPercent(offsetX) + '%';
+        state.draggedElement.style.top = coordinateToPercent(offsetY) + '%';
     }
     
     state.draggedElement.classList.remove('removing');
@@ -232,6 +326,69 @@ export function handleCourtDrop(e) {
             updateModifiedIndicator(state.isModified);
         }
     }, 50);
+}
+
+// Ensure court's visual rotation matches the state rotation
+// This is important when loading positions to ensure they're placed correctly
+export function syncCourtRotation() {
+    if (dom.court) {
+        const currentRotation = getCourtRotation();
+        const currentDataRotation = dom.court.getAttribute('data-rotation');
+        if (currentDataRotation !== currentRotation.toString()) {
+            dom.court.setAttribute('data-rotation', currentRotation.toString());
+        }
+    }
+}
+
+// Rotate the court 90 degrees
+export function rotateCourt() {
+    const currentRotation = getCourtRotation();
+    const newRotation = (currentRotation + 90) % 360;
+    
+    // Fade out the court (transition is already set in CSS)
+    dom.court.style.opacity = '0';
+    
+    // After fade out, update rotation and transform positions
+    setTimeout(() => {
+        // Update rotation state
+        setCourtRotation(newRotation);
+        
+        // Update court data attribute for CSS
+        dom.court.setAttribute('data-rotation', newRotation.toString());
+        
+        // Transform all player positions
+        const dims = getCourtDimensions();
+        const halfPlayerSize = dims.playerSize / 2;
+        
+        getPlayerElements().forEach((element, playerId) => {
+            // Get current displayed position (top-left corner in rotated coordinates)
+            const currentX = percentToCoordinate(element.style.left);
+            const currentY = percentToCoordinate(element.style.top);
+            
+            // Add half player size to get center coordinates
+            const centerX = currentX + halfPlayerSize;
+            const centerY = currentY + halfPlayerSize;
+            
+            // Reverse transform to get base coordinates (center)
+            const baseCoords = reverseTransformCoordinates(centerX, centerY, currentRotation);
+            
+            // Transform to new rotation (center)
+            const newCenterCoords = transformCoordinatesForRotation(baseCoords.x, baseCoords.y, newRotation);
+            
+            // Convert back to top-left corner for CSS positioning
+            const newX = newCenterCoords.x - halfPlayerSize;
+            const newY = newCenterCoords.y - halfPlayerSize;
+            
+            // Update position
+            element.style.left = coordinateToPercent(newX) + '%';
+            element.style.top = coordinateToPercent(newY) + '%';
+        });
+        
+        // Fade back in
+        requestAnimationFrame(() => {
+            dom.court.style.opacity = '1';
+        });
+    }, 200);
 }
 
 // Initialize court event listeners
@@ -255,9 +412,11 @@ export function initCourtListeners() {
         const { x, y } = convertToCourtCoordinates(e.clientX, e.clientY);
         const dims = getCourtDimensions();
         
-        // Constrain to court bounds and center player on drop point
-        const constrainedX = Math.max(0, Math.min(x - dims.playerSize / 2, dims.maxX));
-        const constrainedY = Math.max(dims.minY, Math.min(y - dims.playerSize / 2, dims.maxY));
+        // Constrain to court bounds - x and y represent the center of the player circle
+        // x and y are already in base (0°) coordinate system from convertToCourtCoordinates
+        const halfPlayerSize = dims.playerSize / 2;
+        const constrainedX = Math.max(halfPlayerSize, Math.min(x, dims.baseSize - halfPlayerSize));
+        const constrainedY = Math.max(dims.minY + halfPlayerSize, Math.min(y, dims.baseSize - halfPlayerSize));
         
         placePlayerOnCourt(state.draggedPlayer, constrainedX, constrainedY);
         setDraggedPlayer(null);
@@ -294,4 +453,15 @@ export function initCourtListeners() {
             setDraggedElement(null);
         }
     });
+    
+    // Rotation button
+    const rotateBtn = document.getElementById('court-rotate-btn');
+    if (rotateBtn) {
+        rotateBtn.addEventListener('click', () => {
+            rotateCourt();
+        });
+    }
+    
+    // Initialize court rotation attribute (state is already initialized from localStorage)
+    dom.court.setAttribute('data-rotation', getCourtRotation().toString());
 }

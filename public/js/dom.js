@@ -3,6 +3,7 @@
 export const dom = {
     // Court
     court: null,
+    courtRotateBtn: null,
     
     // Players
     lineupList: null,
@@ -84,6 +85,7 @@ export const dom = {
 export function initDOM() {
     // Court
     dom.court = document.getElementById('court');
+    dom.courtRotateBtn = document.getElementById('court-rotate-btn');
     
     // Players
     dom.lineupList = document.getElementById('lineup-list');

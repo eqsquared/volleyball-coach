@@ -3,7 +3,8 @@
 import { state, setIsAnimating, setLastStartPosition, getPlayerElements, getSavedPositions, getPlayers, getSelectedStartPosition, getSelectedEndPosition, getPositions } from './state.js';
 import { dom } from './dom.js';
 import { loadPosition } from './positions.js';
-import { placePlayerOnCourt, percentToCoordinate, coordinateToPercent } from './court.js';
+import { placePlayerOnCourt, percentToCoordinate, coordinateToPercent, convertDisplayedToBaseCoordinates, syncCourtRotation, transformCoordinatesForRotation } from './court.js';
+import { getCourtRotation } from './state.js';
 import { alert } from './modal.js';
 
 // Play animation
@@ -242,6 +243,9 @@ export async function animateToPosition(targetPositionId, updateLoadedItem = fal
         return; // Animation already in progress
     }
     
+    // Ensure court's visual rotation is synchronized
+    syncCourtRotation();
+    
     // Get target position
     const targetPosition = getPositions().find(p => p.id === targetPositionId);
     if (!targetPosition) {
@@ -258,22 +262,25 @@ export async function animateToPosition(targetPositionId, updateLoadedItem = fal
     const targetPositions = targetPosition.playerPositions || [];
     
     // Get current positions of players on court
+    // Convert displayed coordinates (which may be rotated) back to base coordinates
     const currentPositions = [];
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Convert from percentage back to 600x600 coordinate system
-            const x = percentToCoordinate(element.style.left) || 0;
-            const y = percentToCoordinate(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system (displayed coordinates)
+            const displayedX = percentToCoordinate(element.style.left) || 0;
+            const displayedY = percentToCoordinate(element.style.top) || 0;
+            // Convert displayed coordinates back to base coordinates for comparison
+            const baseCoords = convertDisplayedToBaseCoordinates(displayedX, displayedY);
             currentPositions.push({
                 playerId: playerId,
-                x: x,
-                y: y
+                x: baseCoords.x,
+                y: baseCoords.y
             });
         }
     });
     
-    // Create a map of playerId to target position
+    // Create a map of playerId to target position (target positions are in base coordinates)
     const targetPosMap = new Map();
     targetPositions.forEach(pos => {
         targetPosMap.set(pos.playerId, { x: pos.x, y: pos.y });
@@ -372,10 +379,22 @@ export async function animateToPosition(targetPositionId, updateLoadedItem = fal
         
         playerElement.classList.add('animating');
         
+        // Transform target position (base coordinates) to displayed coordinates for current rotation
+        const rotation = getCourtRotation();
+        const dims = { playerSize: 50 }; // Match getCourtDimensions
+        const halfPlayerSize = dims.playerSize / 2;
+        
+        // Transform base coordinates to rotated coordinates (center of player circle)
+        const transformed = transformCoordinatesForRotation(targetPos.x, targetPos.y, rotation);
+        
+        // Convert center coordinates to top-left corner for CSS positioning
+        const offsetX = transformed.x - halfPlayerSize;
+        const offsetY = transformed.y - halfPlayerSize;
+        
         // Set target position (convert from 600x600 coordinates to percentage)
         setTimeout(() => {
-            playerElement.style.left = coordinateToPercent(targetPos.x) + '%';
-            playerElement.style.top = coordinateToPercent(targetPos.y) + '%';
+            playerElement.style.left = coordinateToPercent(offsetX) + '%';
+            playerElement.style.top = coordinateToPercent(offsetY) + '%';
         }, 10);
         
         // Remove animating class after animation completes

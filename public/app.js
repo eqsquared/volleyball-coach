@@ -469,73 +469,20 @@ function setupCourtFontScaling() {
 // Set up modification tracking
 function setupModificationTracking() {
     // Track player movements on court
-    if (dom.court) {
-        // Mouse events for desktop (skip on phones - read-only mode)
-        dom.court.addEventListener('mousemove', () => {
-            // Skip modification checks on phones - they're read-only
-            if (isPhoneView()) return;
-            
-            if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
-                checkForModifications();
-                updateModifiedIndicator(state.isModified);
-            }
-        });
-        
-        // Also check on mouseup (after drag) (skip on phones)
-        dom.court.addEventListener('mouseup', () => {
-            // Skip modification checks on phones - they're read-only
-            if (isPhoneView()) return;
-            
-            if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
-                setTimeout(() => {
-                    checkForModifications();
-                    updateModifiedIndicator(state.isModified);
-                }, 100);
-            }
-        });
-        
-        // Touch events for mobile devices
-        // Check after touch drag ends (skip on phones - read-only mode)
-        dom.court.addEventListener('touchend', async (e) => {
-            // Skip modification checks on phones - they're read-only
-            if (isPhoneView()) return;
-            
-            if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
-                // Use setTimeout to ensure DOM has updated after touch drag
-                setTimeout(async () => {
-                    await checkForModifications();
-                    updateModifiedIndicator(state.isModified);
-                }, 100);
-            }
-        }, { passive: true });
-        
-        // Also check on touchmove to catch movements during drag
-        // This helps detect modifications even if touchend doesn't fire (skip on phones)
-        let touchMoveTimeout;
-        dom.court.addEventListener('touchmove', () => {
-            // Skip modification checks on phones - they're read-only
-            if (isPhoneView()) return;
-            
-            if (state.currentLoadedItem && state.currentLoadedItem.type === 'position') {
-                // Debounce to avoid excessive checks
-                clearTimeout(touchMoveTimeout);
-                touchMoveTimeout = setTimeout(async () => {
-                    await checkForModifications();
-                    updateModifiedIndicator(state.isModified);
-                }, 200);
-            }
-        }, { passive: true });
-    }
+    // Note: handleCourtDrop in court.js already checks for modifications when a player is dropped,
+    // so we don't need to add mouseup/touchend listeners here. Those would trigger false positives
+    // when clicking (not dragging) on the court.
+    // Touch drags are handled by touchDrag.js which triggers the drop event, calling handleCourtDrop.
     
     // Track scenario modifications when drop zones change
     // This is handled in checkAndUpdateScenarioState in ui.js
 }
 
 // Switch edit mode (kept for internal state management, but UI removed)
-function switchEditMode(mode) {
-    setEditMode(mode);
-    // Mode switching UI removed - accordions are now always visible
-}
+// function switchEditMode(mode) {
+//     setEditMode(mode);
+//     // Mode switching UI removed - accordions are now always visible
+// }
 
 // Handle save
 async function handleSave() {

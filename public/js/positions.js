@@ -11,7 +11,7 @@ import {
     setIsModified,
     checkForModifications
 } from './state.js';
-import { placePlayerOnCourt, percentToCoordinate } from './court.js';
+import { placePlayerOnCourt, percentToCoordinate, convertDisplayedToBaseCoordinates, syncCourtRotation } from './court.js';
 import { renderPositionsList, updateCurrentItemDisplay, updateModifiedIndicator } from './ui.js';
 import { alert, confirm } from './modal.js';
 import { animateToPosition } from './animation.js';
@@ -28,15 +28,17 @@ export async function createNewPosition() {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Convert from percentage back to 600x600 coordinate system
-            const x = percentToCoordinate(element.style.left) || 0;
-            const y = percentToCoordinate(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system (displayed coordinates)
+            const displayedX = percentToCoordinate(element.style.left) || 0;
+            const displayedY = percentToCoordinate(element.style.top) || 0;
+            // Convert displayed coordinates back to base (0°) coordinates for saving
+            const baseCoords = convertDisplayedToBaseCoordinates(displayedX, displayedY);
             playerPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,
                 name: player.name,
-                x: x,
-                y: y
+                x: baseCoords.x,
+                y: baseCoords.y
             });
         }
     });
@@ -247,15 +249,17 @@ export async function savePosition() {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Convert from percentage back to 600x600 coordinate system
-            const x = percentToCoordinate(element.style.left) || 0;
-            const y = percentToCoordinate(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system (displayed coordinates)
+            const displayedX = percentToCoordinate(element.style.left) || 0;
+            const displayedY = percentToCoordinate(element.style.top) || 0;
+            // Convert displayed coordinates back to base (0°) coordinates for saving
+            const baseCoords = convertDisplayedToBaseCoordinates(displayedX, displayedY);
             playerPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,
                 name: player.name,
-                x: x,
-                y: y
+                x: baseCoords.x,
+                y: baseCoords.y
             });
         }
     });
@@ -327,6 +331,9 @@ export async function loadPosition(positionId, updateLoadedItem = true, skipAnim
     }
     
     // No players on court or animation in progress - instant placement
+    // Ensure court's visual rotation is synchronized before loading positions
+    syncCourtRotation();
+    
     // Clear current positions
     getPlayerElements().forEach((element) => {
         element.remove();
@@ -368,6 +375,9 @@ export async function loadPosition(positionId, updateLoadedItem = true, skipAnim
 
 // Load legacy position (for backward compatibility)
 function loadLegacyPosition(positionName, positions, updateLoadedItem = true) {
+    // Ensure court's visual rotation is synchronized before loading positions
+    syncCourtRotation();
+    
     // Clear current positions
     getPlayerElements().forEach((element) => {
         element.remove();
@@ -646,15 +656,17 @@ export async function createPositionFromModal(isSaveAs = false) {
     getPlayerElements().forEach((element, playerId) => {
         const player = getPlayers().find(p => p.id === playerId);
         if (player) {
-            // Convert from percentage back to 600x600 coordinate system
-            const x = percentToCoordinate(element.style.left) || 0;
-            const y = percentToCoordinate(element.style.top) || 0;
+            // Convert from percentage back to 600x600 coordinate system (displayed coordinates)
+            const displayedX = percentToCoordinate(element.style.left) || 0;
+            const displayedY = percentToCoordinate(element.style.top) || 0;
+            // Convert displayed coordinates back to base (0°) coordinates for saving
+            const baseCoords = convertDisplayedToBaseCoordinates(displayedX, displayedY);
             playerPositions.push({
                 playerId: playerId,
                 jersey: player.jersey,
                 name: player.name,
-                x: x,
-                y: y
+                x: baseCoords.x,
+                y: baseCoords.y
             });
         }
     });
