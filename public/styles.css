@@ -187,10 +187,10 @@
     
     /* Court Colors (slightly darker for dark mode) */
     --court-bg: #695630;
-    --court-border: #6b5d3f;
-    --net-bg: #ffffff;
+    --court-border: #111111;
+    --net-bg: #dddddd;
     --net-line: #333333;
-    --attack-line: #6b5d3f;
+    --attack-line: #333333;
     
     /* Shadow Colors */
     --shadow-sm: rgba(0, 0, 0, 0.3);

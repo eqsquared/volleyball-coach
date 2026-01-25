@@ -12,8 +12,8 @@ import {
     checkForModifications
 } from './state.js';
 import { placePlayerOnCourt, percentToCoordinate } from './court.js';
-import { renderPositionsList, updateCurrentItemDisplay } from './ui.js';
-import { alert, confirm, prompt } from './modal.js';
+import { renderPositionsList, updateCurrentItemDisplay, updateModifiedIndicator } from './ui.js';
+import { alert, confirm } from './modal.js';
 import { animateToPosition } from './animation.js';
 
 // Generate unique ID
@@ -305,6 +305,7 @@ export async function loadPosition(positionId, updateLoadedItem = true, skipAnim
         if (updateLoadedItem) {
             setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
             setIsModified(false);
+            updateModifiedIndicator(false);
             
             // Show drop zones, hide timeline (async import)
             import('./ui.js').then(({ showDropZones, updateScenarioButtonsVisibility, renderPositionsList, updateCurrentItemDisplay }) => {
@@ -344,6 +345,7 @@ export async function loadPosition(positionId, updateLoadedItem = true, skipAnim
     if (updateLoadedItem) {
         setCurrentLoadedItem({ type: 'position', id: position.id, name: position.name });
         setIsModified(false);
+        updateModifiedIndicator(false);
         
         // Show drop zones, hide timeline (async import)
         import('./ui.js').then(({ showDropZones, updateScenarioButtonsVisibility }) => {
@@ -384,6 +386,7 @@ function loadLegacyPosition(positionName, positions, updateLoadedItem = true) {
     if (updateLoadedItem) {
         setCurrentLoadedItem({ type: 'position', id: positionName, name: positionName });
         setIsModified(false);
+        updateModifiedIndicator(false);
     }
 }
 
