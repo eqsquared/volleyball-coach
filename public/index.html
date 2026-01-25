@@ -20,9 +20,52 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Drag and drop polyfill for mobile devices -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@2.0.0-rc.1/drag-drop-touch.min.js"></script> -->
+    
+    <!-- Load theme immediately before body renders to prevent flash -->
+    <script>
+        (function() {
+            // Get theme preference from storage
+            function getTheme() {
+                try {
+                    // Try localStorage first (faster, works in all browsers)
+                    const stored = localStorage.getItem('volleyball-coach-theme');
+                    if (stored && ['light', 'dark', 'system'].includes(stored)) {
+                        return stored;
+                    }
+                } catch (e) {
+                    // Storage not available
+                }
+                return 'system'; // Default to system
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const html = document.documentElement;
+                if (theme === 'system') {
+                    // Remove data-theme attribute to use system preference via media query
+                    html.removeAttribute('data-theme');
+                } else {
+                    // Set explicit theme
+                    html.setAttribute('data-theme', theme);
+                }
+            }
+            
+            // Load and apply theme immediately
+            const theme = getTheme();
+            applyTheme(theme);
+        })();
+    </script>
 </head>
 <body>
-    <div class="app-container">
+    <!-- Loading Overlay - shown until app is ready -->
+    <div class="app-loading-overlay" id="app-loading-overlay">
+        <div class="app-loading-content">
+            <div class="app-loading-spinner"></div>
+            <div class="app-loading-text">Loading...</div>
+        </div>
+    </div>
+    
+    <div class="app-container hidden" id="app-container">
         <!-- Mobile Header -->
         <header class="mobile-header">
             <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">
@@ -261,6 +304,10 @@
             <div class="mobile-positions-bucket hidden" id="mobile-positions-bucket">
                 <div class="mobile-positions-header">
                     <h3>Positions</h3>
+                    <button class="mobile-tag-filter-btn" id="mobile-tag-filter-btn" title="Filter by tags">
+                        <i data-lucide="tags"></i>
+                        <span class="tag-filter-badge" id="mobile-tag-filter-badge"></span>
+                    </button>
                 </div>
                 <div class="mobile-positions-list" id="mobile-positions-list">
                     <!-- Positions will be added here -->

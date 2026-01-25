@@ -78,7 +78,9 @@ export const dom = {
     drawerOverlay: null,
     sidebar: null,
     mobilePositionsBucket: null,
-    mobilePositionsList: null
+    mobilePositionsList: null,
+    mobileTagFilterBtn: null,
+    mobileTagFilterBadge: null
 };
 
 // Initialize DOM references
@@ -161,4 +163,6 @@ export function initDOM() {
     dom.sidebar = document.getElementById('sidebar');
     dom.mobilePositionsBucket = document.getElementById('mobile-positions-bucket');
     dom.mobilePositionsList = document.getElementById('mobile-positions-list');
+    dom.mobileTagFilterBtn = document.getElementById('mobile-tag-filter-btn');
+    dom.mobileTagFilterBadge = document.getElementById('mobile-tag-filter-badge');
 }

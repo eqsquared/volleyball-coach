@@ -154,7 +154,7 @@ export function createSearchAndTagsFilter(config) {
     }
     
     // Show tag filter dropdown
-    function showTagFilterDropdown() {
+    function showTagFilterDropdown(buttonIdOrElement) {
         // Remove existing dropdown
         const existing = document.querySelector('.tag-filter-dropdown');
         if (existing) {
@@ -167,7 +167,18 @@ export function createSearchAndTagsFilter(config) {
             return;
         }
         
-        const tagFilterBtn = document.getElementById(tagFilterBtnId);
+        // Support passing a different button ID or element
+        let tagFilterBtn;
+        if (buttonIdOrElement) {
+            if (typeof buttonIdOrElement === 'string') {
+                tagFilterBtn = document.getElementById(buttonIdOrElement);
+            } else {
+                tagFilterBtn = buttonIdOrElement;
+            }
+        } else {
+            tagFilterBtn = document.getElementById(tagFilterBtnId);
+        }
+        
         if (!tagFilterBtn) return;
         
         const dropdown = document.createElement('div');
@@ -231,17 +242,35 @@ export function createSearchAndTagsFilter(config) {
         
         dropdown.appendChild(tagsList);
         
-        // Position dropdown
+        // Position dropdown - append first to get dimensions
         const rect = tagFilterBtn.getBoundingClientRect();
-        dropdown.style.left = rect.left + 'px';
-        dropdown.style.top = (rect.bottom + 4) + 'px';
-        
         document.body.appendChild(dropdown);
+        
+        // Get dropdown dimensions after it's in the DOM
+        const dropdownRect = dropdown.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        
+        // Check if dropdown would overflow on the right
+        const wouldOverflowRight = rect.left + dropdownRect.width > viewportWidth;
+        
+        if (wouldOverflowRight) {
+            // Right-align dropdown against the right edge of the viewport
+            dropdown.style.left = 'auto';
+            dropdown.style.right = '8px'; // Small margin from viewport edge
+        } else {
+            // Left-align dropdown from button's left edge
+            dropdown.style.left = rect.left + 'px';
+            dropdown.style.right = 'auto';
+        }
+        
+        dropdown.style.top = (rect.bottom + 4) + 'px';
         
         // Close on outside click
         setTimeout(() => {
             const closeHandler = (e) => {
-                if (!dropdown.contains(e.target) && e.target !== tagFilterBtn) {
+                // Check if click is outside dropdown and not on any tag filter button
+                const isTagFilterBtn = e.target.closest('.tag-filter-btn, .mobile-tag-filter-btn');
+                if (!dropdown.contains(e.target) && !isTagFilterBtn) {
                     dropdown.remove();
                     document.removeEventListener('click', closeHandler);
                 }

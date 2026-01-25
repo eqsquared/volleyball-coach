@@ -68,6 +68,8 @@ async function init() {
         if (apiBase && !isAuthenticated) {
             // User needs to authenticate - don't try to load data
             // The auth modal is already showing, so we'll wait for login
+            // Hide loading overlay and show app container (auth modal is part of app)
+            hideLoadingOverlay();
             return;
         }
         
@@ -262,9 +264,30 @@ async function init() {
         
         // Set up modification tracking
         setupModificationTracking();
+        
+        // Hide loading overlay and show app container
+        hideLoadingOverlay();
     } catch (error) {
         console.error('Error initializing app:', error);
+        // Still hide loading overlay even on error so user can see the error
+        hideLoadingOverlay();
         await alert('Error initializing database. Please refresh the page.');
+    }
+}
+
+/**
+ * Hide loading overlay and show app container
+ */
+function hideLoadingOverlay() {
+    const loadingOverlay = document.getElementById('app-loading-overlay');
+    const appContainer = document.getElementById('app-container');
+    
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+    }
+    
+    if (appContainer) {
+        appContainer.classList.remove('hidden');
     }
 }
 

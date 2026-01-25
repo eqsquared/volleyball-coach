@@ -324,9 +324,24 @@ export function initFilters() {
         getAllItems: () => getPositions(),
         getItemTags: (position) => position.tags || [],
         getItemName: (position) => position.name,
-        onFilterChange: () => renderPositionsList()
+        onFilterChange: () => {
+            renderPositionsList();
+            renderMobilePositionsList();
+            updateMobileTagFilterBadge();
+        }
     });
     positionFilter.init();
+    
+    // Wire up mobile tag filter button to use the same filter
+    if (dom.mobileTagFilterBtn) {
+        dom.mobileTagFilterBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (positionFilter) {
+                // Show dropdown positioned relative to mobile button
+                positionFilter.showTagFilterDropdown('mobile-tag-filter-btn');
+            }
+        });
+    }
     
     // Scenario filter
     scenarioFilter = createSearchAndTagsFilter({
@@ -339,6 +354,29 @@ export function initFilters() {
         onFilterChange: () => renderScenariosList()
     });
     scenarioFilter.init();
+    
+    // Initial badge update
+    updateMobileTagFilterBadge();
+    
+    // Initialize icons for mobile tag filter button
+    if (dom.mobileTagFilterBtn) {
+        initializeIcons(dom.mobileTagFilterBtn);
+    }
+}
+
+// Update mobile tag filter badge
+function updateMobileTagFilterBadge() {
+    if (!dom.mobileTagFilterBadge || !positionFilter) return;
+    
+    const selectedTags = positionFilter.getSelectedTags();
+    const count = selectedTags.size;
+    
+    if (count > 0) {
+        dom.mobileTagFilterBadge.textContent = count;
+        dom.mobileTagFilterBadge.style.display = 'flex';
+    } else {
+        dom.mobileTagFilterBadge.style.display = 'none';
+    }
 }
 
 // Legacy function for backward compatibility
@@ -2005,6 +2043,9 @@ export function renderMobilePositionsList() {
         return;
     }
     
+    // Update badge when rendering
+    updateMobileTagFilterBadge();
+    
     dom.mobilePositionsList.innerHTML = '';
     
     // Prevent body scroll when scrolling the positions list
@@ -2181,6 +2222,7 @@ export function updateMobileUI() {
             // Show positions bucket when nothing or position is selected (mobile only)
             dom.mobilePositionsBucket.classList.remove('hidden');
             renderMobilePositionsList();
+            updateMobileTagFilterBadge();
         }
     }
     
