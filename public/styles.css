@@ -32,9 +32,12 @@ button {
 }
 
 .app-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Hide app content when auth is required */
@@ -115,8 +118,10 @@ header h1 {
 
 .main-content {
     display: flex;
-    gap: 30px;
+    gap: 0;
     align-items: stretch;
+    flex: 1;
+    min-height: 0;
 }
 
 /* ============================================
@@ -147,19 +152,155 @@ header h1 {
 .sidebar {
     flex: 0 0 350px;
     background: white;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    height: calc(var(--available-height) - 60px);
+    padding: 0;
+    border-radius: 0;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    height: 100vh;
     display: flex;
     flex-direction: column;
     gap: 0;
     overflow: hidden;
     transition: transform 0.3s ease;
+    position: relative;
 }
 
 .sidebar > * {
     flex-shrink: 0;
+}
+
+/* Sidebar content area (scrollable) */
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-height: 0;
+}
+
+.sidebar-content > .accordion:first-child {
+    margin-top: 0;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+    flex-shrink: 0;
+    border-top: 1px solid #e9ecef;
+    background: white;
+    padding: 0;
+}
+
+.profile-section {
+    position: relative;
+}
+
+.profile-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-align: left;
+}
+
+.profile-button:hover {
+    background: #f8f9fa;
+}
+
+.profile-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #3498db;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.profile-avatar svg {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+.profile-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.profile-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-chevron {
+    flex-shrink: 0;
+    transition: transform 0.2s;
+    color: #6c757d;
+}
+
+.profile-section.active .profile-chevron {
+    transform: rotate(180deg);
+}
+
+.profile-menu {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1px;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.profile-menu.hidden {
+    display: none;
+}
+
+.profile-menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #f1f3f5;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-align: left;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.profile-menu-item:last-child {
+    border-bottom: none;
+}
+
+.profile-menu-item:hover {
+    background: #f8f9fa;
+}
+
+.profile-menu-item svg {
+    width: 18px !important;
+    height: 18px !important;
+    color: #6c757d;
 }
 
 .accordion {
@@ -1075,10 +1216,10 @@ svg[data-lucide] {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    max-height: calc(var(--available-height) - 60px);
+    height: 100vh;
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 0;
+    box-shadow: none;
     padding: 15px;
     gap: 15px;
     overflow: hidden;
@@ -1985,6 +2126,81 @@ svg[data-lucide] {
 }
 
 /* ============================================
+   Settings Modal Styles
+   ============================================ */
+.settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.settings-section-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.settings-section .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.settings-section .form-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #495057;
+}
+
+.settings-section .form-group input[disabled] {
+    background: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+.form-help {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: -4px;
+}
+
+.settings-error {
+    padding: 12px;
+    background: #fee;
+    border: 1px solid #fcc;
+    border-radius: 6px;
+    color: #e74c3c;
+    font-size: 14px;
+    display: none;
+}
+
+.settings-error:not(:empty) {
+    display: block;
+}
+
+.settings-section .data-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.settings-section .data-info {
+    font-size: 13px;
+    color: #6c757d;
+    margin: 0;
+    padding-top: 8px;
+}
+
+/* ============================================
    Tag Selector Container
    ============================================ */
 .tag-selector-container {
@@ -2046,6 +2262,19 @@ svg[data-lucide] {
     
     .app-container {
         padding: 0;
+        max-width: 100%;
+    }
+    
+    .sidebar {
+        border-radius: 0;
+        box-shadow: none;
+    }
+    
+    .court-section {
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        max-height: calc(var(--available-height) - 60px);
+        height: auto;
     }
     
     /* Show mobile header */
@@ -2082,6 +2311,11 @@ svg[data-lucide] {
         border-radius: 0;
         box-shadow: none;
         transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    /* Hide sidebar footer on mobile/tablet portrait */
+    .sidebar-footer {
+        display: none;
     }
     
     .sidebar.open {
@@ -2329,6 +2563,13 @@ svg[data-lucide] {
 /* ============================================
    Phone-Specific Styles (max-width: 767px portrait)
    ============================================ */
+/* Hide sidebar footer on mobile portrait */
+@media (max-width: 767px) {
+    .sidebar-footer {
+        display: none;
+    }
+}
+
 @media (max-width: 767px) and (orientation: portrait) {
     /* Accordion content takes full height on phones in sidebar/drawer */
     .accordion.active .accordion-content {

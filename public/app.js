@@ -43,6 +43,7 @@ import {
     handleFileImport 
 } from './js/importExport.js';
 import { initAuth } from './js/auth.js';
+import { initProfile } from './js/profile.js';
 
 // Helper function to check if we're on a phone (matches CSS media query: max-width: 767px and orientation: portrait)
 function isPhoneView() {
@@ -190,6 +191,9 @@ async function init() {
         
         // Initialize drop zones
         initDropZones();
+        
+        // Initialize profile menu
+        initProfile();
         
         // Initial render
         renderLineup();

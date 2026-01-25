@@ -40,7 +40,7 @@
         <div class="main-content">
             <!-- Sidebar with Accordions -->
             <div class="sidebar" id="sidebar">
-
+                <div class="sidebar-content" id="sidebar-content">
                 <!-- Accordion: Players -->
                 <div class="accordion" data-accordion="players">
                     <div class="accordion-header">
@@ -124,20 +124,34 @@
                         </div>
                     </div>
                 </div>
+                </div>
 
-                <!-- Accordion: Data Management -->
-                <div class="accordion" data-accordion="data-management">
-                    <div class="accordion-header">
-                        <h3><i data-lucide="database"></i> Data Management</h3>
-                        <i data-lucide="chevron-down" class="accordion-icon"></i>
-                    </div>
-                    <div class="accordion-content">
-                        <div class="data-buttons">
-                            <button id="export-json-btn">Export Data</button>
-                            <button id="import-btn">Import File</button>
-                            <input type="file" id="import-file" accept=".json,.xml" class="hidden">
+                <!-- Sidebar Footer -->
+                <div class="sidebar-footer" id="sidebar-footer">
+                    <div class="profile-section">
+                        <button class="profile-button" id="profile-button">
+                            <div class="profile-avatar">
+                                <i data-lucide="user"></i>
+                            </div>
+                            <div class="profile-info">
+                                <span class="profile-name" id="profile-name">My Profile</span>
+                            </div>
+                            <i data-lucide="chevron-up" class="profile-chevron" id="profile-chevron"></i>
+                        </button>
+                        <div class="profile-menu hidden" id="profile-menu">
+                            <button class="profile-menu-item" id="profile-settings">
+                                <i data-lucide="settings"></i>
+                                <span>Settings</span>
+                            </button>
+                            <button class="profile-menu-item" id="profile-theme">
+                                <i data-lucide="palette"></i>
+                                <span>Theme</span>
+                            </button>
+                            <button class="profile-menu-item" id="profile-logout">
+                                <i data-lucide="log-out"></i>
+                                <span>Logout</span>
+                            </button>
                         </div>
-                        <p class="data-info" id="file-status">Data is automatically saved to data.json file.</p>
                     </div>
                 </div>
             </div>

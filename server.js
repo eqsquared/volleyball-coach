@@ -161,6 +161,68 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
     }
 });
 
+// PUT /api/auth/profile - Update user profile (requires authentication)
+app.put('/api/auth/profile', authenticate, async (req, res) => {
+    try {
+        const { firstName, lastName, currentPassword, newPassword } = req.body;
+        const userId = req.user.userId;
+        
+        // Get current user
+        const user = await db.getUserById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Update name if provided
+        if (firstName !== undefined || lastName !== undefined) {
+            const updates = {};
+            if (firstName !== undefined) updates.firstName = firstName;
+            if (lastName !== undefined) updates.lastName = lastName;
+            updates.updatedAt = new Date().toISOString();
+            
+            // Update user in database
+            const database = await db.connect();
+            const { ObjectId } = require('mongodb');
+            const usersCollection = database.collection('users');
+            await usersCollection.updateOne(
+                { _id: new ObjectId(userId) },
+                { $set: updates }
+            );
+        }
+        
+        // Update password if provided
+        if (newPassword && currentPassword) {
+            // Verify current password
+            const credentials = await db.getUserCredentials(userId);
+            if (!credentials || !credentials.passwordHash) {
+                return res.status(400).json({ error: 'Current password is incorrect' });
+            }
+            
+            const isValid = await auth.comparePassword(currentPassword, credentials.passwordHash);
+            if (!isValid) {
+                return res.status(400).json({ error: 'Current password is incorrect' });
+            }
+            
+            // Hash and save new password
+            const hashedPassword = await auth.hashPassword(newPassword);
+            await db.saveUserCredentials(userId, hashedPassword);
+        }
+        
+        // Return updated user
+        const updatedUser = await db.getUserById(userId);
+        res.json({
+            id: updatedUser.id,
+            firstName: updatedUser.firstName,
+            lastName: updatedUser.lastName,
+            email: updatedUser.email,
+            role: updatedUser.role
+        });
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
 // API Routes (all require authentication)
 
 // GET /api/data - Get all data (requires authentication)
