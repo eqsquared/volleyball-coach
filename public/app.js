@@ -43,6 +43,7 @@ import {
     exportToXML, 
     handleFileImport 
 } from './js/importExport.js';
+import { initAuth } from './js/auth.js';
 
 // Helper function to check if we're on a phone (matches CSS media query: max-width: 767px and orientation: portrait)
 function isPhoneView() {
@@ -58,11 +59,23 @@ async function init() {
         // Initialize DOM references
         initDOM();
         
+        // Initialize authentication (checks if user is logged in)
+        const isAuthenticated = await initAuth();
+        
+        // If not authenticated in web mode, stop here - user needs to log in first
+        const { getApiBase } = await import('./js/environment.js');
+        const apiBase = getApiBase();
+        if (apiBase && !isAuthenticated) {
+            // User needs to authenticate - don't try to load data
+            // The auth modal is already showing, so we'll wait for login
+            return;
+        }
+        
         // Initialize API connection (or local storage in native mode)
         await db.initDB();
         setDbInitialized(true);
         
-        // Try to load from file-based storage
+        // Try to load from file-based storage (only if authenticated or in native mode)
         const hasDBData = await db.hasData();
         
         if (hasDBData) {

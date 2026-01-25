@@ -1,11 +1,14 @@
 // MongoDB database module for Volleyball Coach app
 // Provides database operations for players, positions, rotations, scenarios, and sequences
+// Now supports user accounts with user-scoped data
 
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 const DB_NAME = process.env.DB_NAME || 'volleyball-coach';
 const COLLECTION_NAME = 'data';
+const USERS_COLLECTION = 'users';
+const CREDENTIALS_COLLECTION = 'userCredentials';
 
 let client = null;
 let db = null;
@@ -40,8 +43,18 @@ async function connect() {
         console.log(`Connected to MongoDB: ${DB_NAME}`);
         
         // Ensure indexes exist
-        const collection = db.collection(COLLECTION_NAME);
-        await collection.createIndex({ _id: 1 });
+        const dataCollection = db.collection(COLLECTION_NAME);
+        await dataCollection.createIndex({ _id: 1 });
+        await dataCollection.createIndex({ userId: 1 }); // Index for user-scoped queries
+        
+        // User collection indexes
+        const usersCollection = db.collection(USERS_COLLECTION);
+        await usersCollection.createIndex({ email: 1 }, { unique: true });
+        await usersCollection.createIndex({ _id: 1 });
+        
+        // Credentials collection indexes
+        const credentialsCollection = db.collection(CREDENTIALS_COLLECTION);
+        await credentialsCollection.createIndex({ userId: 1 }, { unique: true });
         
         return db;
     } catch (error) {
@@ -63,24 +76,29 @@ async function connect() {
     }
 }
 
-// Get the data document (single document storage)
-async function getDataDocument() {
+// Get the data document for a specific user
+async function getDataDocument(userId) {
+    if (!userId) {
+        throw new Error('UserId is required');
+    }
+    
     const database = await connect();
     const collection = database.collection(COLLECTION_NAME);
     
-    let doc = await collection.findOne({ _id: 'main' });
+    let doc = await collection.findOne({ userId: userId });
     
     if (!doc) {
-        // Initialize with empty data
+        // Initialize with empty data for this user
         const initialData = {
-            _id: 'main',
+            userId: userId,
             players: [],
             positions: [],
             rotations: [],
             scenarios: [],
             sequences: [],
             version: '4.0',
-            database: 'mongodb'
+            database: 'mongodb',
+            createdAt: new Date().toISOString()
         };
         await collection.insertOne(initialData);
         return initialData;
@@ -91,36 +109,40 @@ async function getDataDocument() {
     return data;
 }
 
-// Save the data document
-async function saveDataDocument(data) {
+// Save the data document for a specific user
+async function saveDataDocument(userId, data) {
+    if (!userId) {
+        throw new Error('UserId is required');
+    }
+    
     const database = await connect();
     const collection = database.collection(COLLECTION_NAME);
     
     const document = {
-        _id: 'main',
+        userId: userId,
         ...data,
         database: 'mongodb',
         lastUpdated: new Date().toISOString()
     };
     
-    await collection.replaceOne({ _id: 'main' }, document, { upsert: true });
+    await collection.replaceOne({ userId: userId }, document, { upsert: true });
     return true;
 }
 
-// Read all data
-async function readData() {
+// Read all data for a user
+async function readData(userId) {
     try {
-        return await getDataDocument();
+        return await getDataDocument(userId);
     } catch (error) {
         console.error('Error reading data from MongoDB:', error);
         throw error;
     }
 }
 
-// Write all data
-async function writeData(data) {
+// Write all data for a user
+async function writeData(userId, data) {
     try {
-        await saveDataDocument(data);
+        await saveDataDocument(userId, data);
         return true;
     } catch (error) {
         console.error('Error writing data to MongoDB:', error);
@@ -128,73 +150,221 @@ async function writeData(data) {
     }
 }
 
-// Migrate from old format (v3.0) to new format (v4.0)
+// ==================== User Management ====================
+
+/**
+ * Create a new user
+ * @param {object} userData - User data: { firstName, lastName, email, role }
+ * @returns {Promise<object>} - Created user (without password)
+ */
+async function createUser(userData) {
+    const database = await connect();
+    const usersCollection = database.collection(USERS_COLLECTION);
+    
+    const { firstName, lastName, email, role } = userData;
+    
+    // Validate required fields
+    if (!firstName || !lastName || !email || !role) {
+        throw new Error('All fields (firstName, lastName, email, role) are required');
+    }
+    
+    // Validate role
+    const validRoles = ['coach', 'assistant coach', 'player'];
+    if (!validRoles.includes(role.toLowerCase())) {
+        throw new Error(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+    }
+    
+    // Check if user already exists
+    const existingUser = await usersCollection.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+        throw new Error('User with this email already exists');
+    }
+    
+    const user = {
+        firstName,
+        lastName,
+        email: email.toLowerCase(),
+        role: role.toLowerCase(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    
+    const result = await usersCollection.insertOne(user);
+    const { _id, ...userWithoutId } = user;
+    return {
+        id: result.insertedId.toString(),
+        ...userWithoutId
+    };
+}
+
+/**
+ * Get user by email
+ * @param {string} email - User email
+ * @returns {Promise<object|null>} - User object or null
+ */
+async function getUserByEmail(email) {
+    const database = await connect();
+    const usersCollection = database.collection(USERS_COLLECTION);
+    
+    const user = await usersCollection.findOne({ email: email.toLowerCase() });
+    if (!user) return null;
+    
+    const { _id, ...userWithoutId } = user;
+    return {
+        id: _id.toString(),
+        ...userWithoutId
+    };
+}
+
+/**
+ * Get user by ID
+ * @param {string} userId - User ID
+ * @returns {Promise<object|null>} - User object or null
+ */
+async function getUserById(userId) {
+    const database = await connect();
+    const usersCollection = database.collection(USERS_COLLECTION);
+    
+    try {
+        const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+        if (!user) return null;
+        
+        const { _id, ...userWithoutId } = user;
+        return {
+            id: _id.toString(),
+            ...userWithoutId
+        };
+    } catch (error) {
+        if (error.message && error.message.includes('ObjectId')) {
+            return null;
+        }
+        throw error;
+    }
+}
+
+/**
+ * Save user credentials (hashed password)
+ * @param {string} userId - User ID
+ * @param {string} hashedPassword - Hashed password
+ * @returns {Promise<boolean>}
+ */
+async function saveUserCredentials(userId, hashedPassword) {
+    const database = await connect();
+    const credentialsCollection = database.collection(CREDENTIALS_COLLECTION);
+    
+    await credentialsCollection.replaceOne(
+        { userId: userId },
+        {
+            userId: userId,
+            passwordHash: hashedPassword,
+            updatedAt: new Date().toISOString()
+        },
+        { upsert: true }
+    );
+    
+    return true;
+}
+
+/**
+ * Get user credentials by user ID
+ * @param {string} userId - User ID
+ * @returns {Promise<object|null>} - Credentials object with passwordHash or null
+ */
+async function getUserCredentials(userId) {
+    const database = await connect();
+    const credentialsCollection = database.collection(CREDENTIALS_COLLECTION);
+    
+    return await credentialsCollection.findOne({ userId: userId });
+}
+
+// Migrate from old format (v3.0) to new format (v4.0) - Legacy support
+// Note: This is for migrating old single-document data to user-scoped data
+// In production, you'd want to assign old data to a default user or migrate it properly
 async function migrateDataIfNeeded() {
     try {
-        const data = await readData();
+        const database = await connect();
+        const collection = database.collection(COLLECTION_NAME);
         
-        // Check if already migrated (has positions array)
-        if (data.positions && Array.isArray(data.positions)) {
-            return; // Already migrated
+        // Check for old format (single document with _id: 'main')
+        const oldDoc = await collection.findOne({ _id: 'main' });
+        
+        if (oldDoc) {
+            console.log('Found legacy data format. Note: Legacy data will need to be migrated to a user account.');
+            console.log('To migrate, create a user account and import the data manually, or implement a migration script.');
+            // We don't auto-migrate here to avoid data loss - admin should handle this
         }
         
-        // Check if old format exists (has savedPositions object)
-        if (data.savedPositions && typeof data.savedPositions === 'object' && !Array.isArray(data.savedPositions)) {
-            console.log('Migrating data from v3.0 to v4.0...');
+        // Check for any user data that needs format migration
+        const userDocs = await collection.find({ userId: { $exists: true } }).toArray();
+        
+        for (const doc of userDocs) {
+            // Check if already migrated (has positions array)
+            if (doc.positions && Array.isArray(doc.positions)) {
+                continue; // Already migrated
+            }
             
-            // Convert savedPositions object to positions array
-            const positions = [];
-            const positionNameToId = new Map();
-            
-            Object.keys(data.savedPositions).forEach((positionName, index) => {
-                const positionId = `pos_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
-                positionNameToId.set(positionName, positionId);
+            // Check if old format exists (has savedPositions object)
+            if (doc.savedPositions && typeof doc.savedPositions === 'object' && !Array.isArray(doc.savedPositions)) {
+                console.log(`Migrating data for user ${doc.userId} from v3.0 to v4.0...`);
                 
-                positions.push({
-                    id: positionId,
-                    name: positionName,
-                    rotationIds: [],
-                    playerPositions: data.savedPositions[positionName] || []
+                // Convert savedPositions object to positions array
+                const positions = [];
+                const positionNameToId = new Map();
+                
+                Object.keys(doc.savedPositions).forEach((positionName, index) => {
+                    const positionId = `pos_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+                    positionNameToId.set(positionName, positionId);
+                    
+                    positions.push({
+                        id: positionId,
+                        name: positionName,
+                        rotationIds: [],
+                        playerPositions: doc.savedPositions[positionName] || []
+                    });
                 });
-            });
-            
-            // Create default rotations based on position names that start with "Rotation"
-            const rotations = [];
-            const rotationMap = new Map();
-            
-            positions.forEach(position => {
-                const rotationMatch = position.name.match(/^(Rotation \d+)/);
-                if (rotationMatch) {
-                    const rotationName = rotationMatch[1];
-                    
-                    if (!rotationMap.has(rotationName)) {
-                        const rotationId = `rot_${Date.now()}_${rotations.length}_${Math.random().toString(36).substr(2, 9)}`;
-                        rotations.push({
-                            id: rotationId,
-                            name: rotationName,
-                            positionIds: []
-                        });
-                        rotationMap.set(rotationName, rotationId);
+                
+                // Create default rotations based on position names that start with "Rotation"
+                const rotations = [];
+                const rotationMap = new Map();
+                
+                positions.forEach(position => {
+                    const rotationMatch = position.name.match(/^(Rotation \d+)/);
+                    if (rotationMatch) {
+                        const rotationName = rotationMatch[1];
+                        
+                        if (!rotationMap.has(rotationName)) {
+                            const rotationId = `rot_${Date.now()}_${rotations.length}_${Math.random().toString(36).substr(2, 9)}`;
+                            rotations.push({
+                                id: rotationId,
+                                name: rotationName,
+                                positionIds: []
+                            });
+                            rotationMap.set(rotationName, rotationId);
+                        }
+                        
+                        const rotationId = rotationMap.get(rotationName);
+                        const rotation = rotations.find(r => r.id === rotationId);
+                        if (rotation) {
+                            rotation.positionIds.push(position.id);
+                            position.rotationIds.push(rotationId);
+                        }
                     }
-                    
-                    const rotationId = rotationMap.get(rotationName);
-                    const rotation = rotations.find(r => r.id === rotationId);
-                    if (rotation) {
-                        rotation.positionIds.push(position.id);
-                        position.rotationIds.push(rotationId);
-                    }
-                }
-            });
-            
-            // Update data structure
-            data.positions = positions;
-            data.rotations = rotations;
-            data.scenarios = data.scenarios || [];
-            data.sequences = data.sequences || [];
-            data.version = '4.0';
-            
-            await writeData(data);
-            console.log(`Migration complete: ${positions.length} positions, ${rotations.length} rotations`);
+                });
+                
+                // Update data structure
+                const updatedData = {
+                    ...doc,
+                    positions: positions,
+                    rotations: rotations,
+                    scenarios: doc.scenarios || [],
+                    sequences: doc.sequences || [],
+                    version: '4.0',
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                await collection.replaceOne({ userId: doc.userId }, updatedData);
+                console.log(`Migration complete for user ${doc.userId}: ${positions.length} positions, ${rotations.length} rotations`);
+            }
         }
     } catch (error) {
         console.error('Error during migration:', error);
@@ -230,5 +400,11 @@ module.exports = {
     writeData,
     initialize,
     close,
-    migrateDataIfNeeded
+    migrateDataIfNeeded,
+    // User management
+    createUser,
+    getUserByEmail,
+    getUserById,
+    saveUserCredentials,
+    getUserCredentials
 };

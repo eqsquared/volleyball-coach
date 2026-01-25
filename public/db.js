@@ -1,10 +1,13 @@
 // Hybrid Database Manager for Volleyball Coach
 // Supports both API-based storage (web) and local storage (native)
+// Now includes user authentication support
 
 import { getApiBase, isNative } from './js/environment.js';
 
-// Storage key for local storage mode
+// Storage keys
 const STORAGE_KEY = 'volleyball-coach-data';
+const AUTH_TOKEN_KEY = 'volleyball-coach-auth-token';
+const USER_KEY = 'volleyball-coach-user';
 
 // Get API base URL (lazy evaluation - null in native mode)
 function getApiBaseUrl() {
@@ -79,21 +82,105 @@ async function saveLocalData(data) {
     }
 }
 
+// ==================== Authentication Helpers ====================
+
+/**
+ * Get auth token from storage
+ */
+async function getAuthToken() {
+    try {
+        const { Preferences } = await import('@capacitor/preferences');
+        const result = await Preferences.get({ key: AUTH_TOKEN_KEY });
+        return result.value || null;
+    } catch (capError) {
+        return localStorage.getItem(AUTH_TOKEN_KEY);
+    }
+}
+
+/**
+ * Save auth token to storage
+ */
+async function setAuthToken(token) {
+    try {
+        const { Preferences } = await import('@capacitor/preferences');
+        await Preferences.set({ key: AUTH_TOKEN_KEY, value: token });
+    } catch (capError) {
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+    }
+}
+
+/**
+ * Remove auth token from storage
+ */
+async function clearAuthToken() {
+    try {
+        const { Preferences } = await import('@capacitor/preferences');
+        await Preferences.remove({ key: AUTH_TOKEN_KEY });
+        await Preferences.remove({ key: USER_KEY });
+    } catch (capError) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+    }
+}
+
+/**
+ * Get current user from storage
+ */
+async function getCurrentUser() {
+    try {
+        const { Preferences } = await import('@capacitor/preferences');
+        const result = await Preferences.get({ key: USER_KEY });
+        return result.value ? JSON.parse(result.value) : null;
+    } catch (capError) {
+        const userStr = localStorage.getItem(USER_KEY);
+        return userStr ? JSON.parse(userStr) : null;
+    }
+}
+
+/**
+ * Save current user to storage
+ */
+async function setCurrentUser(user) {
+    try {
+        const { Preferences } = await import('@capacitor/preferences');
+        await Preferences.set({ key: USER_KEY, value: JSON.stringify(user) });
+    } catch (capError) {
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+    }
+}
+
 // ==================== API Helpers ====================
 
 /**
- * Make an API request
+ * Make an API request with authentication
  */
 async function apiRequest(endpoint, options = {}) {
     const apiBase = getApiBaseUrl();
     const url = `${apiBase}${endpoint}`;
+    
+    // Get auth token and add to headers if available
+    const token = await getAuthToken();
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetch(url, {
         ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers
-        }
+        headers
     });
+    
+    // Handle authentication errors
+    if (response.status === 401) {
+        await clearAuthToken();
+        // Dispatch event for UI to handle login redirect
+        window.dispatchEvent(new CustomEvent('auth-required'));
+        throw new Error('Authentication required. Please log in.');
+    }
     
     if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Request failed' }));
@@ -101,6 +188,105 @@ async function apiRequest(endpoint, options = {}) {
     }
     
     return await response.json();
+}
+
+// ==================== Authentication API ====================
+
+/**
+ * Register a new user
+ */
+export async function register(firstName, lastName, email, password, role) {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+        throw new Error('Registration is only available in web mode');
+    }
+    
+    const response = await fetch(`${apiBase}/auth/register`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ firstName, lastName, email, password, role })
+    });
+    
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Registration failed' }));
+        throw new Error(error.error || 'Registration failed');
+    }
+    
+    const data = await response.json();
+    await setAuthToken(data.token);
+    await setCurrentUser(data.user);
+    return data;
+}
+
+/**
+ * Login user
+ */
+export async function login(email, password) {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+        throw new Error('Login is only available in web mode');
+    }
+    
+    const response = await fetch(`${apiBase}/auth/login`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+    });
+    
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Login failed' }));
+        throw new Error(error.error || 'Login failed');
+    }
+    
+    const data = await response.json();
+    await setAuthToken(data.token);
+    await setCurrentUser(data.user);
+    return data;
+}
+
+/**
+ * Logout user
+ */
+export async function logout() {
+    await clearAuthToken();
+}
+
+/**
+ * Get current user
+ */
+export async function getCurrentUserInfo() {
+    return await getCurrentUser();
+}
+
+/**
+ * Check if user is authenticated
+ */
+export async function isAuthenticated() {
+    const token = await getAuthToken();
+    return !!token;
+}
+
+/**
+ * Get current user info from server (validates token)
+ */
+export async function fetchCurrentUser() {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+        return await getCurrentUser();
+    }
+    
+    try {
+        const user = await apiRequest('/auth/me');
+        await setCurrentUser(user);
+        return user;
+    } catch (error) {
+        await clearAuthToken();
+        return null;
+    }
 }
 
 // ==================== Public API ====================
@@ -111,13 +297,19 @@ async function apiRequest(endpoint, options = {}) {
 export async function initDB() {
     const apiBase = getApiBaseUrl();
     if (apiBase) {
-        // Web mode: Check if server is available
+        // Web mode: Check if server is available and user is authenticated
         try {
-            await apiRequest('/data');
+            // Try to validate current token if we have one
+            const token = await getAuthToken();
+            if (token) {
+                await fetchCurrentUser();
+            }
+            // Don't require auth for init - let the app handle login flow
             return true;
         } catch (error) {
             console.error('Error connecting to server:', error);
-            throw new Error('Cannot connect to server. Please make sure the server is running.');
+            // Don't throw - allow app to continue in case user needs to login
+            return true;
         }
     } else {
         // Native mode: Local storage is always available

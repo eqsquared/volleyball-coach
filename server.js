@@ -1,5 +1,6 @@
 // Express server for Volleyball Coach app
 // Provides API endpoints to read/write data to MongoDB database
+// Now supports user authentication and user-scoped data
 
 // Load environment variables from .env file
 require('dotenv').config();
@@ -8,6 +9,8 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const db = require('./db');
+const auth = require('./auth');
+const { authenticate } = require('./middleware');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -18,42 +21,172 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(PUBLIC_DIR)); // Serve static files from public directory
 
-// Read data from MongoDB
-async function readData() {
-    return await db.readData();
+// Read data from MongoDB for a user
+async function readData(userId) {
+    return await db.readData(userId);
 }
 
-// Write data to MongoDB
-async function writeData(data) {
-    return await db.writeData(data);
+// Write data to MongoDB for a user
+async function writeData(userId, data) {
+    return await db.writeData(userId, data);
 }
 
-// API Routes
+// ==================== Authentication Routes ====================
 
-// GET /api/data - Get all data
-app.get('/api/data', async (req, res) => {
+// Health check endpoint (for debugging)
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', message: 'Server is running' });
+});
+
+// POST /api/auth/register - Register a new user
+app.post('/api/auth/register', async (req, res) => {
+    console.log('Registration endpoint hit');
     try {
-        const data = await readData();
+        const { firstName, lastName, email, password, role } = req.body;
+        
+        // Validate required fields
+        if (!firstName || !lastName || !email || !password || !role) {
+            return res.status(400).json({ 
+                error: 'All fields are required: firstName, lastName, email, password, role' 
+            });
+        }
+        
+        // Validate password length
+        if (password.length < 6) {
+            return res.status(400).json({ 
+                error: 'Password must be at least 6 characters long' 
+            });
+        }
+        
+        // Create user
+        const user = await db.createUser({ firstName, lastName, email, role });
+        
+        // Hash and save password
+        const hashedPassword = await auth.hashPassword(password);
+        await db.saveUserCredentials(user.id, hashedPassword);
+        
+        // Generate token
+        const token = auth.generateToken(user.id, user.email);
+        
+        res.status(201).json({
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        if (error.message.includes('already exists')) {
+            return res.status(409).json({ error: error.message });
+        }
+        if (error.message.includes('Invalid role')) {
+            return res.status(400).json({ error: error.message });
+        }
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Failed to register user' });
+    }
+});
+
+// POST /api/auth/login - Login user
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({ 
+                error: 'Email and password are required' 
+            });
+        }
+        
+        // Get user by email
+        const user = await db.getUserByEmail(email);
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+        
+        // Get credentials
+        const credentials = await db.getUserCredentials(user.id);
+        if (!credentials) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+        
+        // Verify password
+        const passwordMatch = await auth.comparePassword(password, credentials.passwordHash);
+        if (!passwordMatch) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+        
+        // Generate token
+        const token = auth.generateToken(user.id, user.email);
+        
+        res.json({
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Failed to login' });
+    }
+});
+
+// GET /api/auth/me - Get current user info (requires authentication)
+app.get('/api/auth/me', authenticate, async (req, res) => {
+    try {
+        const user = await db.getUserById(req.user.userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        res.json({
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role
+        });
+    } catch (error) {
+        console.error('Get user error:', error);
+        res.status(500).json({ error: 'Failed to get user info' });
+    }
+});
+
+// API Routes (all require authentication)
+
+// GET /api/data - Get all data (requires authentication)
+app.get('/api/data', authenticate, async (req, res) => {
+    try {
+        const data = await readData(req.user.userId);
         res.json(data);
     } catch (error) {
         res.status(500).json({ error: 'Failed to read data' });
     }
 });
 
-// GET /api/players - Get all players
-app.get('/api/players', async (req, res) => {
+// GET /api/players - Get all players (requires authentication)
+app.get('/api/players', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         res.json(data.players || []);
     } catch (error) {
         res.status(500).json({ error: 'Failed to read players' });
     }
 });
 
-// POST /api/players - Add or update a player
-app.post('/api/players', async (req, res) => {
+// POST /api/players - Add or update a player (requires authentication)
+app.post('/api/players', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const player = req.body;
         
         if (!player.id || !player.jersey || !player.name) {
@@ -74,17 +207,17 @@ app.post('/api/players', async (req, res) => {
             data.players.push(player);
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json(player);
     } catch (error) {
         res.status(500).json({ error: 'Failed to save player' });
     }
 });
 
-// DELETE /api/players/:id - Delete a player
-app.delete('/api/players/:id', async (req, res) => {
+// DELETE /api/players/:id - Delete a player (requires authentication)
+app.delete('/api/players/:id', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const playerId = req.params.id;
         
         data.players = data.players.filter(p => p.id !== playerId);
@@ -109,27 +242,27 @@ app.delete('/api/players/:id', async (req, res) => {
             });
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete player' });
     }
 });
 
-// GET /api/positions - Get all positions
-app.get('/api/positions', async (req, res) => {
+// GET /api/positions - Get all positions (requires authentication)
+app.get('/api/positions', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         res.json(data.positions || []);
     } catch (error) {
         res.status(500).json({ error: 'Failed to read positions' });
     }
 });
 
-// POST /api/positions - Create or update a position
-app.post('/api/positions', async (req, res) => {
+// POST /api/positions - Create or update a position (requires authentication)
+app.post('/api/positions', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const position = req.body;
         
         if (!position.id || !position.name) {
@@ -147,17 +280,17 @@ app.post('/api/positions', async (req, res) => {
             data.positions.push(position);
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json(position);
     } catch (error) {
         res.status(500).json({ error: 'Failed to save position' });
     }
 });
 
-// DELETE /api/positions/:id - Delete a position
-app.delete('/api/positions/:id', async (req, res) => {
+// DELETE /api/positions/:id - Delete a position (requires authentication)
+app.delete('/api/positions/:id', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const positionId = req.params.id;
         
         // Remove position from rotations
@@ -190,27 +323,27 @@ app.delete('/api/positions/:id', async (req, res) => {
             data.positions = data.positions.filter(p => p.id !== positionId);
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete position' });
     }
 });
 
-// GET /api/rotations - Get all rotations
-app.get('/api/rotations', async (req, res) => {
+// GET /api/rotations - Get all rotations (requires authentication)
+app.get('/api/rotations', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         res.json(data.rotations || []);
     } catch (error) {
         res.status(500).json({ error: 'Failed to read rotations' });
     }
 });
 
-// POST /api/rotations - Create or update a rotation
-app.post('/api/rotations', async (req, res) => {
+// POST /api/rotations - Create or update a rotation (requires authentication)
+app.post('/api/rotations', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const rotation = req.body;
         
         if (!rotation.id || !rotation.name) {
@@ -228,17 +361,17 @@ app.post('/api/rotations', async (req, res) => {
             data.rotations.push(rotation);
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json(rotation);
     } catch (error) {
         res.status(500).json({ error: 'Failed to save rotation' });
     }
 });
 
-// DELETE /api/rotations/:id - Delete a rotation
-app.delete('/api/rotations/:id', async (req, res) => {
+// DELETE /api/rotations/:id - Delete a rotation (requires authentication)
+app.delete('/api/rotations/:id', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const rotationId = req.params.id;
         
         // Remove rotation from positions
@@ -253,27 +386,27 @@ app.delete('/api/rotations/:id', async (req, res) => {
             data.rotations = data.rotations.filter(r => r.id !== rotationId);
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete rotation' });
     }
 });
 
-// GET /api/scenarios - Get all scenarios
-app.get('/api/scenarios', async (req, res) => {
+// GET /api/scenarios - Get all scenarios (requires authentication)
+app.get('/api/scenarios', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         res.json(data.scenarios || []);
     } catch (error) {
         res.status(500).json({ error: 'Failed to read scenarios' });
     }
 });
 
-// POST /api/scenarios - Create or update a scenario
-app.post('/api/scenarios', async (req, res) => {
+// POST /api/scenarios - Create or update a scenario (requires authentication)
+app.post('/api/scenarios', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const scenario = req.body;
         
         if (!scenario.id || !scenario.name || !scenario.startPositionId || !scenario.endPositionId) {
@@ -291,17 +424,17 @@ app.post('/api/scenarios', async (req, res) => {
             data.scenarios.push(scenario);
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json(scenario);
     } catch (error) {
         res.status(500).json({ error: 'Failed to save scenario' });
     }
 });
 
-// DELETE /api/scenarios/:id - Delete a scenario
-app.delete('/api/scenarios/:id', async (req, res) => {
+// DELETE /api/scenarios/:id - Delete a scenario (requires authentication)
+app.delete('/api/scenarios/:id', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const scenarioId = req.params.id;
         
         // Remove scenario from sequences (both old and new format)
@@ -325,27 +458,27 @@ app.delete('/api/scenarios/:id', async (req, res) => {
             data.scenarios = data.scenarios.filter(s => s.id !== scenarioId);
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete scenario' });
     }
 });
 
-// GET /api/sequences - Get all sequences
-app.get('/api/sequences', async (req, res) => {
+// GET /api/sequences - Get all sequences (requires authentication)
+app.get('/api/sequences', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         res.json(data.sequences || []);
     } catch (error) {
         res.status(500).json({ error: 'Failed to read sequences' });
     }
 });
 
-// POST /api/sequences - Create or update a sequence
-app.post('/api/sequences', async (req, res) => {
+// POST /api/sequences - Create or update a sequence (requires authentication)
+app.post('/api/sequences', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const sequence = req.body;
         
         if (!sequence.id || !sequence.name) {
@@ -378,32 +511,32 @@ app.post('/api/sequences', async (req, res) => {
             data.sequences.push(sequence);
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json(sequence);
     } catch (error) {
         res.status(500).json({ error: 'Failed to save sequence' });
     }
 });
 
-// DELETE /api/sequences/:id - Delete a sequence
-app.delete('/api/sequences/:id', async (req, res) => {
+// DELETE /api/sequences/:id - Delete a sequence (requires authentication)
+app.delete('/api/sequences/:id', authenticate, async (req, res) => {
     try {
-        const data = await readData();
+        const data = await readData(req.user.userId);
         const sequenceId = req.params.id;
         
         if (data.sequences) {
             data.sequences = data.sequences.filter(s => s.id !== sequenceId);
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete sequence' });
     }
 });
 
-// POST /api/import - Import data (replaces all data)
-app.post('/api/import', async (req, res) => {
+// POST /api/import - Import data (replaces all data) (requires authentication)
+app.post('/api/import', authenticate, async (req, res) => {
     try {
         const importedData = req.body;
         
@@ -437,7 +570,7 @@ app.post('/api/import', async (req, res) => {
             };
         }
         
-        await writeData(data);
+        await writeData(req.user.userId, data);
         res.json({ success: true, data });
     } catch (error) {
         res.status(500).json({ error: 'Failed to import data' });
