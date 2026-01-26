@@ -1,6 +1,6 @@
-# Volleyball Coach - Position Training App
+# VolleyBoard - Volleyball Position Training App
 
-A web-based volleyball coaching tool designed to help new players visualize court positions and rotations. This interactive application allows coaches to set lineups, position players on the court, save formations, and animate transitions between positions.
+A web-based volleyball coaching tool designed to help new players visualize court positions and rotations. This interactive application allows coaches to set lineups, position players on the court, save formations, create scenarios and sequences, and animate transitions between positions. Players can view team formations using a read-only team code.
 
 ## Features
 
@@ -22,20 +22,54 @@ A web-based volleyball coaching tool designed to help new players visualize cour
 - **Overwrite positions**: Update existing saved positions with current court layout
 - **Delete positions**: Remove saved formations
 - **Multiple saved positions**: Store unlimited formations for different scenarios
+- **Tags for organization**: Add tags to positions for easy filtering and organization
+- **Search and filter**: Search positions by name and filter by tags
+
+### 🎬 Scenarios
+- **Create scenarios**: Save start and end positions together as a scenario (e.g., "Serve Receive to Attack")
+- **Visual drop zones**: See both start and end positions displayed below the court
+- **Play scenarios**: Animate the transition from start to end position with one click
+- **Edit scenarios**: Update start/end positions or save as a new scenario
+- **Tags for organization**: Add tags to scenarios for easy filtering and organization
+- **Search and filter**: Search scenarios by name and filter by tags
+
+### 📋 Sequences
+- **Create sequences**: Build sequences by combining positions and scenarios in any order
+- **Timeline interface**: Drag and drop positions and scenarios onto the sequence timeline
+- **Play sequences**: Step through a sequence position by position with Next/Previous controls
+- **Progress tracking**: See which position in the sequence is currently active
+- **Flexible composition**: Mix individual positions and scenarios in any combination
+- **Edit sequences**: Add, remove, or reorder items in the sequence timeline
+
+### 🏷️ Tags & Organization
+- **Tag system**: Add custom tags to positions and scenarios for organization
+- **Tag filtering**: Filter positions and scenarios by one or more tags
+- **Tag colors**: Visual color coding for easy tag identification
+- **Search functionality**: Search positions and scenarios by name
+- **Combined filtering**: Use both search and tag filters together
+
+### 👀 Read-Only Player View
+- **Team codes**: Coaches can generate a 6-character team code to share with players
+- **Player access**: Players enter the team code to view team formations in read-only mode
+- **Share URL**: Coaches can share a direct URL with the team code embedded
+- **View-only mode**: Players can view positions, scenarios, and sequences but cannot edit
+- **Settings control**: Coaches enable/disable player view in settings
 
 ### 🎬 Animation System
 - **Position transitions**: Animate players from one saved position to another
-- **Start/End selection**: Choose start and end positions from dropdown menus
+- **Scenario animations**: Play scenarios to animate from start to end position
+- **Sequence playback**: Step through sequences position by position
 - **Smooth animations**: 1-second transitions between positions
 - **Reset to start**: Refresh button to return to the start position after animation
 
 ### 💾 Data Persistence
 - **MongoDB database**: All data is automatically saved to MongoDB database
-- **Automatic saving**: Every change (add player, save position, etc.) is immediately saved to the database
+- **Automatic saving**: Every change (add player, save position, create scenario, etc.) is immediately saved to the database
 - **No data loss**: Data persists permanently across all deployments and server restarts
 - **Automatic migration**: Seamlessly migrates from legacy XML files on first load
 - **Import/Export**: Import and export data in JSON or XML format for backup
 - **Server-based**: Requires Node.js server to run (included in npm start)
+- **User accounts**: Each coach has their own account with isolated data storage
 
 ## Getting Started
 
@@ -109,11 +143,27 @@ The app is ready to deploy to platforms like:
    - Enter a position name (e.g., "Base", "Serve Receive")
    - Click "Save Position"
 
-5. **Animate transitions**:
-   - Select a "Start Position" from the dropdown
-   - Select an "End Position" from the dropdown
-   - Click "Play Animation" to see the transition
-   - Use "Reset to Start" to return to the start position
+5. **Create scenarios**:
+   - Drag a position to the "Start Position" drop zone
+   - Drag another position to the "End Position" drop zone
+   - Click "Save Scenario" to create a new scenario
+   - Click "Play" to animate from start to end position
+
+6. **Create sequences**:
+   - Click "Create Sequence" and enter a name
+   - Drag positions and scenarios onto the sequence timeline
+   - Click "Play" to step through the sequence
+   - Use "Next" and "Previous" buttons to navigate
+
+7. **Use tags for organization**:
+   - When creating or editing positions/scenarios, add tags (comma-separated)
+   - Use the tag filter button to filter by tags
+   - Combine search and tag filters for precise filtering
+
+8. **Share with players** (coaches only):
+   - Go to Settings → Enable Player View
+   - Copy your team code or share URL
+   - Players can enter the code to view formations in read-only mode
 
 ## File Structure
 
@@ -153,38 +203,90 @@ volleyball-coach/
 
 ### Saving Positions
 1. Arrange players on the court in the desired formation
-2. Enter a descriptive name in the "Position name" field
-3. Click "Save Position"
-4. The position appears in the "Saved Positions" list
+2. Click "+ New Position" or edit an existing position
+3. Enter a descriptive name and optional tags (comma-separated)
+4. Click "Save Position"
+5. The position appears in the "Positions" list
 
-### Overwriting Positions
-1. Load or create the position you want to update
-2. Move players to new positions
-3. Click the 💾 (save) icon next to the position name in the saved positions list
-4. Confirm to overwrite
+### Editing Positions
+1. Click the edit icon (✏️) next to a position name
+2. Modify the position name or tags
+3. To update player positions: load the position, move players, then click "Save"
+4. Click "Save As" to create a copy with a new name
 
-### Animating Position Changes
-1. Select a "Start Position" from the dropdown
-2. Select an "End Position" from the dropdown
-3. Click "Play Animation"
-4. Watch players smoothly transition to their new positions
-5. Click "Reset to Start" to return to the start position
+### Creating Scenarios
+1. Load or create a start position on the court
+2. Drag the position to the "Start Position" drop zone (or select from dropdown)
+3. Load or create an end position
+4. Drag the end position to the "End Position" drop zone (or select from dropdown)
+5. Click "Save Scenario" and enter a name and optional tags
+6. The scenario appears in the "Scenarios" list
+
+### Playing Scenarios
+1. Click on a scenario in the list to load it
+2. The start position loads on the court, and both positions show in drop zones
+3. Click "Play" to animate from start to end position
+4. Click "Reset" to return to the start position
+5. Click "Clear" to remove the scenario from the drop zones
+
+### Creating Sequences
+1. Click "Create Sequence" and enter a name
+2. The sequence timeline appears below the court
+3. Drag positions and scenarios from the sidebar onto the timeline
+4. Reorder items by dragging them within the timeline
+5. Remove items by clicking the X button on timeline items
+
+### Playing Sequences
+1. Load a sequence to enter edit mode
+2. Click "Play" to start playback from the first position
+3. Use "Next" to advance to the next position/scenario
+4. Use "Prev" to go back to the previous position/scenario
+5. The progress indicator shows current position (e.g., "Position 1 of 5")
+6. Click "Play" again to restart from the beginning
+
+### Using Tags
+1. When creating or editing positions/scenarios, add tags in the tags field (comma-separated)
+2. Click the tag filter button (🏷️) to open the tag filter dropdown
+3. Select one or more tags to filter the list
+4. Selected tags appear as badges above the list
+5. Click a tag badge to remove that filter
+6. Use the search box to search by name while filtering by tags
+
+### Team Code & Player View
+
+#### For Coaches: Enabling Player View
+1. Click on your profile in the sidebar footer
+2. Select "Settings"
+3. Enable "Enable Player View" toggle
+4. Your unique 6-character team code will be generated
+5. Copy the team code or share URL to give to players
+6. Players can use this code to view your team formations in read-only mode
+
+#### For Players: Viewing Team Data
+1. On the login screen, click the "Team Code" tab
+2. Enter the 6-character team code provided by your coach
+3. Click "View Team" to access read-only view
+4. You can view positions, scenarios, and sequences but cannot edit
+5. The view expires after a period of inactivity for security
 
 ### Data Management
 
 #### Export Data
-- **Export JSON**: Downloads a JSON file with all players and positions
-- **Export XML**: Downloads an XML file with all players and positions
+- **Export JSON**: Downloads a JSON file with all players, positions, scenarios, and sequences
+- **Export XML**: Downloads an XML file with all data
+- Access via Settings → Export Data
 
 #### Import Data
-- Click "Import File"
+- Go to Settings → Import File
 - Select a JSON or XML file
 - Data will be loaded and merged with existing data
+- Note: This will add to your existing data, not replace it
 
 #### Data Storage
 - All data is automatically saved to MongoDB database
 - No manual saving required - every change is persisted immediately
 - Data persists across all deployments and server restarts
+- Each user account has isolated data storage
 - You can still export/import JSON or XML files for backup purposes
 
 ## Technical Details
@@ -225,12 +327,30 @@ The MongoDB document structure:
     {
       "id": "...",
       "name": "...",
-      "playerPositions": [...]
+      "playerPositions": [...],
+      "tags": [...]
     }
   ],
   "rotations": [...],
-  "scenarios": [...],
-  "sequences": [...],
+  "scenarios": [
+    {
+      "id": "...",
+      "name": "...",
+      "startPositionId": "...",
+      "endPositionId": "...",
+      "tags": [...]
+    }
+  ],
+  "sequences": [
+    {
+      "id": "...",
+      "name": "...",
+      "items": [
+        { "type": "position", "id": "..." },
+        { "type": "scenario", "id": "..." }
+      ]
+    }
+  ],
   "version": "4.0",
   "database": "mongodb"
 }
@@ -264,11 +384,15 @@ The MongoDB document structure:
 
 ## Tips for Coaches
 
-1. **Create base formations first**: Save your standard starting positions
-2. **Name positions descriptively**: Use clear names like "Base", "Serve Receive", "Rotation 1"
-3. **Use animation to show transitions**: Help players understand where they should move
-4. **Data is auto-saved**: All changes are automatically saved to `data/data.json` - no need to export!
-5. **Backup regularly**: While data is auto-saved, you can still export JSON/XML files for additional backup
+1. **Create base formations first**: Save your standard starting positions with descriptive names
+2. **Use tags for organization**: Tag positions and scenarios by rotation, play type, or situation (e.g., "rotation-1", "serve-receive", "attack")
+3. **Build scenarios for common transitions**: Create scenarios for transitions you practice frequently (e.g., "Serve Receive to Attack")
+4. **Create sequences for drills**: Build sequences that combine multiple positions and scenarios for complete practice drills
+5. **Share with players**: Enable player view and share your team code so players can review formations at home
+6. **Name descriptively**: Use clear names like "Base", "Serve Receive", "Rotation 1" for easy identification
+7. **Use search and filters**: When you have many positions/scenarios, use search and tag filters to find what you need quickly
+8. **Data is auto-saved**: All changes are automatically saved to MongoDB - no need to export!
+9. **Backup regularly**: While data is auto-saved, you can still export JSON/XML files for additional backup
 
 ## Future Enhancements
 
@@ -278,7 +402,8 @@ Potential features for future development:
 - [ ] Player statistics
 - [ ] Multiple lineups
 - [ ] Print/export court diagrams
-- [ ] Touch support for tablets
+- [ ] Enhanced touch support for tablets
+- [ ] Team collaboration features
 
 ## License
 
@@ -294,4 +419,4 @@ For issues or questions, please open an issue in the repository or contact the p
 
 ---
 
-**Made for volleyball coaches and players** 🏐
+**VolleyBoard - Made for volleyball coaches and players** 🏐
